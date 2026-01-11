@@ -1,0 +1,104 @@
+{
+  "db_name": "SQLite",
+  "query": "\n              SELECT\n                  id, item_type, parent_id, project_id, position,\n                  title, description, status, assignee_id, sprint_id,\n                  created_at, updated_at, created_by, updated_by, deleted_at\n              FROM pm_work_items\n              WHERE project_id = ? AND deleted_at IS NULL\n              ORDER BY position\n              ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "item_type",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "parent_id",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "project_id",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "position",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "title",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "description",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "status",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "assignee_id",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "sprint_id",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 10,
+        "type_info": "Integer"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 11,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_by",
+        "ordinal": 12,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_by",
+        "ordinal": 13,
+        "type_info": "Text"
+      },
+      {
+        "name": "deleted_at",
+        "ordinal": 14,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "3bb2aae35be7685451de5c3b6175ba8146c4b2fcdb8372cd3d56d25bde66aa12"
+}

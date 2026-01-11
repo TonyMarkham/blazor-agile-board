@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n              UPDATE pm_time_entries\n              SET ended_at = ?, duration_seconds = ?, description = ?, updated_at = ?\n              WHERE id = ? AND deleted_at IS NULL\n              ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "2d34bd1604d14a6331bf773d3e573ce1f0a66626197b0827fd67030ef98a4c03"
+}

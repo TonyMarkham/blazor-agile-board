@@ -1,0 +1,6 @@
+target/
+
+# Test data
+test_data/
+/backend/test_data/
+.sqlx-test/

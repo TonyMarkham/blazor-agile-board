@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n              UPDATE pm_comments\n              SET content = ?, updated_at = ?, updated_by = ?\n              WHERE id = ? AND deleted_at IS NULL\n              ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "65d4070e624065dfa4166baa73b3b2c5414b354d496a570197b94c17cd2b4dac"
+}

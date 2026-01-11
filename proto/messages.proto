@@ -1,0 +1,334 @@
+syntax = "proto3";
+
+package pm;
+
+// ============================================================================
+// Entity Messages (match database models exactly)
+// ============================================================================
+
+enum WorkItemType {
+  WORK_ITEM_TYPE_UNSPECIFIED = 0;
+  PROJECT = 1;
+  EPIC = 2;
+  STORY = 3;
+  TASK = 4;
+}
+
+message WorkItem {
+  string id = 1;
+  WorkItemType item_type = 2;
+
+  // Hierarchy
+  optional string parent_id = 3;
+  string project_id = 4;
+  int32 position = 5;
+
+  // Core fields
+  string title = 6;
+  optional string description = 7;
+
+  // Workflow
+  string status = 8;
+
+  // Assignment
+  optional string assignee_id = 9;
+
+  // Sprint
+  optional string sprint_id = 10;
+
+  // Audit
+  int64 created_at = 11;
+  int64 updated_at = 12;
+  string created_by = 13;
+  string updated_by = 14;
+  optional int64 deleted_at = 15;
+}
+
+enum SprintStatus {
+  SPRINT_STATUS_UNSPECIFIED = 0;
+  PLANNED = 1;
+  ACTIVE = 2;
+  COMPLETED = 3;
+  CANCELLED = 4;
+}
+
+message Sprint {
+  string id = 1;
+  string project_id = 2;
+
+  string name = 3;
+  optional string goal = 4;
+
+  int64 start_date = 5;
+  int64 end_date = 6;
+
+  SprintStatus status = 7;
+
+  // Audit
+  int64 created_at = 8;
+  int64 updated_at = 9;
+  string created_by = 10;
+  string updated_by = 11;
+  optional int64 deleted_at = 12;
+}
+
+message Comment {
+  string id = 1;
+  string work_item_id = 2;
+
+  string content = 3;
+
+  // Audit
+  int64 created_at = 4;
+  int64 updated_at = 5;
+  string created_by = 6;
+  string updated_by = 7;
+  optional int64 deleted_at = 8;
+}
+
+message TimeEntry {
+  string id = 1;
+  string work_item_id = 2;
+  string user_id = 3;
+
+  int64 started_at = 4;
+  optional int64 ended_at = 5;
+  optional int32 duration_seconds = 6;
+
+  optional string description = 7;
+
+  // Audit
+  int64 created_at = 8;
+  int64 updated_at = 9;
+  optional int64 deleted_at = 10;
+}
+
+enum DependencyType {
+  DEPENDENCY_TYPE_UNSPECIFIED = 0;
+  BLOCKS = 1;
+  RELATES_TO = 2;
+}
+
+message Dependency {
+  string id = 1;
+
+  string blocking_item_id = 2;
+  string blocked_item_id = 3;
+
+  DependencyType dependency_type = 4;
+
+  // Audit
+  int64 created_at = 5;
+  string created_by = 6;
+  optional int64 deleted_at = 7;
+}
+
+message SwimLane {
+  string id = 1;
+  string project_id = 2;
+
+  string name = 3;
+  string status_value = 4;
+  int32 position = 5;
+
+  bool is_default = 6;
+
+  // Audit
+  int64 created_at = 7;
+  int64 updated_at = 8;
+  optional int64 deleted_at = 9;
+}
+
+// ============================================================================
+// WebSocket Protocol Messages
+// ============================================================================
+
+message WebSocketMessage {
+  string message_id = 1;
+  int64 timestamp = 2;
+
+  oneof payload {
+    // Connection
+    Ping ping = 10;
+    Pong pong = 11;
+
+    // Subscription
+    Subscribe subscribe = 20;
+    Unsubscribe unsubscribe = 21;
+
+    // Work Item Commands
+    CreateWorkItemRequest create_work_item_request = 30;
+    UpdateWorkItemRequest update_work_item_request = 31;
+    DeleteWorkItemRequest delete_work_item_request = 32;
+
+    // Work Item Events
+    WorkItemCreated work_item_created = 40;
+    WorkItemUpdated work_item_updated = 41;
+    WorkItemDeleted work_item_deleted = 42;
+
+    // Sprint Commands
+    CreateSprintRequest create_sprint_request = 50;
+    UpdateSprintRequest update_sprint_request = 51;
+    DeleteSprintRequest delete_sprint_request = 52;
+
+    // Sprint Events
+    SprintCreated sprint_created = 60;
+    SprintUpdated sprint_updated = 61;
+    SprintDeleted sprint_deleted = 62;
+
+    // Comment Commands
+    CreateCommentRequest create_comment_request = 70;
+    UpdateCommentRequest update_comment_request = 71;
+    DeleteCommentRequest delete_comment_request = 72;
+
+    // Comment Events
+    CommentCreated comment_created = 80;
+    CommentUpdated comment_updated = 81;
+    CommentDeleted comment_deleted = 82;
+
+    // Error
+    Error error = 100;
+  }
+}
+
+// Connection Messages
+message Ping {
+  int64 timestamp = 1;
+}
+
+message Pong {
+  int64 timestamp = 1;
+}
+
+// Subscription Messages
+message Subscribe {
+  repeated string project_ids = 1;
+  repeated string sprint_ids = 2;
+}
+
+message Unsubscribe {
+  repeated string project_ids = 1;
+  repeated string sprint_ids = 2;
+}
+
+// Work Item Request Messages
+message CreateWorkItemRequest {
+  WorkItemType item_type = 1;
+  string title = 2;
+  optional string description = 3;
+  optional string parent_id = 4;
+  string project_id = 5;
+}
+
+message UpdateWorkItemRequest {
+  string work_item_id = 1;
+  optional string title = 2;
+  optional string description = 3;
+  optional string status = 4;
+  optional string assignee_id = 5;
+  optional string sprint_id = 6;
+  optional int32 position = 7;
+}
+
+message DeleteWorkItemRequest {
+  string work_item_id = 1;
+}
+
+// Work Item Event Messages
+message WorkItemCreated {
+  WorkItem work_item = 1;
+  string user_id = 2;
+}
+
+message WorkItemUpdated {
+  WorkItem work_item = 1;
+  repeated FieldChange changes = 2;
+  string user_id = 3;
+}
+
+message WorkItemDeleted {
+  string work_item_id = 1;
+  string user_id = 2;
+}
+
+message FieldChange {
+  string field_name = 1;
+  optional string old_value = 2;
+  optional string new_value = 3;
+}
+
+// Sprint Request Messages
+message CreateSprintRequest {
+  string project_id = 1;
+  string name = 2;
+  optional string goal = 3;
+  int64 start_date = 4;
+  int64 end_date = 5;
+}
+
+message UpdateSprintRequest {
+  string sprint_id = 1;
+  optional string name = 2;
+  optional string goal = 3;
+  optional int64 start_date = 4;
+  optional int64 end_date = 5;
+  optional SprintStatus status = 6;
+}
+
+message DeleteSprintRequest {
+  string sprint_id = 1;
+}
+
+// Sprint Event Messages
+message SprintCreated {
+  Sprint sprint = 1;
+  string user_id = 2;
+}
+
+message SprintUpdated {
+  Sprint sprint = 1;
+  string user_id = 2;
+}
+
+message SprintDeleted {
+  string sprint_id = 1;
+  string user_id = 2;
+}
+
+// Comment Request Messages
+message CreateCommentRequest {
+  string work_item_id = 1;
+  string content = 2;
+}
+
+message UpdateCommentRequest {
+  string comment_id = 1;
+  string content = 2;
+}
+
+message DeleteCommentRequest {
+  string comment_id = 1;
+}
+
+// Comment Event Messages
+message CommentCreated {
+  Comment comment = 1;
+  string user_id = 2;
+}
+
+message CommentUpdated {
+  Comment comment = 1;
+  string user_id = 2;
+}
+
+message CommentDeleted {
+  string comment_id = 1;
+  string user_id = 2;
+}
+
+// Error Message
+message Error {
+  string code = 1;
+  string message = 2;
+  optional string field = 3;
+}

@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "\n              SELECT id, project_id, name, status_value, position, is_default,\n                     created_at, updated_at, deleted_at\n              FROM pm_swim_lanes\n              WHERE project_id = ? AND deleted_at IS NULL\n              ORDER BY position ASC\n              ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "project_id",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "name",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "status_value",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "position",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "is_default",
+        "ordinal": 5,
+        "type_info": "Bool"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 7,
+        "type_info": "Integer"
+      },
+      {
+        "name": "deleted_at",
+        "ordinal": 8,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "5240b2095b327e85408dd785b4c9d70613dead3f971ab7160a6f509e9d73b7f1"
+}
