@@ -24,7 +24,7 @@ impl TenantConnectionManager {
     }
 
     pub async fn get_pool(&self, tenant_id: &str) -> Result<SqlitePool> {
-        // Check if pool already exists
+        // Fast path: Check if pool already exists (read lock)
         {
             let pools = self.pools.read().await;
             if let Some(pool) = pools.get(tenant_id) {
@@ -32,14 +32,19 @@ impl TenantConnectionManager {
             }
         }
 
-        // Create new pool
+        // Slow path: Need to create pool (write lock for entire operation)
+        let mut pools = self.pools.write().await;
+
+        // Double-check: Another thread might have created it while we waited for write lock
+        if let Some(pool) = pools.get(tenant_id) {
+            return Ok(pool.clone());
+        }
+
+        // Create new pool (we hold write lock to prevent other threads from doing this)
         let pool = self.create_pool(tenant_id).await?;
 
         // Store in cache
-        {
-            let mut pools = self.pools.write().await;
-            pools.insert(tenant_id.to_string(), pool.clone());
-        }
+        pools.insert(tenant_id.to_string(), pool.clone());
 
         Ok(pool)
     }

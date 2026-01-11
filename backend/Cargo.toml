@@ -9,27 +9,20 @@ members = [
 resolver = "3"
 
 [workspace.dependencies]
-# Async runtime
 tokio = { version = "1.49.0", features = ["full"] }
-
-# Database
 sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "sqlite", "uuid", "chrono"] }
-
-# Serialization
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 prost = "0.14.1"
 prost-build = "0.14.1"
-
-# Utilities
 uuid = { version = "1.19.0", features = ["v4", "serde"] }
 chrono = { version = "0.4.42", features = ["serde"] }
 thiserror = "2.0.17"
 anyhow = "1.0.100"
-
-# Logging
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
+googletest = { version = "0.14.2" }
+tempfile = { version = "3.24.0" }
 
 # Workspae
 pm-auth = { path = "crates/pm-auth" }
