@@ -1,0 +1,23 @@
+[package]
+name = "pm-ws"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+axum = { workspace = true }
+futures = { workspace = true }
+bytes = { workspace = true }
+tokio = { workspace = true }
+prost = { workspace = true }
+thiserror = { workspace = true }
+metrics = { workspace = true }
+log = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+
+pm-core = { workspace = true }
+pm-proto = { workspace = true }
+pm-auth = { workspace = true }
+
+[dev-dependencies]
+tokio-test = { workspace = true }

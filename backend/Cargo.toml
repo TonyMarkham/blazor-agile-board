@@ -4,6 +4,7 @@ members = [
     "crates/pm-db",
     "crates/pm-auth",
     "crates/pm-proto",
+    "crates/pm-ws",
     "pm-server",
 ]
 resolver = "3"
@@ -18,14 +19,29 @@ prost-build = "0.14.1"
 uuid = { version = "1.19.0", features = ["v4", "serde"] }
 chrono = { version = "0.4.42", features = ["serde"] }
 thiserror = "2.0.17"
-anyhow = "1.0.100"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
 googletest = { version = "0.14.2" }
 tempfile = { version = "3.24.0" }
+axum = { version = "0.8.8", features = ["ws"] }
+tower = { version = "0.5.2", features = ["timeout", "limit"] }
+tower-http = { version = "0.6.8", features = ["cors"] }
+http = { version = "1.4.0" }
+futures = { version = "0.3.31" }
+bytes = { version = "1.11.0" }
+jsonwebtoken = { version = "10.2.0", features = ["rust_crypto"] }
+log = { version = "0.4.29" }
+fern = { version = "0.7.1", features = ["colored"] }
+metrics = { version = "0.24.3" }
+metrics-exporter-prometheus = { version = "0.18.1" }
+governor = { version = "0.10.4" }
+tokio-test = { version = "0.4.5" }
+dotenvy = { version = "0.15.7" }
+humantime = { version = "2.3.0" }
 
 # Workspae
 pm-auth = { path = "crates/pm-auth" }
 pm-core = { path = "crates/pm-core" }
 pm-db = { path = "crates/pm-db" }
 pm-proto = { path = "crates/pm-proto" }
+pm-ws = { path = "crates/pm-ws" }

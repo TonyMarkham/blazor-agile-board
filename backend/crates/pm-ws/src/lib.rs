@@ -1,0 +1,40 @@
+pub mod error;
+pub mod metrics;
+pub mod metrics_timer;
+pub mod connection_limits;
+pub mod connection_id;
+pub mod connection_info;
+pub mod connection_registry;
+pub mod broadcast_config;
+pub mod broadcast_message;
+pub mod tenant_broadcaster;
+pub mod subscription_filter;
+pub mod client_subscriptions;
+pub mod message_validator;
+pub mod shutdown_coordinator;
+pub mod shutdown_guard;
+pub mod connection_config;
+pub mod web_socket_connection;
+pub mod app_state;
+
+pub use error::{WsError, Result};
+pub use metrics::Metrics;
+pub use metrics_timer::MetricsTimer;
+pub use connection_limits::ConnectionLimits;
+pub use connection_id::ConnectionId;
+pub use connection_info::ConnectionInfo;
+pub use connection_registry::ConnectionRegistry;
+pub use broadcast_config::BroadcastConfig;
+pub use broadcast_message::BroadcastMessage;
+pub use tenant_broadcaster::TenantBroadcaster;
+pub use client_subscriptions::ClientSubscriptions;
+pub use subscription_filter::SubscriptionFilter;
+pub use message_validator::MessageValidator;
+pub use shutdown_coordinator::ShutdownCoordinator;
+pub use shutdown_guard::ShutdownGuard;
+pub use connection_config::ConnectionConfig;
+pub use web_socket_connection::WebSocketConnection;
+pub use app_state::{AppState, handler};
+
+#[cfg(test)]
+mod tests;
