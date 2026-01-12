@@ -6,7 +6,7 @@
 
 ### Init
 ```txt
-We have now implemented session 13
+We have now implemented session 15
 ```
 
 ### Followup
@@ -16,7 +16,7 @@ Looks like we have finished Phase 2, if you agree, can you please update `SESSIO
 
 ### Plan
 ```txt
-Please look at planning how to implement Session 10 to give the developer agent a solid foundation. Recognize, your role is to plan, not to code.
+Please look at planning how to implement Session 20 to give the developer agent a solid foundation. Recognize, your role is to plan, not to code.
 ```
 
 ---
@@ -50,7 +50,7 @@ I want you to plan to give me something that's over 9 out of 10 on a production 
 
 ### Document
 ```txt
-Can you please serialize that to `session_14_prod_plan.md`?
+Can you please serialize that to `session_20_prod_plan.md`?
 ```
 
 ---
@@ -59,7 +59,7 @@ Can you please serialize that to `session_14_prod_plan.md`?
 
 ### Implement
 ```txt
-I'd like you to read `CRITICAL_OPERATING_CONSTRAINTS.md`  And using those guidelines help me implement `session_14_prod_plan.md`
+I'd like you to read `CRITICAL_OPERATING_CONSTRAINTS.md`  And using those guidelines help me implement `SESSION-20-PLAN.md`
 
  You won't be writing or editing any code. You'll be presenting code snippets to me, for me to implement, so that I understand what's going on incrementally.
 
