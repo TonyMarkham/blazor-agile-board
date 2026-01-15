@@ -1,10 +1,9 @@
 use crate::{AuthError, Result as AuthErrorResult, RateLimitConfig};
 
-use pm_core::ErrorLocation;
-
 use std::num::NonZeroU32;
 use std::panic::Location;
 
+use error_location::ErrorLocation;
 use governor::{
     clock::DefaultClock,
     state::{InMemoryState, NotKeyed},

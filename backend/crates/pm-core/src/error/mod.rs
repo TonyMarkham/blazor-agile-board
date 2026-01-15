@@ -1,11 +1,6 @@
-pub mod error_location;
-
-// -------------------------------------------------------------------------- //
-
-use crate::ErrorLocation;
-
 use std::result::Result as StdResult;
 
+use error_location::ErrorLocation;
 use thiserror::Error;
 
 #[derive(Error, Debug)]

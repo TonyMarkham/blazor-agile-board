@@ -8,6 +8,7 @@ jsonwebtoken = { workspace = true }
 serde = { workspace = true }
 governor = { workspace = true }
 thiserror = { workspace = true }
+error-location = { workspace = true }
 tokio = { workspace = true }
 
 pm-core = { workspace = true }

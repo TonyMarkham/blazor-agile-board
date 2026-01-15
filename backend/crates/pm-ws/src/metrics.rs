@@ -1,7 +1,5 @@
 use metrics::{counter, gauge, histogram};
 
-use std::time::Instant;
-
 /// Metrics collector for WebSocket operations
 #[derive(Clone)]
 pub struct Metrics {
@@ -49,7 +47,7 @@ impl Metrics {
     }
 
     /// Record broadcast message published
-    pub fn broadcast_published(&self, tenant_id: &str, message_type: &str, subscriber_count: usize) {
+    pub fn broadcast_published(&self, tenant_id: &str, _message_type: &str, subscriber_count: usize) {
         counter!(format!("{}.broadcast.published", self.prefix)).increment(1);
         counter!(format!("{}.broadcast.published.{}", self.prefix, tenant_id)).increment(1);
         gauge!(format!("{}.broadcast.subscribers.{}", self.prefix, tenant_id)).set(subscriber_count as f64);

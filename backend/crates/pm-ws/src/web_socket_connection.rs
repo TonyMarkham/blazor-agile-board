@@ -4,11 +4,11 @@ use crate::{
 };
 
 use pm_auth::{ConnectionRateLimiter, TenantContext};
-use pm_core::ErrorLocation;
 
 use std::panic::Location;
 
 use axum::extract::ws::{Message, WebSocket};
+use error_location::ErrorLocation;
 use futures::{SinkExt, StreamExt};
 use tokio::sync::mpsc;
 
@@ -20,6 +20,7 @@ pub struct WebSocketConnection {
     metrics: Metrics,
     rate_limiter: ConnectionRateLimiter,
     broadcaster: TenantBroadcaster,
+    #[allow(dead_code)]
     subscriptions: ClientSubscriptions,
 }
 

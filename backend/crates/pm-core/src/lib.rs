@@ -1,7 +1,6 @@
 pub mod error;
 pub mod models;
 
-pub use error::error_location::ErrorLocation;
 pub use error::{CoreError, Result};
 pub use models::activity_log::ActivityLog;
 pub use models::comment::Comment;

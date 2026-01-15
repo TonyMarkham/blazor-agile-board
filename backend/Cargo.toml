@@ -38,6 +38,7 @@ governor = { version = "0.10.4" }
 tokio-test = { version = "0.4.5" }
 dotenvy = { version = "0.15.7" }
 humantime = { version = "2.3.0" }
+error-location = { version = "0.1.0" }
 
 # Workspae
 pm-auth = { path = "crates/pm-auth" }

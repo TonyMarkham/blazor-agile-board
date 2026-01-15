@@ -1,8 +1,8 @@
 use crate::{WsError, Result as WsErrorResult};
 
-use pm_core::ErrorLocation;
-
 use std::panic::Location;
+
+use error_location::ErrorLocation;
 
 /// Validates protobuf messages from clients                                                                                                                                     
 pub struct MessageValidator;
@@ -163,7 +163,7 @@ impl MessageValidator {
 
     /// Validate pagination parameters                                                                                                                                           
     #[track_caller]
-    pub fn validate_pagination(limit: u32, offset: u32) -> WsErrorResult<()> {
+    pub fn validate_pagination(limit: u32, _offset: u32) -> WsErrorResult<()> {
         if limit == 0 {
             return Err(WsError::InvalidMessage {
                 message: "limit must be greater than 0".to_string(),

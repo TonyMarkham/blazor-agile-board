@@ -1,5 +1,6 @@
 use std::panic::Location;
 
+use error_location::ErrorLocation;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -30,7 +31,7 @@ impl SprintStatus {
             "cancelled" => Ok(Self::Cancelled),
             _ => Err(crate::CoreError::InvalidSprintStatus {
                 value: s.to_string(),
-                location: crate::ErrorLocation::from(Location::caller()),
+                location: ErrorLocation::from(Location::caller()),
             }),
         }
     }

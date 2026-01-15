@@ -1,9 +1,8 @@
 use crate::{AuthError, Claims, Result as AuthErrorResult};
 
-use pm_core::ErrorLocation;
-
 use std::panic::Location;
 
+use error_location::ErrorLocation;
 use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 
 /// Production-grade JWT validator

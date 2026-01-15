@@ -1,12 +1,11 @@
 use crate::{DbError, Result};
 
-use pm_core::ErrorLocation;
-
 use std::collections::HashMap;
 use std::panic::Location;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use error_location::ErrorLocation;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions};
 use tokio::sync::RwLock;
 

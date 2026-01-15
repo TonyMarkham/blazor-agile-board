@@ -10,6 +10,7 @@ bytes = { workspace = true }
 tokio = { workspace = true }
 prost = { workspace = true }
 thiserror = { workspace = true }
+error-location = { workspace = true }
 metrics = { workspace = true }
 log = { workspace = true }
 uuid = { workspace = true }

@@ -1,7 +1,6 @@
-use pm_core::ErrorLocation;
-
 use std::panic::Location;
 
+use error_location::ErrorLocation;
 use thiserror::Error;
 
 #[derive(Error, Debug)]

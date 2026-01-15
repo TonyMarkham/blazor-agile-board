@@ -4,7 +4,6 @@ use std::time::SystemTime;
 
 use fern::colors::{Color, ColoredLevelConfig};
 use fern::Dispatch;
-use humantime;
 use log::LevelFilter;
 
 /// Initialize logger with fern (stdout only, colored optional)

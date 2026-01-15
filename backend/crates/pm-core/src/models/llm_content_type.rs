@@ -1,5 +1,6 @@
 use std::panic::Location;
 
+use error_location::ErrorLocation;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -33,7 +34,7 @@ impl LlmContextType {
             "instruction" => Ok(Self::Instruction),
             _ => Err(crate::CoreError::Validation {
                 message: format!("Invalid context type: {}", s),
-                location: crate::ErrorLocation::from(Location::caller()),
+                location: ErrorLocation::from(Location::caller()),
             }),
         }
     }

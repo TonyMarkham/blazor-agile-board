@@ -89,7 +89,7 @@ impl TenantBroadcaster {
         let inner = self.inner.read().await;
 
         if let Some(channel) = inner.channels.get(tenant_id) {
-            let subscriber_count = channel.subscriber_count;
+            let _subscriber_count = channel.subscriber_count;
 
             match channel.sender.send(message) {
                 Ok(receiver_count) => {

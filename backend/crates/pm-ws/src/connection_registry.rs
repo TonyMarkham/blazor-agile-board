@@ -1,11 +1,10 @@
 use crate::{WsError, Result as WsErrorResult, ConnectionLimits, ConnectionId, ConnectionInfo};
 
-use pm_core::ErrorLocation;
-
 use std::collections::HashMap;
 use std::panic::Location;
 use std::sync::Arc;
 
+use error_location::ErrorLocation;
 use tokio::sync::RwLock;
 
 /// Registry for tracking active WebSocket connections                                                                                                                           

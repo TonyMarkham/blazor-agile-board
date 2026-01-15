@@ -1,5 +1,6 @@
 use std::panic::Location;
 
+use error_location::ErrorLocation;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -24,7 +25,7 @@ impl DependencyType {
             "relates_to" => Ok(Self::RelatesTo),
             _ => Err(crate::CoreError::InvalidDependencyType {
                 value: s.to_string(),
-                location: crate::ErrorLocation::from(Location::caller()),
+                location: ErrorLocation::from(Location::caller()),
             }),
         }
     }

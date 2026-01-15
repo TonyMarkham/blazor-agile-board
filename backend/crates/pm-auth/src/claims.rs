@@ -1,9 +1,8 @@
 use crate::{AuthError, Result as AuthErrorResult};
 
-use pm_core::ErrorLocation;
-
 use std::panic::Location;
 
+use error_location::ErrorLocation;
 use serde::{Deserialize, Serialize};
 
 /// JWT Claims structure - matches platform JWT format                                                                                                                           

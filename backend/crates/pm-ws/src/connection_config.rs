@@ -1,18 +1,4 @@
-use crate::{
-    BroadcastMessage, ClientSubscriptions, ConnectionId, Metrics, Result, ShutdownGuard,
-    SubscriptionFilter, TenantBroadcaster, WsError,
-};
-
-use pm_auth::{ConnectionRateLimiter, TenantContext};
-use pm_core::ErrorLocation;
-
-use std::panic::Location;
-
-use axum::extract::ws::{Message, WebSocket};
-use futures::{SinkExt, StreamExt};
-use tokio::sync::mpsc;
-
-/// Configuration for WebSocket connections                                                                                                                                      
+/// Configuration for WebSocket connections
 #[derive(Debug, Clone)]
 pub struct ConnectionConfig {
     /// Send buffer size (bounded to handle backpressure)                                                                                                                        
