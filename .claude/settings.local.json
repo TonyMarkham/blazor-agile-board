@@ -9,7 +9,9 @@
       "Bash(cargo tree:*)",
       "Bash(cargo doc:*)",
       "Bash(curl:*)",
-      "Bash(cargo check:*)"
+      "Bash(cargo check:*)",
+      "Bash(head:*)",
+      "Bash(xxd:*)"
     ]
   }
 }
