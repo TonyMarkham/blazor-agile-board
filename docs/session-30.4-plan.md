@@ -1,5 +1,12 @@
 # Session 30.4: Frontend Foundation (Core + Services)
 
+> **⚠️ CRITICAL**: The contents of [`CRITICAL_OPERATING_CONSTRAINTS.md`](../CRITICAL_OPERATING_CONSTRAINTS.md) apply to this implementation session.
+> - **Teaching Mode**: Do NOT write/edit files unless explicitly asked to "implement"
+> - **Production-Grade**: No shortcuts, no TODOs, comprehensive error handling
+> - **Plan First**: Read entire step, identify sub-tasks, present approach before coding
+
+---
+
 ## Overview
 
 Set up the Blazor solution structure, create domain models, protobuf mapping, WebSocket client with request/response correlation, and state management.

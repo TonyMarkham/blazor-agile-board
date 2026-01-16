@@ -1,5 +1,12 @@
 # Session 30.1: Schema & Repository Infrastructure
 
+> **⚠️ CRITICAL**: The contents of [`CRITICAL_OPERATING_CONSTRAINTS.md`](../CRITICAL_OPERATING_CONSTRAINTS.md) apply to this implementation session.
+> - **Teaching Mode**: Do NOT write/edit files unless explicitly asked to "implement"
+> - **Production-Grade**: No shortcuts, no TODOs, comprehensive error handling
+> - **Plan First**: Read entire step, identify sub-tasks, present approach before coding
+
+---
+
 ## Overview
 
 Add database schema changes for optimistic locking, authorization, and idempotency. Create corresponding repositories.

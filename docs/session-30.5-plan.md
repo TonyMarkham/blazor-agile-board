@@ -1,5 +1,12 @@
 # Session 30.5: Frontend UI (Components + WASM Host)
 
+> **⚠️ CRITICAL**: The contents of [`CRITICAL_OPERATING_CONSTRAINTS.md`](../CRITICAL_OPERATING_CONSTRAINTS.md) apply to this implementation session.
+> - **Teaching Mode**: Do NOT write/edit files unless explicitly asked to "implement"
+> - **Production-Grade**: No shortcuts, no TODOs, comprehensive error handling
+> - **Plan First**: Read entire step, identify sub-tasks, present approach before coding
+
+---
+
 ## Overview
 
 Create the Razor Component Library with Kanban board, work item cards, and dialogs. Set up the standalone WASM host application.

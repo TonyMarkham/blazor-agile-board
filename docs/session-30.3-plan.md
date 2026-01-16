@@ -1,5 +1,12 @@
 # Session 30.3: Work Item Handlers & Dispatcher
 
+> **⚠️ CRITICAL**: The contents of [`CRITICAL_OPERATING_CONSTRAINTS.md`](../CRITICAL_OPERATING_CONSTRAINTS.md) apply to this implementation session.
+> - **Teaching Mode**: Do NOT write/edit files unless explicitly asked to "implement"
+> - **Production-Grade**: No shortcuts, no TODOs, comprehensive error handling
+> - **Plan First**: Read entire step, identify sub-tasks, present approach before coding
+
+---
+
 ## Overview
 
 Implement the CRUD handlers for work items, the query handler for initial load, and integrate with the message dispatcher. Add comprehensive handler tests.
