@@ -1,6 +1,6 @@
 use crate::{
-    BroadcastMessage, ClientSubscriptions, ConnectionId, Metrics, Result as WsErrorResult, ShutdownGuard,
-    ConnectionConfig, TenantBroadcaster, WsError,
+    BroadcastMessage, ClientSubscriptions, ConnectionConfig, ConnectionId, Metrics,
+    Result as WsErrorResult, ShutdownGuard, TenantBroadcaster, WsError,
 };
 
 use pm_auth::{ConnectionRateLimiter, TenantContext};
@@ -55,13 +55,14 @@ impl WebSocketConnection {
         mut shutdown_guard: ShutdownGuard,
     ) -> WsErrorResult<()> {
         log::info!(
-              "WebSocket connection {} established for tenant {} (user {})",
-              self.connection_id,
-              self.tenant_context.tenant_id,
-              self.tenant_context.user_id
-          );
+            "WebSocket connection {} established for tenant {} (user {})",
+            self.connection_id,
+            self.tenant_context.tenant_id,
+            self.tenant_context.user_id
+        );
 
-        self.metrics.connection_established(&self.tenant_context.tenant_id);
+        self.metrics
+            .connection_established(&self.tenant_context.tenant_id);
 
         // Split socket into sender and receiver
         let (mut ws_sender, mut ws_receiver) = socket.split();
@@ -70,7 +71,10 @@ impl WebSocketConnection {
         let (tx, mut rx) = mpsc::channel::<Message>(self.config.send_buffer_size);
 
         // Subscribe to tenant broadcasts
-        let mut broadcast_rx = self.broadcaster.subscribe(&self.tenant_context.tenant_id).await;
+        let mut broadcast_rx = self
+            .broadcaster
+            .subscribe(&self.tenant_context.tenant_id)
+            .await;
 
         // Spawn send task
         let send_task = tokio::spawn(async move {
@@ -83,95 +87,97 @@ impl WebSocketConnection {
 
         let result = loop {
             tokio::select! {
-                  // Handle incoming messages from client
-                  msg = ws_receiver.next() => {
-                      match msg {
-                          Some(Ok(msg)) => {
-                              if let Err(e) = self.handle_client_message(msg, &tx).await {
-                                  log::error!(
-                                      "Error handling message from connection {}: {}",
-                                      self.connection_id,
-                                      e
-                                  );
-                                  self.metrics.error_occurred(
-                                      &self.tenant_context.tenant_id,
-                                      "message_handling"
-                                  );
-                                  break Err(e);
-                              }
-                          }
-                          Some(Err(e)) => {
-                              log::error!(
-                                  "WebSocket error on connection {}: {}",
-                                  self.connection_id,
-                                  e
-                              );
-                              break Err(WsError::ConnectionClosed {
-                                  reason: format!("WebSocket error: {}", e),
-                                  location: ErrorLocation::from(Location::caller()),
-                              });
-                          }
-                          None => {
-                              log::info!("Connection {} closed by client", self.connection_id);
-                              break Ok(());
-                          }
-                      }
-                  }
+                // Handle incoming messages from client
+                msg = ws_receiver.next() => {
+                    match msg {
+                        Some(Ok(msg)) => {
+                            if let Err(e) = self.handle_client_message(msg, &tx).await {
+                                log::error!(
+                                    "Error handling message from connection {}: {}",
+                                    self.connection_id,
+                                    e
+                                );
+                                self.metrics.error_occurred(
+                                    &self.tenant_context.tenant_id,
+                                    "message_handling"
+                                );
+                                break Err(e);
+                            }
+                        }
+                        Some(Err(e)) => {
+                            log::error!(
+                                "WebSocket error on connection {}: {}",
+                                self.connection_id,
+                                e
+                            );
+                            break Err(WsError::ConnectionClosed {
+                                reason: format!("WebSocket error: {}", e),
+                                location: ErrorLocation::from(Location::caller()),
+                            });
+                        }
+                        None => {
+                            log::info!("Connection {} closed by client", self.connection_id);
+                            break Ok(());
+                        }
+                    }
+                }
 
-                  // Handle broadcast messages from server
-                  broadcast_msg = broadcast_rx.recv() => {
-                      match broadcast_msg {
-                          Ok(msg) => {
-                              if let Err(e) = self.handle_broadcast_message(msg, &tx).await {
-                                  log::error!(
-                                      "Error handling broadcast for connection {}: {}",
-                                      self.connection_id,
-                                      e
-                                  );
-                                  // Don't break on broadcast errors, just log
-                              }
-                          }
-                          Err(tokio::sync::broadcast::error::RecvError::Lagged(missed)) => {
-                              log::warn!(
-                                  "Connection {} lagged, missed {} messages",
-                                  self.connection_id,
-                                  missed
-                              );
-                              self.metrics.error_occurred(
-                                  &self.tenant_context.tenant_id,
-                                  "broadcast_lagged"
-                              );
-                          }
-                          Err(_) => {
-                              log::info!("Broadcast channel closed for connection {}", self.connection_id);
-                              break Ok(());
-                          }
-                      }
-                  }
+                // Handle broadcast messages from server
+                broadcast_msg = broadcast_rx.recv() => {
+                    match broadcast_msg {
+                        Ok(msg) => {
+                            if let Err(e) = self.handle_broadcast_message(msg, &tx).await {
+                                log::error!(
+                                    "Error handling broadcast for connection {}: {}",
+                                    self.connection_id,
+                                    e
+                                );
+                                // Don't break on broadcast errors, just log
+                            }
+                        }
+                        Err(tokio::sync::broadcast::error::RecvError::Lagged(missed)) => {
+                            log::warn!(
+                                "Connection {} lagged, missed {} messages",
+                                self.connection_id,
+                                missed
+                            );
+                            self.metrics.error_occurred(
+                                &self.tenant_context.tenant_id,
+                                "broadcast_lagged"
+                            );
+                        }
+                        Err(_) => {
+                            log::info!("Broadcast channel closed for connection {}", self.connection_id);
+                            break Ok(());
+                        }
+                    }
+                }
 
-                  // Handle graceful shutdown
-                  _ = shutdown_guard.wait() => {
-                      log::info!("Shutting down connection {} gracefully", self.connection_id);
-                      break Ok(());
-                  }
-              }
+                // Handle graceful shutdown
+                _ = shutdown_guard.wait() => {
+                    log::info!("Shutting down connection {} gracefully", self.connection_id);
+                    break Ok(());
+                }
+            }
         };
 
         // Cleanup
-        self.broadcaster.unsubscribe(&self.tenant_context.tenant_id).await;
+        self.broadcaster
+            .unsubscribe(&self.tenant_context.tenant_id)
+            .await;
         drop(tx); // Close channel to terminate send task
         let _ = send_task.await;
 
         self.metrics.connection_closed(
             &self.tenant_context.tenant_id,
-            if result.is_ok() { "normal" } else { "error" }
+            if result.is_ok() { "normal" } else { "error" },
         );
 
         log::info!(
-              "WebSocket connection {} closed for tenant {}",
-              self.connection_id,
-              self.tenant_context.tenant_id
-          );
+            "WebSocket connection {} closed for tenant {}",
+            self.connection_id,
+            self.tenant_context.tenant_id
+        );
 
         result
     }
@@ -196,7 +202,11 @@ impl WebSocketConnection {
 
                 let close_frame = axum::extract::ws::CloseFrame {
                     code: axum::extract::ws::close_code::POLICY,
-                    reason: format!("Rate limit exceeded {} times. Connection closed.", MAX_VIOLATIONS).into(),
+                    reason: format!(
+                        "Rate limit exceeded {} times. Connection closed.",
+                        MAX_VIOLATIONS
+                    )
+                    .into(),
                 };
 
                 let _ = tx.send(Message::Close(Some(close_frame))).await;
@@ -217,8 +227,7 @@ impl WebSocketConnection {
 
                 let warning = format!(
                     "Rate limit exceeded. Slow down. ({}/{} warnings)",
-                    self.rate_limit_violations,
-                    MAX_VIOLATIONS
+                    self.rate_limit_violations, MAX_VIOLATIONS
                 );
                 let _ = tx.send(Message::Text(warning.into())).await;
 
@@ -231,18 +240,18 @@ impl WebSocketConnection {
         }
 
         match msg {
-            Message::Binary(data) => {
-                self.handle_binary_message(data, tx).await
-            }
+            Message::Binary(data) => self.handle_binary_message(data, tx).await,
             Message::Text(text) => {
                 log::debug!("Received text message: {}", text);
                 // Could support JSON for compatibility, but we prefer binary protobuf
                 Ok(())
             }
             Message::Ping(data) => {
-                tx.send(Message::Pong(data)).await.map_err(|_| WsError::SendBufferFull {
-                    location: ErrorLocation::from(Location::caller()),
-                })?;
+                tx.send(Message::Pong(data))
+                    .await
+                    .map_err(|_| WsError::SendBufferFull {
+                        location: ErrorLocation::from(Location::caller()),
+                    })?;
                 Ok(())
             }
             Message::Pong(_) => {
@@ -250,7 +259,10 @@ impl WebSocketConnection {
                 Ok(())
             }
             Message::Close(_) => {
-                log::info!("Received close frame from connection {}", self.connection_id);
+                log::info!(
+                    "Received close frame from connection {}",
+                    self.connection_id
+                );
                 Ok(())
             }
         }
@@ -266,12 +278,13 @@ impl WebSocketConnection {
         // TODO: Once protobuf client messages are defined, decode here
         // For now, just log
         log::debug!(
-              "Received binary message ({} bytes) from connection {}",
-              data.len(),
-              self.connection_id
-          );
+            "Received binary message ({} bytes) from connection {}",
+            data.len(),
+            self.connection_id
+        );
 
-        self.metrics.message_received(&self.tenant_context.tenant_id, "unknown");
+        self.metrics
+            .message_received(&self.tenant_context.tenant_id, "unknown");
 
         // Example: Subscribe/Unsubscribe handling
         // This will be expanded when protobuf definitions are complete
@@ -294,7 +307,8 @@ impl WebSocketConnection {
                 location: ErrorLocation::from(Location::caller()),
             })?;
 
-        self.metrics.message_sent(&self.tenant_context.tenant_id, &msg.message_type);
+        self.metrics
+            .message_sent(&self.tenant_context.tenant_id, &msg.message_type);
 
         Ok(())
     }

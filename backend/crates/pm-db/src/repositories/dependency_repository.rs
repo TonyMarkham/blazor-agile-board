@@ -1,6 +1,10 @@
-use crate::Result;
-use chrono::DateTime;
+use crate::Result as DbErrorResult;
+
 use pm_core::{Dependency, DependencyType};
+
+use std::str::FromStr;
+
+use chrono::DateTime;
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
@@ -13,7 +17,7 @@ impl DependencyRepository {
         Self { pool }
     }
 
-    pub async fn create(&self, dependency: &Dependency) -> Result<()> {
+    pub async fn create(&self, dependency: &Dependency) -> DbErrorResult<()> {
         let id = dependency.id.to_string();
         let blocking_item_id = dependency.blocking_item_id.to_string();
         let blocked_item_id = dependency.blocked_item_id.to_string();
@@ -43,7 +47,7 @@ impl DependencyRepository {
         Ok(())
     }
 
-    pub async fn find_by_id(&self, id: Uuid) -> Result<Option<Dependency>> {
+    pub async fn find_by_id(&self, id: Uuid) -> DbErrorResult<Option<Dependency>> {
         let id_str = id.to_string();
 
         let row = sqlx::query!(
@@ -69,7 +73,7 @@ impl DependencyRepository {
         }))
     }
 
-    pub async fn find_blocking(&self, blocked_item_id: Uuid) -> Result<Vec<Dependency>> {
+    pub async fn find_blocking(&self, blocked_item_id: Uuid) -> DbErrorResult<Vec<Dependency>> {
         let blocked_item_id_str = blocked_item_id.to_string();
 
         let rows = sqlx::query!(
@@ -98,7 +102,7 @@ impl DependencyRepository {
             .collect())
     }
 
-    pub async fn find_blocked(&self, blocking_item_id: Uuid) -> Result<Vec<Dependency>> {
+    pub async fn find_blocked(&self, blocking_item_id: Uuid) -> DbErrorResult<Vec<Dependency>> {
         let blocking_item_id_str = blocking_item_id.to_string();
 
         let rows = sqlx::query!(
@@ -127,7 +131,7 @@ impl DependencyRepository {
             .collect())
     }
 
-    pub async fn delete(&self, id: Uuid, deleted_at: i64) -> Result<()> {
+    pub async fn delete(&self, id: Uuid, deleted_at: i64) -> DbErrorResult<()> {
         let id_str = id.to_string();
 
         sqlx::query!(

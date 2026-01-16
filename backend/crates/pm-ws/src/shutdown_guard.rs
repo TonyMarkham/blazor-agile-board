@@ -21,6 +21,6 @@ impl ShutdownGuard {
 
     /// Poll for shutdown signal (non-blocking, consumes signal if present)
     pub fn poll_shutdown(&mut self) -> bool {
-        matches!(self.shutdown_rx.try_recv(), Ok(_))
+        self.shutdown_rx.try_recv().is_ok()
     }
 }

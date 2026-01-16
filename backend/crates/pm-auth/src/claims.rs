@@ -25,7 +25,7 @@ impl Claims {
     /// Validate claims after JWT signature verification                                                                                                                         
     #[track_caller]
     pub fn validate(&self) -> AuthErrorResult<()> {
-        // Validate tenant_id format (non-empty, reasonable length)                                                                                                              
+        // Validate tenant_id format (non-empty, reasonable length)
         if self.tenant_id.is_empty() {
             return Err(AuthError::InvalidClaim {
                 claim: "tenant_id".to_string(),
@@ -41,7 +41,7 @@ impl Claims {
             });
         }
 
-        // Validate sub (user_id)                                                                                                                                                
+        // Validate sub (user_id)
         if self.sub.is_empty() {
             return Err(AuthError::InvalidClaim {
                 claim: "sub".to_string(),
@@ -52,4 +52,4 @@ impl Claims {
 
         Ok(())
     }
-}   
+}

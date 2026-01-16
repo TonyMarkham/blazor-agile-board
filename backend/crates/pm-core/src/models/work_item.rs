@@ -1,4 +1,4 @@
-use crate::models::work_item_type::WorkItemType;
+use crate::WorkItemType;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

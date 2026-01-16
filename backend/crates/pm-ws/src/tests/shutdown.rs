@@ -1,6 +1,6 @@
 use crate::{ShutdownCoordinator, ShutdownGuard};
 
-use tokio::time::{timeout, Duration};
+use tokio::time::{Duration, timeout};
 
 #[tokio::test]
 async fn given_coordinator_when_shutdown_triggered_then_subscribers_notified() {

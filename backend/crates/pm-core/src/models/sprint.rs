@@ -1,4 +1,4 @@
-use crate::models::sprint_status::SprintStatus;
+use crate::SprintStatus;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

@@ -11,7 +11,9 @@
       "Bash(curl:*)",
       "Bash(cargo check:*)",
       "Bash(head:*)",
-      "Bash(xxd:*)"
+      "Bash(xxd:*)",
+      "Bash(cargo fmt:*)",
+      "Bash(cargo build:*)"
     ]
   }
 }

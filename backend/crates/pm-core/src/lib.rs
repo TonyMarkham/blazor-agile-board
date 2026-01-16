@@ -8,6 +8,7 @@ pub use models::dependency::Dependency;
 pub use models::dependency_type::DependencyType;
 pub use models::llm_content::LlmContext;
 pub use models::llm_content_type::LlmContextType;
+pub use models::project_member::ProjectMember;
 pub use models::sprint::Sprint;
 pub use models::sprint_status::SprintStatus;
 pub use models::swim_lane::SwimLane;

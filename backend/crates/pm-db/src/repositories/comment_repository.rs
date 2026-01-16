@@ -1,6 +1,8 @@
-use crate::Result;
-use chrono::DateTime;
+use crate::Result as DbErrorResult;
+
 use pm_core::Comment;
+
+use chrono::DateTime;
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
@@ -13,7 +15,7 @@ impl CommentRepository {
         Self { pool }
     }
 
-    pub async fn create(&self, comment: &Comment) -> Result<()> {
+    pub async fn create(&self, comment: &Comment) -> DbErrorResult<()> {
         let id = comment.id.to_string();
         let work_item_id = comment.work_item_id.to_string();
         let created_at = comment.created_at.timestamp();
@@ -44,7 +46,7 @@ impl CommentRepository {
         Ok(())
     }
 
-    pub async fn find_by_id(&self, id: Uuid) -> Result<Option<Comment>> {
+    pub async fn find_by_id(&self, id: Uuid) -> DbErrorResult<Option<Comment>> {
         let id_str = id.to_string();
 
         let row = sqlx::query!(
@@ -71,7 +73,7 @@ impl CommentRepository {
         }))
     }
 
-    pub async fn find_by_work_item(&self, work_item_id: Uuid) -> Result<Vec<Comment>> {
+    pub async fn find_by_work_item(&self, work_item_id: Uuid) -> DbErrorResult<Vec<Comment>> {
         let work_item_id_str = work_item_id.to_string();
 
         let rows = sqlx::query!(
@@ -102,7 +104,7 @@ impl CommentRepository {
             .collect())
     }
 
-    pub async fn update(&self, comment: &Comment) -> Result<()> {
+    pub async fn update(&self, comment: &Comment) -> DbErrorResult<()> {
         let id = comment.id.to_string();
         let updated_at = comment.updated_at.timestamp();
         let updated_by = comment.updated_by.to_string();
@@ -124,7 +126,7 @@ impl CommentRepository {
         Ok(())
     }
 
-    pub async fn delete(&self, id: Uuid, deleted_at: i64) -> Result<()> {
+    pub async fn delete(&self, id: Uuid, deleted_at: i64) -> DbErrorResult<()> {
         let id_str = id.to_string();
 
         sqlx::query!(

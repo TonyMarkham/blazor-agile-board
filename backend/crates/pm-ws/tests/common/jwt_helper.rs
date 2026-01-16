@@ -1,15 +1,15 @@
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use jsonwebtoken::{encode, EncodingKey, Header};
+use jsonwebtoken::{EncodingKey, Header, encode};
 use serde::{Deserialize, Serialize};
 
 /// JWT claims matching production format (from pm-auth crate)
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TestJwtClaims {
-    pub sub: String,       // user_id
+    pub sub: String, // user_id
     pub tenant_id: String,
-    pub exp: u64,          // Expiration timestamp
-    pub iat: u64,          // Issued at timestamp
+    pub exp: u64, // Expiration timestamp
+    pub iat: u64, // Issued at timestamp
 }
 
 /// Create a valid JWT token for testing
@@ -41,7 +41,7 @@ pub fn create_test_token_with_expiry(
         &claims,
         &EncodingKey::from_secret(jwt_secret),
     )
-        .expect("Failed to encode JWT")
+    .expect("Failed to encode JWT")
 }
 
 /// Create an expired JWT token (for auth rejection tests)
@@ -64,7 +64,7 @@ pub fn create_expired_token(tenant_id: &str, user_id: &str, jwt_secret: &[u8]) -
         &claims,
         &EncodingKey::from_secret(jwt_secret),
     )
-        .expect("Failed to encode JWT")
+    .expect("Failed to encode JWT")
 }
 
 /// Create JWT token with empty tenant_id (invalid - should be rejected)

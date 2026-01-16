@@ -1,4 +1,4 @@
-use crate::models::llm_content_type::LlmContextType;
+use crate::LlmContextType;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

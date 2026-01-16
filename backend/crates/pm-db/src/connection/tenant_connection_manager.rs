@@ -1,9 +1,10 @@
-use crate::{DbError, Result};
+use crate::{DbError, Result as DbErrorResult};
 
 use std::collections::HashMap;
 use std::panic::Location;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 
 use error_location::ErrorLocation;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions};
@@ -22,7 +23,7 @@ impl TenantConnectionManager {
         }
     }
 
-    pub async fn get_pool(&self, tenant_id: &str) -> Result<SqlitePool> {
+    pub async fn get_pool(&self, tenant_id: &str) -> DbErrorResult<SqlitePool> {
         // Fast path: Check if pool already exists (read lock)
         {
             let pools = self.pools.read().await;
@@ -48,7 +49,7 @@ impl TenantConnectionManager {
         Ok(pool)
     }
 
-    async fn create_pool(&self, tenant_id: &str) -> Result<SqlitePool> {
+    async fn create_pool(&self, tenant_id: &str) -> DbErrorResult<SqlitePool> {
         let db_path = self.get_database_path(tenant_id);
 
         // Create directory if it doesn't exist
@@ -69,6 +70,7 @@ impl TenantConnectionManager {
 
         let pool = SqlitePoolOptions::new()
             .max_connections(5)
+            .acquire_timeout(Duration::from_secs(5))
             .connect_with(options)
             .await?;
 
@@ -83,7 +85,7 @@ impl TenantConnectionManager {
         Ok(pool)
     }
 
-    async fn run_migrations(&self, pool: &SqlitePool) -> Result<()> {
+    async fn run_migrations(&self, pool: &SqlitePool) -> DbErrorResult<()> {
         sqlx::migrate!("./migrations")
             .run(pool)
             .await

@@ -1,4 +1,5 @@
-use crate::error::{ServerError, Result as ServerErrorResult};
+use crate::error::{Result as ServerErrorResult, ServerError};
+
 use std::net::SocketAddr;
 
 /// Server configuration loaded from environment variables

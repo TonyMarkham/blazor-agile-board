@@ -1,4 +1,4 @@
-use crate::{WsError, Result as WsErrorResult, ConnectionLimits, ConnectionId, ConnectionInfo};
+use crate::{ConnectionId, ConnectionInfo, ConnectionLimits, Result as WsErrorResult, WsError};
 
 use std::collections::HashMap;
 use std::panic::Location;
@@ -39,13 +39,13 @@ impl ConnectionRegistry {
     ) -> WsErrorResult<ConnectionId> {
         let mut inner = self.inner.write().await;
 
-        // Check total connection limit                                                                                                                                          
+        // Check total connection limit
         if inner.connections.len() >= self.limits.max_total {
-            log::warn!(                                                                                                                                                          
-                  "Total connection limit reached: {}/{}",                                                                                                                         
-                  inner.connections.len(),                                                                                                                                         
-                  self.limits.max_total                                                                                                                                            
-              );
+            log::warn!(
+                "Total connection limit reached: {}/{}",
+                inner.connections.len(),
+                self.limits.max_total
+            );
             return Err(WsError::ConnectionLimitExceeded {
                 tenant_id: tenant_id.clone(),
                 current: inner.connections.len(),
@@ -54,15 +54,19 @@ impl ConnectionRegistry {
             });
         }
 
-        // Check per-tenant connection limit                                                                                                                                     
-        let tenant_connections = inner.by_tenant.get(&tenant_id).map(|v| v.len()).unwrap_or(0);
+        // Check per-tenant connection limit
+        let tenant_connections = inner
+            .by_tenant
+            .get(&tenant_id)
+            .map(|v| v.len())
+            .unwrap_or(0);
         if tenant_connections >= self.limits.max_per_tenant {
-            log::warn!(                                                                                                                                                          
-                  "Tenant {} connection limit reached: {}/{}",                                                                                                                     
-                  tenant_id,                                                                                                                                                       
-                  tenant_connections,                                                                                                                                              
-                  self.limits.max_per_tenant                                                                                                                                       
-              );
+            log::warn!(
+                "Tenant {} connection limit reached: {}/{}",
+                tenant_id,
+                tenant_connections,
+                self.limits.max_per_tenant
+            );
             return Err(WsError::ConnectionLimitExceeded {
                 tenant_id: tenant_id.clone(),
                 current: tenant_connections,
@@ -71,7 +75,7 @@ impl ConnectionRegistry {
             });
         }
 
-        // Create new connection                                                                                                                                                 
+        // Create new connection
         let connection_id = ConnectionId::new();
         let info = ConnectionInfo {
             connection_id,
@@ -87,13 +91,13 @@ impl ConnectionRegistry {
             .or_insert_with(Vec::new)
             .push(connection_id);
 
-        log::info!(                                                                                                                                                              
-              "Registered connection {} for tenant {} ({} total, {} for tenant)",                                                                                                  
-              connection_id,                                                                                                                                                       
-              tenant_id,                                                                                                                                                           
-              inner.connections.len(),                                                                                                                                             
-              tenant_connections + 1                                                                                                                                               
-          );
+        log::info!(
+            "Registered connection {} for tenant {} ({} total, {} for tenant)",
+            connection_id,
+            tenant_id,
+            inner.connections.len(),
+            tenant_connections + 1
+        );
 
         Ok(connection_id)
     }
@@ -103,7 +107,7 @@ impl ConnectionRegistry {
         let mut inner = self.inner.write().await;
 
         if let Some(info) = inner.connections.remove(&connection_id) {
-            // Remove from tenant list                                                                                                                                           
+            // Remove from tenant list
             if let Some(tenant_connections) = inner.by_tenant.get_mut(&info.tenant_id) {
                 tenant_connections.retain(|&id| id != connection_id);
                 if tenant_connections.is_empty() {
@@ -111,12 +115,12 @@ impl ConnectionRegistry {
                 }
             }
 
-            log::info!(                                                                                                                                                          
-                  "Unregistered connection {} for tenant {} ({} total remaining)",                                                                                                 
-                  connection_id,                                                                                                                                                   
-                  info.tenant_id,                                                                                                                                                  
-                  inner.connections.len()                                                                                                                                          
-              );
+            log::info!(
+                "Unregistered connection {} for tenant {} ({} total remaining)",
+                connection_id,
+                info.tenant_id,
+                inner.connections.len()
+            );
         }
     }
 
@@ -150,11 +154,7 @@ impl ConnectionRegistry {
     /// Get connection count for a specific tenant                                                                                                                               
     pub async fn tenant_count(&self, tenant_id: &str) -> usize {
         let inner = self.inner.read().await;
-        inner
-            .by_tenant
-            .get(tenant_id)
-            .map(|v| v.len())
-            .unwrap_or(0)
+        inner.by_tenant.get(tenant_id).map(|v| v.len()).unwrap_or(0)
     }
 
     /// Get all active tenant IDs                                                                                                                                                
@@ -171,4 +171,4 @@ impl Clone for ConnectionRegistry {
             limits: self.limits.clone(),
         }
     }
-} 
+}

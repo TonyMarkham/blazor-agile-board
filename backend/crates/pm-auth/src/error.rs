@@ -4,7 +4,10 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum AuthError {
     #[error("Invalid token: {message} {location}")]
-    InvalidToken { message: String, location: ErrorLocation },
+    InvalidToken {
+        message: String,
+        location: ErrorLocation,
+    },
 
     #[error("Token expired {location}")]
     TokenExpired { location: ErrorLocation },

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n              UPDATE pm_dependencies\n              SET deleted_at = ?\n              WHERE id = ? AND deleted_at IS NULL\n              ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "ca05363641f1ada741691415279680d6d5c6016711b9799ca985bf76c9ebc4b0"
+}

@@ -1,6 +1,8 @@
-use crate::Result;
-use chrono::DateTime;
+use crate::Result as DbErrorResult;
+
 use pm_core::SwimLane;
+
+use chrono::DateTime;
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
@@ -13,7 +15,7 @@ impl SwimLaneRepository {
         Self { pool }
     }
 
-    pub async fn create(&self, lane: &SwimLane) -> Result<()> {
+    pub async fn create(&self, lane: &SwimLane) -> DbErrorResult<()> {
         let id = lane.id.to_string();
         let project_id = lane.project_id.to_string();
         let is_default = if lane.is_default { 1 } else { 0 };
@@ -44,7 +46,7 @@ impl SwimLaneRepository {
         Ok(())
     }
 
-    pub async fn find_by_id(&self, id: Uuid) -> Result<Option<SwimLane>> {
+    pub async fn find_by_id(&self, id: Uuid) -> DbErrorResult<Option<SwimLane>> {
         let id_str = id.to_string();
 
         let row = sqlx::query!(
@@ -72,7 +74,7 @@ impl SwimLaneRepository {
         }))
     }
 
-    pub async fn find_by_project(&self, project_id: Uuid) -> Result<Vec<SwimLane>> {
+    pub async fn find_by_project(&self, project_id: Uuid) -> DbErrorResult<Vec<SwimLane>> {
         let project_id_str = project_id.to_string();
 
         let rows = sqlx::query!(
@@ -104,7 +106,7 @@ impl SwimLaneRepository {
             .collect())
     }
 
-    pub async fn update(&self, lane: &SwimLane) -> Result<()> {
+    pub async fn update(&self, lane: &SwimLane) -> DbErrorResult<()> {
         let id = lane.id.to_string();
         let updated_at = lane.updated_at.timestamp();
 
@@ -126,7 +128,7 @@ impl SwimLaneRepository {
         Ok(())
     }
 
-    pub async fn delete(&self, id: Uuid, deleted_at: i64) -> Result<()> {
+    pub async fn delete(&self, id: Uuid, deleted_at: i64) -> DbErrorResult<()> {
         let id_str = id.to_string();
 
         sqlx::query!(

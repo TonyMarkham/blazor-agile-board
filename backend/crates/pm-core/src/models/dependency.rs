@@ -1,4 +1,4 @@
-use crate::models::dependency_type::DependencyType;
+use crate::DependencyType;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

@@ -14,4 +14,4 @@ impl BroadcastMessage {
             message_type,
         }
     }
-}  
+}

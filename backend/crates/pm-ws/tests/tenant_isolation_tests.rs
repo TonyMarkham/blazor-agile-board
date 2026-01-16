@@ -1,11 +1,11 @@
 mod common;
 
 use common::{
-    test_server::{create_test_server_with_config, TestServerConfig, TEST_JWT_SECRET},
     test_client::WsTestClient,
+    test_server::{TEST_JWT_SECRET, TestServerConfig, create_test_server_with_config},
 };
 
-use tokio::time::{sleep, Duration};
+use tokio::time::{Duration, sleep};
 
 #[tokio::test]
 async fn given_tenant_channel_when_all_clients_disconnect_then_channel_cleaned_up() {
@@ -15,15 +15,25 @@ async fn given_tenant_channel_when_all_clients_disconnect_then_channel_cleaned_u
     let tenant_id = "tenant-cleanup";
 
     // Connect 3 clients to same tenant
-    let client1 = WsTestClient::connect(&test_server.server, tenant_id, "user-1", TEST_JWT_SECRET).await;
-    let client2 = WsTestClient::connect(&test_server.server, tenant_id, "user-2", TEST_JWT_SECRET).await;
-    let client3 = WsTestClient::connect(&test_server.server, tenant_id, "user-3", TEST_JWT_SECRET).await;
+    let client1 =
+        WsTestClient::connect(&test_server.server, tenant_id, "user-1", TEST_JWT_SECRET).await;
+    let client2 =
+        WsTestClient::connect(&test_server.server, tenant_id, "user-2", TEST_JWT_SECRET).await;
+    let client3 =
+        WsTestClient::connect(&test_server.server, tenant_id, "user-3", TEST_JWT_SECRET).await;
 
     // Verify channel exists and has 3 subscribers
     let active_tenants = test_server.app_state.broadcaster.active_tenants().await;
-    assert!(active_tenants.contains(&tenant_id.to_string()), "Tenant channel should exist");
+    assert!(
+        active_tenants.contains(&tenant_id.to_string()),
+        "Tenant channel should exist"
+    );
 
-    let subscriber_count = test_server.app_state.broadcaster.subscriber_count(tenant_id).await;
+    let subscriber_count = test_server
+        .app_state
+        .broadcaster
+        .subscriber_count(tenant_id)
+        .await;
     assert_eq!(subscriber_count, 3, "Should have 3 subscribers");
 
     // When - All clients disconnect
@@ -36,9 +46,15 @@ async fn given_tenant_channel_when_all_clients_disconnect_then_channel_cleaned_u
 
     // Then - Channel should be cleaned up (no memory leak)
     let active_tenants_after = test_server.app_state.broadcaster.active_tenants().await;
-    assert!(!active_tenants_after.contains(&tenant_id.to_string()),
-            "Tenant channel should be removed when all clients disconnect");
+    assert!(
+        !active_tenants_after.contains(&tenant_id.to_string()),
+        "Tenant channel should be removed when all clients disconnect"
+    );
 
-    let subscriber_count_after = test_server.app_state.broadcaster.subscriber_count(tenant_id).await;
+    let subscriber_count_after = test_server
+        .app_state
+        .broadcaster
+        .subscriber_count(tenant_id)
+        .await;
     assert_eq!(subscriber_count_after, 0, "Subscriber count should be 0");
 }

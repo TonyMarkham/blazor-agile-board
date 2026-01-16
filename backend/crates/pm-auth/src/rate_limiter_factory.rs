@@ -1,4 +1,4 @@
-use crate::{RateLimitConfig, ConnectionRateLimiter};
+use crate::{ConnectionRateLimiter, RateLimitConfig};
 
 /// Factory for creating per-connection rate limiters                                                                                                                            
 #[derive(Clone)]
@@ -20,4 +20,4 @@ impl Default for RateLimiterFactory {
     fn default() -> Self {
         Self::new(RateLimitConfig::default())
     }
-}  
+}

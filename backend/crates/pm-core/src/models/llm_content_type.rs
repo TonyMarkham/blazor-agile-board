@@ -1,4 +1,7 @@
+use crate::{CoreError, Result as CoreErrorResult};
+
 use std::panic::Location;
+use std::str::FromStr;
 
 use error_location::ErrorLocation;
 use serde::{Deserialize, Serialize};
@@ -23,16 +26,20 @@ impl LlmContextType {
             Self::Instruction => "instruction",
         }
     }
+}
+
+impl FromStr for LlmContextType {
+    type Err = CoreError;
 
     #[track_caller]
-    pub fn from_str(s: &str) -> crate::Result<Self> {
+    fn from_str(s: &str) -> CoreErrorResult<Self> {
         match s {
             "schema_doc" => Ok(Self::SchemaDoc),
             "query_pattern" => Ok(Self::QueryPattern),
             "business_rule" => Ok(Self::BusinessRule),
             "example" => Ok(Self::Example),
             "instruction" => Ok(Self::Instruction),
-            _ => Err(crate::CoreError::Validation {
+            _ => Err(CoreError::Validation {
                 message: format!("Invalid context type: {}", s),
                 location: ErrorLocation::from(Location::caller()),
             }),

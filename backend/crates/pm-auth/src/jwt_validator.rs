@@ -3,7 +3,7 @@ use crate::{AuthError, Claims, Result as AuthErrorResult};
 use std::panic::Location;
 
 use error_location::ErrorLocation;
-use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
+use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode};
 
 /// Production-grade JWT validator
 pub struct JwtValidator {
@@ -30,11 +30,12 @@ impl JwtValidator {
     /// Create validator with RS256 (asymmetric public key)
     #[track_caller]
     pub fn with_rs256(public_key_pem: &str) -> AuthErrorResult<Self> {
-        let decoding_key = DecodingKey::from_rsa_pem(public_key_pem.as_bytes())
-            .map_err(|e| AuthError::InvalidToken {
+        let decoding_key = DecodingKey::from_rsa_pem(public_key_pem.as_bytes()).map_err(|e| {
+            AuthError::InvalidToken {
                 message: format!("Invalid RSA public key: {}", e),
                 location: ErrorLocation::from(Location::caller()),
-            })?;
+            }
+        })?;
 
         let mut validation = Validation::new(Algorithm::RS256);
         validation.validate_exp = true;
@@ -51,8 +52,8 @@ impl JwtValidator {
     /// Validate JWT token and return claims
     #[track_caller]
     pub fn validate(&self, token: &str) -> AuthErrorResult<Claims> {
-        let token_data = decode::<Claims>(token, &self.decoding_key, &self.validation)
-            .map_err(|e| {
+        let token_data =
+            decode::<Claims>(token, &self.decoding_key, &self.validation).map_err(|e| {
                 use jsonwebtoken::errors::ErrorKind;
                 match e.kind() {
                     ErrorKind::ExpiredSignature => AuthError::TokenExpired {

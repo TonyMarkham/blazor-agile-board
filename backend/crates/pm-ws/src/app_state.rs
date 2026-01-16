@@ -4,8 +4,8 @@ use crate::{
 };
 use axum::{
     extract::{
-        ws::{WebSocket, WebSocketUpgrade},
         State,
+        ws::{WebSocket, WebSocketUpgrade},
     },
     http::{HeaderMap, StatusCode},
     response::Response,
@@ -31,16 +31,16 @@ pub async fn handler(
     headers: HeaderMap,
     ws: WebSocketUpgrade,
 ) -> Result<Response, StatusCode> {
-    // Extract and validate JWT from Authorization header                                                                                                                        
+    // Extract and validate JWT from Authorization header
     let tenant_context = extract_tenant_context(&headers, &state.jwt_validator)?;
 
-    log::debug!(                                                                                                                                                                 
-          "WebSocket upgrade request from tenant {} (user {})",                                                                                                                    
-          tenant_context.tenant_id,                                                                                                                                                
-          tenant_context.user_id                                                                                                                                                   
-      );
+    log::debug!(
+        "WebSocket upgrade request from tenant {} (user {})",
+        tenant_context.tenant_id,
+        tenant_context.user_id
+    );
 
-    // Register connection (enforces connection limits)                                                                                                                          
+    // Register connection (enforces connection limits)
     let connection_id = state
         .registry
         .register(
@@ -53,24 +53,18 @@ pub async fn handler(
             StatusCode::SERVICE_UNAVAILABLE
         })?;
 
-    log::info!(                                                                                                                                                                  
-          "Registered connection {} for tenant {}",                                                                                                                                
-          connection_id,                                                                                                                                                           
-          tenant_context.tenant_id                                                                                                                                                 
-      );
+    log::info!(
+        "Registered connection {} for tenant {}",
+        connection_id,
+        tenant_context.tenant_id
+    );
 
-    // Create rate limiter for this connection                                                                                                                                   
+    // Create rate limiter for this connection
     let rate_limiter = state.rate_limiter_factory.create();
 
-    // Upgrade to WebSocket                                                                                                                                                      
+    // Upgrade to WebSocket
     Ok(ws.on_upgrade(move |socket| {
-        handle_socket(
-            socket,
-            connection_id,
-            tenant_context,
-            state,
-            rate_limiter,
-        )
+        handle_socket(socket, connection_id, tenant_context, state, rate_limiter)
     }))
 }
 
@@ -93,10 +87,10 @@ async fn handle_socket(
         state.broadcaster.clone(),
     );
 
-    // Handle connection lifecycle                                                                                                                                               
+    // Handle connection lifecycle
     let result = connection.handle(socket, shutdown_guard).await;
 
-    // Unregister on disconnect                                                                                                                                                  
+    // Unregister on disconnect
     state.registry.unregister(connection_id).await;
 
     if let Err(e) = result {
@@ -109,7 +103,7 @@ fn extract_tenant_context(
     headers: &HeaderMap,
     validator: &JwtValidator,
 ) -> Result<TenantContext, StatusCode> {
-    // Get Authorization header                                                                                                                                                  
+    // Get Authorization header
     let auth_header = headers
         .get("authorization")
         .and_then(|h| h.to_str().ok())
@@ -118,21 +112,21 @@ fn extract_tenant_context(
             StatusCode::UNAUTHORIZED
         })?;
 
-    // Check Bearer scheme                                                                                                                                                       
+    // Check Bearer scheme
     if !auth_header.starts_with("Bearer ") {
         log::warn!("Invalid authorization scheme: expected 'Bearer'");
         return Err(StatusCode::UNAUTHORIZED);
     }
 
-    // Extract token                                                                                                                                                             
+    // Extract token
     let token = &auth_header[7..]; // Skip "Bearer "                                                                                                                             
 
-    // Validate JWT                                                                                                                                                              
+    // Validate JWT
     let claims = validator.validate(token).map_err(|e| {
         log::warn!("JWT validation failed: {}", e);
         StatusCode::UNAUTHORIZED
     })?;
 
-    // Convert to TenantContext                                                                                                                                                  
+    // Convert to TenantContext
     Ok(TenantContext::from_claims(claims))
-} 
+}

@@ -17,4 +17,4 @@ pub enum ServerError {
     EnvVar { message: String },
 }
 
-pub type Result<T> = std::result::Result<T, ServerError>; 
+pub type Result<T> = std::result::Result<T, ServerError>;

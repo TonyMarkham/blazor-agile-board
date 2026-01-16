@@ -1,14 +1,14 @@
-use crate::error::{ServerError, Result};
+use crate::error::{Result as ServerErrorResult, ServerError};
 
 use std::time::SystemTime;
 
-use fern::colors::{Color, ColoredLevelConfig};
 use fern::Dispatch;
+use fern::colors::{Color, ColoredLevelConfig};
 use log::LevelFilter;
 
 /// Initialize logger with fern (stdout only, colored optional)
 #[track_caller]
-pub fn initialize(log_level: &str, colored: bool) -> Result<()> {
+pub fn initialize(log_level: &str, colored: bool) -> ServerErrorResult<()> {
     let level_filter = parse_log_level(log_level)?;
 
     let base_dispatch = Dispatch::new().level(level_filter);
@@ -63,7 +63,7 @@ pub fn initialize(log_level: &str, colored: bool) -> Result<()> {
 }
 
 /// Parse log level string to LevelFilter
-fn parse_log_level(level: &str) -> Result<LevelFilter> {
+fn parse_log_level(level: &str) -> ServerErrorResult<LevelFilter> {
     match level.to_lowercase().as_str() {
         "trace" => Ok(LevelFilter::Trace),
         "debug" => Ok(LevelFilter::Debug),

@@ -1,6 +1,8 @@
-use crate::error::Result;
+use crate::error::Result as DbErrorResult;
 
 use pm_core::{WorkItem, WorkItemType};
+
+use std::str::FromStr;
 
 use chrono::DateTime;
 use sqlx::SqlitePool;
@@ -15,7 +17,7 @@ impl WorkItemRepository {
         Self { pool }
     }
 
-    pub async fn create(&self, work_item: &WorkItem) -> Result<()> {
+    pub async fn create(&self, work_item: &WorkItem) -> DbErrorResult<()> {
         let id = work_item.id.to_string();
         let item_type = work_item.item_type.as_str();
         let parent_id = work_item.parent_id.map(|id| id.to_string());
@@ -58,7 +60,7 @@ impl WorkItemRepository {
         Ok(())
     }
 
-    pub async fn find_by_id(&self, id: Uuid) -> Result<Option<WorkItem>> {
+    pub async fn find_by_id(&self, id: Uuid) -> DbErrorResult<Option<WorkItem>> {
         let id_str = id.to_string();
 
         let row = sqlx::query!(
@@ -94,7 +96,7 @@ impl WorkItemRepository {
         }))
     }
 
-    pub async fn find_by_project(&self, project_id: Uuid) -> Result<Vec<WorkItem>> {
+    pub async fn find_by_project(&self, project_id: Uuid) -> DbErrorResult<Vec<WorkItem>> {
         let project_id_str = project_id.to_string();
 
         let rows = sqlx::query!(
@@ -134,7 +136,7 @@ impl WorkItemRepository {
             .collect())
     }
 
-    pub async fn update(&self, work_item: &WorkItem) -> Result<()> {
+    pub async fn update(&self, work_item: &WorkItem) -> DbErrorResult<()> {
         let id = work_item.id.to_string();
         let item_type = work_item.item_type.as_str();
         let parent_id = work_item.parent_id.map(|id| id.to_string());
@@ -171,7 +173,7 @@ impl WorkItemRepository {
         Ok(())
     }
 
-    pub async fn delete(&self, id: Uuid, deleted_at: i64) -> Result<()> {
+    pub async fn delete(&self, id: Uuid, deleted_at: i64) -> DbErrorResult<()> {
         let id_str = id.to_string();
 
         sqlx::query!(

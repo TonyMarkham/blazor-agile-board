@@ -1,6 +1,8 @@
-use crate::Result;
-use chrono::DateTime;
+use crate::Result as DbErrorResult;
+
 use pm_core::TimeEntry;
+
+use chrono::DateTime;
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
@@ -13,7 +15,7 @@ impl TimeEntryRepository {
         Self { pool }
     }
 
-    pub async fn create(&self, entry: &TimeEntry) -> Result<()> {
+    pub async fn create(&self, entry: &TimeEntry) -> DbErrorResult<()> {
         let id = entry.id.to_string();
         let work_item_id = entry.work_item_id.to_string();
         let user_id = entry.user_id.to_string();
@@ -48,7 +50,7 @@ impl TimeEntryRepository {
         Ok(())
     }
 
-    pub async fn find_by_id(&self, id: Uuid) -> Result<Option<TimeEntry>> {
+    pub async fn find_by_id(&self, id: Uuid) -> DbErrorResult<Option<TimeEntry>> {
         let id_str = id.to_string();
 
         let row = sqlx::query!(
@@ -78,7 +80,7 @@ impl TimeEntryRepository {
         }))
     }
 
-    pub async fn find_by_work_item(&self, work_item_id: Uuid) -> Result<Vec<TimeEntry>> {
+    pub async fn find_by_work_item(&self, work_item_id: Uuid) -> DbErrorResult<Vec<TimeEntry>> {
         let work_item_id_str = work_item_id.to_string();
 
         let rows = sqlx::query!(
@@ -112,7 +114,7 @@ impl TimeEntryRepository {
             .collect())
     }
 
-    pub async fn find_running(&self, user_id: Uuid) -> Result<Vec<TimeEntry>> {
+    pub async fn find_running(&self, user_id: Uuid) -> DbErrorResult<Vec<TimeEntry>> {
         let user_id_str = user_id.to_string();
 
         let rows = sqlx::query!(
@@ -145,7 +147,7 @@ impl TimeEntryRepository {
             .collect())
     }
 
-    pub async fn update(&self, entry: &TimeEntry) -> Result<()> {
+    pub async fn update(&self, entry: &TimeEntry) -> DbErrorResult<()> {
         let id = entry.id.to_string();
         let ended_at = entry.ended_at.map(|dt| dt.timestamp());
         let updated_at = entry.updated_at.timestamp();
@@ -168,7 +170,7 @@ impl TimeEntryRepository {
         Ok(())
     }
 
-    pub async fn delete(&self, id: Uuid, deleted_at: i64) -> Result<()> {
+    pub async fn delete(&self, id: Uuid, deleted_at: i64) -> DbErrorResult<()> {
         let id_str = id.to_string();
 
         sqlx::query!(

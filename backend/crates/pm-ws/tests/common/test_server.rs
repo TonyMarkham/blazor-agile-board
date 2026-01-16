@@ -4,7 +4,7 @@ use pm_ws::{
     ShutdownCoordinator, TenantBroadcaster,
 };
 
-use axum::{routing::get, Router};
+use axum::{Router, routing::get};
 use axum_test::TestServer;
 
 /// Default JWT secret for all tests (HS256 requires at least 32 bytes)
@@ -71,10 +71,7 @@ pub fn create_test_server_with_config(config: TestServerConfig) -> TestServerWit
         .build(app)
         .expect("Failed to create test server");
 
-    TestServerWithState {
-        server,
-        app_state,
-    }
+    TestServerWithState { server, app_state }
 }
 
 /// Build the Axum Router with AppState

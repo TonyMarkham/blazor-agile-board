@@ -17,4 +17,4 @@ impl Default for ConnectionConfig {
             heartbeat_timeout_secs: 60,
         }
     }
-} 
+}

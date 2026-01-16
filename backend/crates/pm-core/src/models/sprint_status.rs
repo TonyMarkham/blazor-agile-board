@@ -1,4 +1,7 @@
+use crate::{CoreError, Result as CoreErrorResult};
+
 use std::panic::Location;
+use std::str::FromStr;
 
 use error_location::ErrorLocation;
 use serde::{Deserialize, Serialize};
@@ -21,15 +24,19 @@ impl SprintStatus {
             Self::Cancelled => "cancelled",
         }
     }
+}
+
+impl FromStr for SprintStatus {
+    type Err = CoreError;
 
     #[track_caller]
-    pub fn from_str(s: &str) -> crate::Result<Self> {
+    fn from_str(s: &str) -> CoreErrorResult<Self> {
         match s {
             "planned" => Ok(Self::Planned),
             "active" => Ok(Self::Active),
             "completed" => Ok(Self::Completed),
             "cancelled" => Ok(Self::Cancelled),
-            _ => Err(crate::CoreError::InvalidSprintStatus {
+            _ => Err(CoreError::InvalidSprintStatus {
                 value: s.to_string(),
                 location: ErrorLocation::from(Location::caller()),
             }),

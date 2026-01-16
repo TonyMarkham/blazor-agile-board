@@ -1,4 +1,3 @@
-
 use std::panic::Location;
 
 use error_location::ErrorLocation;
@@ -7,7 +6,10 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum WsError {
     #[error("Connection closed: {reason} {location}")]
-    ConnectionClosed { reason: String, location: ErrorLocation },
+    ConnectionClosed {
+        reason: String,
+        location: ErrorLocation,
+    },
 
     #[error("Protobuf decode failed: {source} {location}")]
     ProtoDecode {
@@ -32,7 +34,9 @@ pub enum WsError {
         location: ErrorLocation,
     },
 
-    #[error("Connection limit exceeded: tenant {tenant_id} has {current} connections (max: {max}) {location}")]
+    #[error(
+        "Connection limit exceeded: tenant {tenant_id} has {current} connections (max: {max}) {location}"
+    )]
     ConnectionLimitExceeded {
         tenant_id: String,
         current: usize,
@@ -41,7 +45,10 @@ pub enum WsError {
     },
 
     #[error("Invalid message: {message} {location}")]
-    InvalidMessage { message: String, location: ErrorLocation },
+    InvalidMessage {
+        message: String,
+        location: ErrorLocation,
+    },
 
     #[error("Heartbeat timeout after {timeout_secs}s {location}")]
     HeartbeatTimeout {
@@ -50,7 +57,10 @@ pub enum WsError {
     },
 
     #[error("Internal error: {message} {location}")]
-    Internal { message: String, location: ErrorLocation },
+    Internal {
+        message: String,
+        location: ErrorLocation,
+    },
 }
 
 impl WsError {

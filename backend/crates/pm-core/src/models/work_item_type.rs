@@ -1,4 +1,7 @@
+use crate::{CoreError, Result as CoreErrorResult};
+
 use std::panic::Location;
+use std::str::FromStr;
 
 use error_location::ErrorLocation;
 use serde::{Deserialize, Serialize};
@@ -21,15 +24,19 @@ impl WorkItemType {
             Self::Task => "task",
         }
     }
+}
+
+impl FromStr for WorkItemType {
+    type Err = CoreError;
 
     #[track_caller]
-    pub fn from_str(s: &str) -> crate::Result<Self> {
+    fn from_str(s: &str) -> CoreErrorResult<Self> {
         match s {
             "project" => Ok(Self::Project),
             "epic" => Ok(Self::Epic),
             "story" => Ok(Self::Story),
             "task" => Ok(Self::Task),
-            _ => Err(crate::CoreError::InvalidWorkItemType {
+            _ => Err(CoreError::InvalidWorkItemType {
                 value: s.to_string(),
                 location: ErrorLocation::from(Location::caller()),
             }),

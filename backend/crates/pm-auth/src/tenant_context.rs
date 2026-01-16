@@ -1,4 +1,4 @@
-use crate::claims::Claims;
+use crate::Claims;
 
 /// Extracted tenant context available to handlers
 /// This is the validated, trusted context after JWT verification

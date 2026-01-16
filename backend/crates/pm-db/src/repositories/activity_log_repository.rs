@@ -1,6 +1,8 @@
-use crate::Result;
-use chrono::DateTime;
+use crate::Result as DbErrorResult;
+
 use pm_core::ActivityLog;
+
+use chrono::DateTime;
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
@@ -13,7 +15,7 @@ impl ActivityLogRepository {
         Self { pool }
     }
 
-    pub async fn create(&self, log: &ActivityLog) -> Result<()> {
+    pub async fn create(&self, log: &ActivityLog) -> DbErrorResult<()> {
         let id = log.id.to_string();
         let entity_id = log.entity_id.to_string();
         let user_id = log.user_id.to_string();
@@ -48,7 +50,7 @@ impl ActivityLogRepository {
         &self,
         entity_type: &str,
         entity_id: Uuid,
-    ) -> Result<Vec<ActivityLog>> {
+    ) -> DbErrorResult<Vec<ActivityLog>> {
         let entity_id_str = entity_id.to_string();
 
         let rows = sqlx::query!(
@@ -83,7 +85,7 @@ impl ActivityLogRepository {
             .collect())
     }
 
-    pub async fn find_by_user(&self, user_id: Uuid, limit: i64) -> Result<Vec<ActivityLog>> {
+    pub async fn find_by_user(&self, user_id: Uuid, limit: i64) -> DbErrorResult<Vec<ActivityLog>> {
         let user_id_str = user_id.to_string();
 
         let rows = sqlx::query!(

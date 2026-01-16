@@ -76,7 +76,13 @@ pub async fn create_clients_for_tenant(
     let mut clients = Vec::with_capacity(count);
     for i in 0..count {
         let user_id = format!("{}-{}", user_id_prefix, i + 1);
-        let client = WsTestClient::connect(server, tenant_id, &user_id, super::test_server::TEST_JWT_SECRET).await;
+        let client = WsTestClient::connect(
+            server,
+            tenant_id,
+            &user_id,
+            super::test_server::TEST_JWT_SECRET,
+        )
+        .await;
         clients.push(client);
     }
     clients

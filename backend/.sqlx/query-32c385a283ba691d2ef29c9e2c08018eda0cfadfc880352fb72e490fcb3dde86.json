@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n              UPDATE pm_swim_lanes\n              SET deleted_at = ?\n              WHERE id = ? AND deleted_at IS NULL AND is_default = 0\n              ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "32c385a283ba691d2ef29c9e2c08018eda0cfadfc880352fb72e490fcb3dde86"
+}

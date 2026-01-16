@@ -1,9 +1,9 @@
-use crate::{Result as WsErrorResult, BroadcastConfig, BroadcastMessage};
+use crate::{BroadcastConfig, BroadcastMessage, Result as WsErrorResult};
 
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use tokio::sync::{broadcast, RwLock};
+use tokio::sync::{RwLock, broadcast};
 
 /// Manages broadcast channels for all tenants
 pub struct TenantBroadcaster {
@@ -51,10 +51,10 @@ impl TenantBroadcaster {
         let receiver = channel.sender.subscribe();
 
         log::debug!(
-              "Client subscribed to tenant {} broadcast ({} total subscribers)",
-              tenant_id,
-              channel.subscriber_count
-          );
+            "Client subscribed to tenant {} broadcast ({} total subscribers)",
+            tenant_id,
+            channel.subscriber_count
+        );
 
         receiver
     }
@@ -67,10 +67,10 @@ impl TenantBroadcaster {
             channel.subscriber_count = channel.subscriber_count.saturating_sub(1);
 
             log::debug!(
-                  "Client unsubscribed from tenant {} broadcast ({} remaining subscribers)",
-                  tenant_id,
-                  channel.subscriber_count
-              );
+                "Client unsubscribed from tenant {} broadcast ({} remaining subscribers)",
+                tenant_id,
+                channel.subscriber_count
+            );
 
             // Clean up empty channels
             if channel.subscriber_count == 0 {
@@ -94,10 +94,10 @@ impl TenantBroadcaster {
             match channel.sender.send(message) {
                 Ok(receiver_count) => {
                     log::debug!(
-                          "Broadcast message to tenant {} ({} receivers)",
-                          tenant_id,
-                          receiver_count
-                      );
+                        "Broadcast message to tenant {} ({} receivers)",
+                        tenant_id,
+                        receiver_count
+                    );
                     Ok(receiver_count)
                 }
                 Err(_) => {

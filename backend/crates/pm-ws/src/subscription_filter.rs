@@ -10,7 +10,7 @@ impl SubscriptionFilter {
         project_id: &str,
         work_item_id: &str,
     ) -> bool {
-        // Receive if subscribed to the project OR the specific work item                                                                                                        
+        // Receive if subscribed to the project OR the specific work item
         subscriptions.is_subscribed_to_project(project_id)
             || subscriptions.is_subscribed_to_work_item(work_item_id)
     }
@@ -21,7 +21,7 @@ impl SubscriptionFilter {
         project_id: &str,
         sprint_id: &str,
     ) -> bool {
-        // Receive if subscribed to the project OR the specific sprint                                                                                                           
+        // Receive if subscribed to the project OR the specific sprint
         subscriptions.is_subscribed_to_project(project_id)
             || subscriptions.is_subscribed_to_sprint(sprint_id)
     }
@@ -32,7 +32,7 @@ impl SubscriptionFilter {
         project_id: &str,
         work_item_id: &str,
     ) -> bool {
-        // Comments follow work item subscription rules                                                                                                                          
+        // Comments follow work item subscription rules
         Self::should_receive_work_item_event(subscriptions, project_id, work_item_id)
     }
-}  
+}

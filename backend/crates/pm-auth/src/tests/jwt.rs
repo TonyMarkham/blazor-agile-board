@@ -1,7 +1,7 @@
 use crate::{AuthError, Claims, JwtValidator};
 
 use jsonwebtoken::Algorithm;
-use jsonwebtoken::{encode, EncodingKey, Header};
+use jsonwebtoken::{EncodingKey, Header, encode};
 
 fn create_test_token(claims: &Claims, secret: &[u8]) -> String {
     encode(
@@ -9,7 +9,7 @@ fn create_test_token(claims: &Claims, secret: &[u8]) -> String {
         claims,
         &EncodingKey::from_secret(secret),
     )
-        .unwrap()
+    .unwrap()
 }
 
 fn valid_claims() -> Claims {

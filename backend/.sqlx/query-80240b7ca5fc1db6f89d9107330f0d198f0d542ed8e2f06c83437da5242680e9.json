@@ -1,0 +1,74 @@
+{
+  "db_name": "SQLite",
+  "query": "\n              SELECT id, entity_type, entity_id, action,\n                     field_name, old_value, new_value,\n                     user_id, timestamp, comment\n              FROM pm_activity_log\n              WHERE user_id = ?\n              ORDER BY timestamp DESC\n              LIMIT ?\n              ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "entity_type",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "entity_id",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "action",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "field_name",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "old_value",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "new_value",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "user_id",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "timestamp",
+        "ordinal": 8,
+        "type_info": "Integer"
+      },
+      {
+        "name": "comment",
+        "ordinal": 9,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "80240b7ca5fc1db6f89d9107330f0d198f0d542ed8e2f06c83437da5242680e9"
+}

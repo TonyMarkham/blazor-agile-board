@@ -1,4 +1,7 @@
+use crate::{CoreError, Result as CoreErrorResult};
+
 use std::panic::Location;
+use std::str::FromStr;
 
 use error_location::ErrorLocation;
 use serde::{Deserialize, Serialize};
@@ -17,13 +20,17 @@ impl DependencyType {
             Self::RelatesTo => "relates_to",
         }
     }
+}
+
+impl FromStr for DependencyType {
+    type Err = CoreError;
 
     #[track_caller]
-    pub fn from_str(s: &str) -> crate::Result<Self> {
+    fn from_str(s: &str) -> CoreErrorResult<Self> {
         match s {
             "blocks" => Ok(Self::Blocks),
             "relates_to" => Ok(Self::RelatesTo),
-            _ => Err(crate::CoreError::InvalidDependencyType {
+            _ => Err(CoreError::InvalidDependencyType {
                 value: s.to_string(),
                 location: ErrorLocation::from(Location::caller()),
             }),

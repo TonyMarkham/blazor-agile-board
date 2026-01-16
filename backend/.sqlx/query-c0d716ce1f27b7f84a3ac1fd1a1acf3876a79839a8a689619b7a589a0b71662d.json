@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n              INSERT INTO pm_idempotency_keys (message_id, operation, result_json, created_at)\n              VALUES (?, ?, ?, ?)\n              ON CONFLICT(message_id) DO NOTHING\n              ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "c0d716ce1f27b7f84a3ac1fd1a1acf3876a79839a8a689619b7a589a0b71662d"
+}

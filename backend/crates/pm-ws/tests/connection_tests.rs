@@ -1,7 +1,7 @@
 mod common;
 
-use common::test_server::{create_test_server, TEST_JWT_SECRET};
 use common::test_client::WsTestClient;
+use common::test_server::{TEST_JWT_SECRET, create_test_server};
 
 #[tokio::test]
 async fn given_valid_jwt_when_connecting_then_succeeds() {
@@ -9,12 +9,7 @@ async fn given_valid_jwt_when_connecting_then_succeeds() {
     let server = create_test_server();
 
     // When - Connect with valid JWT
-    let client = WsTestClient::connect(
-        &server.server,
-        "tenant-1",
-        "user-1",
-        TEST_JWT_SECRET,
-    ).await;
+    let client = WsTestClient::connect(&server.server, "tenant-1", "user-1", TEST_JWT_SECRET).await;
 
     // Then - Connection succeeded (no panic = success)
     // Note: We don't send/receive because text echo isn't implemented
@@ -34,7 +29,8 @@ async fn given_connected_client_when_closed_then_server_cleans_up() {
             "tenant-cleanup-test",
             "user-1",
             TEST_JWT_SECRET,
-        ).await;
+        )
+        .await;
 
         // Connection is active in this scope
         // (Registry should have 1 connection)
@@ -52,7 +48,8 @@ async fn given_connected_client_when_closed_then_server_cleans_up() {
         "tenant-cleanup-test",
         "user-2",
         TEST_JWT_SECRET,
-    ).await;
+    )
+    .await;
 
     client2.close().await;
 }

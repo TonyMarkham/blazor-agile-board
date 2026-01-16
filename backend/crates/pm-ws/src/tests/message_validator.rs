@@ -20,10 +20,7 @@ fn given_invalid_resource_type_when_validated_then_fails() {
 
 #[test]
 fn given_valid_uuid_when_validated_then_succeeds() {
-    let result = MessageValidator::validate_uuid(
-        "550e8400-e29b-41d4-a716-446655440000",
-        "id",
-    );
+    let result = MessageValidator::validate_uuid("550e8400-e29b-41d4-a716-446655440000", "id");
     assert!(result.is_ok());
 }
 
@@ -53,21 +50,14 @@ fn given_too_long_string_when_validated_then_fails() {
 
 #[test]
 fn given_valid_work_item_when_validated_then_succeeds() {
-    let result = MessageValidator::validate_work_item_create(
-        "Test Task",
-        Some("Description"),
-        "task",
-    );
+    let result =
+        MessageValidator::validate_work_item_create("Test Task", Some("Description"), "task");
     assert!(result.is_ok());
 }
 
 #[test]
 fn given_invalid_item_type_when_validated_then_fails() {
-    let result = MessageValidator::validate_work_item_create(
-        "Test",
-        None,
-        "invalid",
-    );
+    let result = MessageValidator::validate_work_item_create("Test", None, "invalid");
     assert!(result.is_err());
 }
 

@@ -1,6 +1,10 @@
-use crate::Result;
-use chrono::DateTime;
+use crate::Result as DbErrorResult;
+
 use pm_core::{Sprint, SprintStatus};
+
+use std::str::FromStr;
+
+use chrono::DateTime;
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
@@ -13,7 +17,7 @@ impl SprintRepository {
         Self { pool }
     }
 
-    pub async fn create(&self, sprint: &Sprint) -> Result<()> {
+    pub async fn create(&self, sprint: &Sprint) -> DbErrorResult<()> {
         let id = sprint.id.to_string();
         let project_id = sprint.project_id.to_string();
         let status = sprint.status.as_str();
@@ -52,7 +56,7 @@ impl SprintRepository {
         Ok(())
     }
 
-    pub async fn find_by_id(&self, id: Uuid) -> Result<Option<Sprint>> {
+    pub async fn find_by_id(&self, id: Uuid) -> DbErrorResult<Option<Sprint>> {
         let id_str = id.to_string();
 
         let row = sqlx::query!(
@@ -83,7 +87,7 @@ impl SprintRepository {
         }))
     }
 
-    pub async fn find_by_project(&self, project_id: Uuid) -> Result<Vec<Sprint>> {
+    pub async fn find_by_project(&self, project_id: Uuid) -> DbErrorResult<Vec<Sprint>> {
         let project_id_str = project_id.to_string();
 
         let rows = sqlx::query!(
@@ -118,7 +122,7 @@ impl SprintRepository {
             .collect())
     }
 
-    pub async fn update(&self, sprint: &Sprint) -> Result<()> {
+    pub async fn update(&self, sprint: &Sprint) -> DbErrorResult<()> {
         let id = sprint.id.to_string();
         let project_id = sprint.project_id.to_string();
         let status = sprint.status.as_str();
@@ -151,7 +155,7 @@ impl SprintRepository {
         Ok(())
     }
 
-    pub async fn delete(&self, id: Uuid, deleted_at: i64) -> Result<()> {
+    pub async fn delete(&self, id: Uuid, deleted_at: i64) -> DbErrorResult<()> {
         let id_str = id.to_string();
 
         sqlx::query!(

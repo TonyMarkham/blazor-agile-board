@@ -4,6 +4,7 @@ pub mod dependency;
 pub mod dependency_type;
 pub mod llm_content;
 pub mod llm_content_type;
+pub mod project_member;
 pub mod sprint;
 pub mod sprint_status;
 pub mod swim_lane;
