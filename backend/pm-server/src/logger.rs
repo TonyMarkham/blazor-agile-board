@@ -4,7 +4,7 @@ use std::time::SystemTime;
 
 use fern::Dispatch;
 use fern::colors::{Color, ColoredLevelConfig};
-use log::LevelFilter;
+use log::{LevelFilter, info};
 
 /// Initialize logger with fern (stdout only, colored optional)
 #[track_caller]
@@ -54,10 +54,13 @@ pub fn initialize(log_level: &str, colored: bool) -> ServerErrorResult<()> {
         .chain(dispatch)
         .apply()
         .map_err(|e| ServerError::EnvVar {
-            message: format!("Failed to initialize logger: {}", e),
+            message: format!("Failed to initialize logger: {e}"),
         })?;
 
-    log::info!("Logger initialized with level: {:?}", level_filter);
+    info!("Logger initialized with level: {level_filter:?}");
+
+    // Bridge tracing to log
+    tracing_log::LogTracer::init().ok();
 
     Ok(())
 }
@@ -72,7 +75,7 @@ fn parse_log_level(level: &str) -> ServerErrorResult<LevelFilter> {
         "error" => Ok(LevelFilter::Error),
         "off" => Ok(LevelFilter::Off),
         _ => Err(ServerError::EnvVar {
-            message: format!("Invalid log level: {}", level),
+            message: format!("Invalid log level: {level}"),
         }),
     }
 }

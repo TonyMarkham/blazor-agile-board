@@ -61,6 +61,37 @@ pub enum WsError {
         message: String,
         location: ErrorLocation,
     },
+
+    #[error("Validation failed: {message}")]
+    ValidationError {
+        message: String,
+        field: Option<String>,
+        location: ErrorLocation,
+    },
+
+    #[error("Resource not found: {message}")]
+    NotFound {
+        message: String,
+        location: ErrorLocation,
+    },
+
+    #[error("Conflict: resource was modified (current version: {current_version})")]
+    ConflictError {
+        current_version: i32,
+        location: ErrorLocation,
+    },
+
+    #[error("Cannot delete: {message}")]
+    DeleteBlocked {
+        message: String,
+        location: ErrorLocation,
+    },
+
+    #[error("Unauthorized: {message}")]
+    Unauthorized {
+        message: String,
+        location: ErrorLocation,
+    },
 }
 
 impl WsError {
@@ -69,7 +100,10 @@ impl WsError {
         pm_proto::Error {
             code: self.error_code().to_string(),
             message: self.to_string(),
-            field: None,
+            field: match self {
+                Self::ValidationError { field, .. } => field.clone(),
+                _ => None,
+            },
         }
     }
 
@@ -84,6 +118,11 @@ impl WsError {
             Self::InvalidMessage { .. } => "INVALID_MESSAGE",
             Self::HeartbeatTimeout { .. } => "HEARTBEAT_TIMEOUT",
             Self::Internal { .. } => "INTERNAL_ERROR",
+            Self::ValidationError { .. } => "VALIDATION_ERROR",
+            Self::NotFound { .. } => "NOT_FOUND",
+            Self::ConflictError { .. } => "CONFLICT",
+            Self::DeleteBlocked { .. } => "DELETE_BLOCKED",
+            Self::Unauthorized { .. } => "UNAUTHORIZED",
         }
     }
 }

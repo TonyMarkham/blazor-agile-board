@@ -160,11 +160,13 @@ message WebSocketMessage {
     CreateWorkItemRequest create_work_item_request = 30;
     UpdateWorkItemRequest update_work_item_request = 31;
     DeleteWorkItemRequest delete_work_item_request = 32;
+    GetWorkItemsRequest get_work_items_request = 33;
 
     // Work Item Events
     WorkItemCreated work_item_created = 40;
     WorkItemUpdated work_item_updated = 41;
     WorkItemDeleted work_item_deleted = 42;
+    WorkItemsList work_items_list = 43;
 
     // Sprint Commands
     CreateSprintRequest create_sprint_request = 50;
@@ -222,12 +224,13 @@ message CreateWorkItemRequest {
 
 message UpdateWorkItemRequest {
   string work_item_id = 1;
-  optional string title = 2;
-  optional string description = 3;
-  optional string status = 4;
-  optional string assignee_id = 5;
-  optional string sprint_id = 6;
-  optional int32 position = 7;
+  int32 expected_version = 2;
+  optional string title = 3;
+  optional string description = 4;
+  optional string status = 5;
+  optional string assignee_id = 6;
+  optional string sprint_id = 7;
+  optional int32 position = 8;
 }
 
 message DeleteWorkItemRequest {
@@ -331,4 +334,14 @@ message Error {
   string code = 1;
   string message = 2;
   optional string field = 3;
+}
+
+message GetWorkItemsRequest {
+  string project_id = 1;
+  optional int64 since_timestamp = 2;
+}
+
+message WorkItemsList {
+  repeated WorkItem work_items = 1;
+  int64 as_of_timestamp = 2;
 }

@@ -13,14 +13,17 @@ thiserror = { workspace = true }
 error-location = { workspace = true }
 metrics = { workspace = true }
 log = { workspace = true }
+tracing = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }
 serde = { workspace = true }
 jsonwebtoken = { workspace = true }
+sqlx = { workspace = true }
 
 pm-core = { workspace = true }
 pm-proto = { workspace = true }
 pm-auth = { workspace = true }
+pm-db = { workspace = true }
 
 [dev-dependencies]
 tokio-test = { workspace = true }
