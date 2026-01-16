@@ -1,7 +1,15 @@
 {
   "permissions": {
     "allow": [
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "WebFetch(domain:docs.rs)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "Bash(cargo test:*)",
+      "Bash(cargo tree:*)",
+      "Bash(cargo doc:*)",
+      "Bash(curl:*)",
+      "Bash(cargo check:*)"
     ]
   }
 }

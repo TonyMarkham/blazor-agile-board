@@ -39,6 +39,7 @@ tokio-test = { version = "0.4.5" }
 dotenvy = { version = "0.15.7" }
 humantime = { version = "2.3.0" }
 error-location = { version = "0.1.0" }
+axum-test = { version = "18.6.0", features = ["ws"] }
 
 # Workspae
 pm-auth = { path = "crates/pm-auth" }

@@ -12,6 +12,8 @@ use error_location::ErrorLocation;
 use futures::{SinkExt, StreamExt};
 use tokio::sync::mpsc;
 
+pub const MAX_VIOLATIONS: u32 = 5;
+
 /// Manages a single WebSocket connection
 pub struct WebSocketConnection {
     connection_id: ConnectionId,
@@ -22,6 +24,7 @@ pub struct WebSocketConnection {
     broadcaster: TenantBroadcaster,
     #[allow(dead_code)]
     subscriptions: ClientSubscriptions,
+    rate_limit_violations: u32,
 }
 
 impl WebSocketConnection {
@@ -41,6 +44,7 @@ impl WebSocketConnection {
             rate_limiter,
             broadcaster,
             subscriptions: ClientSubscriptions::new(),
+            rate_limit_violations: 0,
         }
     }
 
@@ -179,17 +183,52 @@ impl WebSocketConnection {
         tx: &mpsc::Sender<Message>,
     ) -> WsErrorResult<()> {
         // Check rate limit
-        self.rate_limiter.check().map_err(|e| {
-            log::warn!(
-                  "Rate limit exceeded for connection {} (tenant {})",
-                  self.connection_id,
-                  self.tenant_context.tenant_id
-              );
-            WsError::Internal {
-                message: format!("Rate limit: {}", e),
-                location: ErrorLocation::from(Location::caller()),
+        if let Err(e) = self.rate_limiter.check() {
+            self.rate_limit_violations += 1;
+
+            if self.rate_limit_violations >= MAX_VIOLATIONS {
+                // Too many violations - close connection to prevent DoS
+                log::warn!(
+                    "Connection {} exceeded rate limit {} times, closing connection",
+                    self.connection_id,
+                    self.rate_limit_violations
+                );
+
+                let close_frame = axum::extract::ws::CloseFrame {
+                    code: axum::extract::ws::close_code::POLICY,
+                    reason: format!("Rate limit exceeded {} times. Connection closed.", MAX_VIOLATIONS).into(),
+                };
+
+                let _ = tx.send(Message::Close(Some(close_frame))).await;
+                tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
+                return Err(WsError::Internal {
+                    message: format!("Rate limit: {}", e),
+                    location: ErrorLocation::from(Location::caller()),
+                });
+            } else {
+                // Send warning but keep connection open
+                log::warn!(
+                    "Rate limit exceeded for connection {} (violation {}/{})",
+                    self.connection_id,
+                    self.rate_limit_violations,
+                    MAX_VIOLATIONS
+                );
+
+                let warning = format!(
+                    "Rate limit exceeded. Slow down. ({}/{} warnings)",
+                    self.rate_limit_violations,
+                    MAX_VIOLATIONS
+                );
+                let _ = tx.send(Message::Text(warning.into())).await;
+
+                // Drop this message but continue processing
+                return Ok(());
             }
-        })?;
+        } else {
+            // Successful message - reset violation counter
+            self.rate_limit_violations = 0;
+        }
 
         match msg {
             Message::Binary(data) => {

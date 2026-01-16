@@ -15,6 +15,8 @@ metrics = { workspace = true }
 log = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }
+serde = { workspace = true }
+jsonwebtoken = { workspace = true }
 
 pm-core = { workspace = true }
 pm-proto = { workspace = true }
@@ -22,3 +24,5 @@ pm-auth = { workspace = true }
 
 [dev-dependencies]
 tokio-test = { workspace = true }
+axum-test = { workspace = true }
+googletest = { workspace = true }

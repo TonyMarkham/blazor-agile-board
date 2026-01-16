@@ -33,7 +33,7 @@ pub use message_validator::MessageValidator;
 pub use shutdown_coordinator::ShutdownCoordinator;
 pub use shutdown_guard::ShutdownGuard;
 pub use connection_config::ConnectionConfig;
-pub use web_socket_connection::WebSocketConnection;
+pub use web_socket_connection::{WebSocketConnection, MAX_VIOLATIONS};
 pub use app_state::{AppState, handler};
 
 #[cfg(test)]
