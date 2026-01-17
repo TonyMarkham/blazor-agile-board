@@ -1,7 +1,8 @@
+#![allow(dead_code)]
+
 use pm_auth::{JwtValidator, RateLimitConfig, RateLimiterFactory};
 use pm_ws::{
-    AppState, BroadcastConfig, ConnectionConfig, ConnectionLimits, ConnectionRegistry, Metrics,
-    ShutdownCoordinator, TenantBroadcaster,
+    AppState, ConnectionConfig, ConnectionLimits, ConnectionRegistry, Metrics, ShutdownCoordinator,
 };
 
 use axum::{Router, routing::get};
@@ -15,7 +16,6 @@ pub const TEST_JWT_SECRET: &[u8] = b"test-secret-key-for-integration-tests-min-3
 pub struct TestServerConfig {
     pub jwt_secret: Vec<u8>,
     pub max_connections_total: usize,
-    pub max_connections_per_tenant: usize,
     pub rate_limit_max_requests: u32,
     pub rate_limit_window_secs: u64,
 }
@@ -25,7 +25,6 @@ impl Default for TestServerConfig {
         Self {
             jwt_secret: TEST_JWT_SECRET.to_vec(),
             max_connections_total: 100,
-            max_connections_per_tenant: 10,
             rate_limit_max_requests: 100,
             rate_limit_window_secs: 60,
         }
@@ -37,7 +36,6 @@ impl TestServerConfig {
     pub fn with_strict_limits() -> Self {
         Self {
             max_connections_total: 5,
-            max_connections_per_tenant: 2,
             ..Default::default()
         }
     }
@@ -88,14 +86,9 @@ fn create_app(config: TestServerConfig) -> (Router, AppState) {
 
     // Create connection registry with limits
     let limits = ConnectionLimits {
-        max_per_tenant: config.max_connections_per_tenant,
         max_total: config.max_connections_total,
     };
     let registry = ConnectionRegistry::new(limits);
-
-    // Create tenant broadcaster with default config
-    let broadcast_config = BroadcastConfig::default();
-    let broadcaster = TenantBroadcaster::new(broadcast_config);
 
     // Create metrics tracker
     let metrics = Metrics::default();
@@ -110,7 +103,6 @@ fn create_app(config: TestServerConfig) -> (Router, AppState) {
     let app_state = AppState {
         jwt_validator: std::sync::Arc::new(jwt_validator),
         rate_limiter_factory,
-        broadcaster,
         registry,
         metrics,
         shutdown,

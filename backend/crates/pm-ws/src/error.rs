@@ -34,11 +34,8 @@ pub enum WsError {
         location: ErrorLocation,
     },
 
-    #[error(
-        "Connection limit exceeded: tenant {tenant_id} has {current} connections (max: {max}) {location}"
-    )]
+    #[error("Connection limit exceeded: {current} connections (max: {max}) {location}")]
     ConnectionLimitExceeded {
-        tenant_id: String,
         current: usize,
         max: usize,
         location: ErrorLocation,

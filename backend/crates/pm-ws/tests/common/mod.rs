@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 pub(crate) mod jwt_helper;
 pub(crate) mod test_client;
 pub(crate) mod test_server;

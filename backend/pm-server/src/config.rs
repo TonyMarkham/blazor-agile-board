@@ -14,9 +14,6 @@ pub struct Config {
     /// JWT public key for RS256 validation (PEM format)
     pub jwt_public_key: Option<String>,
 
-    /// Maximum connections per tenant (default: 1000)
-    pub max_connections_per_tenant: usize,
-
     /// Maximum total connections (default: 10000)
     pub max_total_connections: usize,
 
@@ -34,9 +31,6 @@ pub struct Config {
 
     /// Heartbeat timeout in seconds (default: 60)
     pub heartbeat_timeout_secs: u64,
-
-    /// Broadcast channel capacity per tenant (default: 1000)
-    pub broadcast_capacity: usize,
 
     /// Log level (default: info)
     pub log_level: String,
@@ -61,11 +55,6 @@ impl Config {
 
             jwt_secret: std::env::var("JWT_SECRET").ok(),
             jwt_public_key: std::env::var("JWT_PUBLIC_KEY").ok(),
-
-            max_connections_per_tenant: std::env::var("MAX_CONNECTIONS_PER_TENANT")
-                .ok()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(1000),
 
             max_total_connections: std::env::var("MAX_TOTAL_CONNECTIONS")
                 .ok()
@@ -96,11 +85,6 @@ impl Config {
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(60),
-
-            broadcast_capacity: std::env::var("BROADCAST_CAPACITY")
-                .ok()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(1000),
 
             log_level: std::env::var("LOG_LEVEL").unwrap_or_else(|_| "info".to_string()),
 

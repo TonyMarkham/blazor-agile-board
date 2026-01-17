@@ -1,3 +1,6 @@
+#![allow(dead_code)]
+
+use crate::TEST_JWT_SECRET;
 use crate::common::jwt_helper::create_test_token;
 
 use axum_test::{TestServer, TestWebSocket, WsMessage};
@@ -6,19 +9,13 @@ use bytes::Bytes;
 /// WebSocket test client wrapper
 pub struct WsTestClient {
     ws: TestWebSocket,
-    pub tenant_id: String,
     pub user_id: String,
 }
 
 impl WsTestClient {
     /// Connect to WebSocket endpoint with JWT authentication
-    pub async fn connect(
-        server: &TestServer,
-        tenant_id: &str,
-        user_id: &str,
-        jwt_secret: &[u8],
-    ) -> Self {
-        let token = create_test_token(tenant_id, user_id, jwt_secret);
+    pub async fn connect(server: &TestServer, user_id: &str, jwt_secret: &[u8]) -> Self {
+        let token = create_test_token(user_id, jwt_secret);
 
         let ws = server
             .get_websocket("/ws")
@@ -29,7 +26,6 @@ impl WsTestClient {
 
         Self {
             ws,
-            tenant_id: tenant_id.to_string(),
             user_id: user_id.to_string(),
         }
     }
@@ -66,23 +62,16 @@ impl WsTestClient {
     }
 }
 
-/// Create multiple clients for the same tenant (helper for broadcast tests)
-pub async fn create_clients_for_tenant(
+/// Create multiple clients (helper for broadcast tests)
+pub async fn create_clients(
     server: &TestServer,
-    tenant_id: &str,
     user_id_prefix: &str,
     count: usize,
 ) -> Vec<WsTestClient> {
     let mut clients = Vec::with_capacity(count);
     for i in 0..count {
         let user_id = format!("{}-{}", user_id_prefix, i + 1);
-        let client = WsTestClient::connect(
-            server,
-            tenant_id,
-            &user_id,
-            super::test_server::TEST_JWT_SECRET,
-        )
-        .await;
+        let client = WsTestClient::connect(server, &user_id, TEST_JWT_SECRET).await;
         clients.push(client);
     }
     clients

@@ -159,7 +159,7 @@ async fn given_multiple_user_activities_when_finding_by_user_then_returns_limite
     create_test_user(&pool, user_id).await;
 
     // Create 5 logs for the user
-    for i in 0..5 {
+    for _i in 0..5 {
         let entity_id = Uuid::new_v4();
         let log = create_test_activity_log("work_item", entity_id, user_id);
         ActivityLogRepository::create(&pool, &log).await.unwrap();

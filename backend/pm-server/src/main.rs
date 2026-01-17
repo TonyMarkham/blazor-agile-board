@@ -8,8 +8,7 @@ use crate::config::Config;
 
 use pm_auth::{JwtValidator, RateLimitConfig, RateLimiterFactory};
 use pm_ws::{
-    AppState, BroadcastConfig, ConnectionConfig, ConnectionLimits, ConnectionRegistry, Metrics,
-    ShutdownCoordinator, TenantBroadcaster,
+    AppState, ConnectionConfig, ConnectionLimits, ConnectionRegistry, Metrics, ShutdownCoordinator,
 };
 
 use std::error::Error;
@@ -48,13 +47,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // Create connection registry with limits
     let registry = ConnectionRegistry::new(ConnectionLimits {
-        max_per_tenant: config.max_connections_per_tenant,
         max_total: config.max_total_connections,
-    });
-
-    // Create tenant broadcaster
-    let broadcaster = TenantBroadcaster::new(BroadcastConfig {
-        channel_capacity: config.broadcast_capacity,
     });
 
     // Create metrics collector
@@ -74,7 +67,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let app_state = AppState {
         jwt_validator,
         rate_limiter_factory,
-        broadcaster,
         registry,
         metrics,
         shutdown: shutdown.clone(),

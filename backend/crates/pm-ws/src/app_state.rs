@@ -1,6 +1,5 @@
 use crate::{
-    ConnectionConfig, ConnectionRegistry, Metrics, ShutdownCoordinator, TenantBroadcaster,
-    WebSocketConnection,
+    ConnectionConfig, ConnectionRegistry, Metrics, ShutdownCoordinator, WebSocketConnection,
 };
 use axum::{
     extract::{
@@ -10,15 +9,17 @@ use axum::{
     http::{HeaderMap, StatusCode},
     response::Response,
 };
-use pm_auth::{JwtValidator, RateLimiterFactory, TenantContext};
+use pm_auth::{JwtValidator, RateLimiterFactory};
+
 use std::sync::Arc;
+
+use log::{debug, error, info, warn};
 
 /// Shared application state for WebSocket handlers
 #[derive(Clone)]
 pub struct AppState {
     pub jwt_validator: Arc<JwtValidator>,
     pub rate_limiter_factory: RateLimiterFactory,
-    pub broadcaster: TenantBroadcaster,
     pub registry: ConnectionRegistry,
     pub metrics: Metrics,
     pub shutdown: ShutdownCoordinator,
@@ -32,47 +33,32 @@ pub async fn handler(
     ws: WebSocketUpgrade,
 ) -> Result<Response, StatusCode> {
     // Extract and validate JWT from Authorization header
-    let tenant_context = extract_tenant_context(&headers, &state.jwt_validator)?;
-
-    log::debug!(
-        "WebSocket upgrade request from tenant {} (user {})",
-        tenant_context.tenant_id,
-        tenant_context.user_id
-    );
+    let user_id = extract_user_id(&headers, &state.jwt_validator)?;
+    debug!("WebSocket upgrade request from user {}", user_id);
 
     // Register connection (enforces connection limits)
     let connection_id = state
         .registry
-        .register(
-            tenant_context.tenant_id.clone(),
-            tenant_context.user_id.clone(),
-        )
+        .register(user_id.clone())
         .await
         .map_err(|e| {
-            log::error!("Failed to register connection: {}", e);
+            error!("Failed to register connection: {}", e);
             StatusCode::SERVICE_UNAVAILABLE
         })?;
 
-    log::info!(
-        "Registered connection {} for tenant {}",
-        connection_id,
-        tenant_context.tenant_id
-    );
+    info!("Registered connection {}", connection_id);
 
     // Create rate limiter for this connection
     let rate_limiter = state.rate_limiter_factory.create();
 
     // Upgrade to WebSocket
-    Ok(ws.on_upgrade(move |socket| {
-        handle_socket(socket, connection_id, tenant_context, state, rate_limiter)
-    }))
+    Ok(ws.on_upgrade(move |socket| handle_socket(socket, connection_id, state, rate_limiter)))
 }
 
 /// Handle WebSocket connection after upgrade                                                                                                                                    
 async fn handle_socket(
     socket: WebSocket,
     connection_id: crate::ConnectionId,
-    tenant_context: TenantContext,
     state: AppState,
     rate_limiter: pm_auth::ConnectionRateLimiter,
 ) {
@@ -80,11 +66,9 @@ async fn handle_socket(
 
     let connection = WebSocketConnection::new(
         connection_id,
-        tenant_context.clone(),
         state.config,
         state.metrics.clone(),
         rate_limiter,
-        state.broadcaster.clone(),
     );
 
     // Handle connection lifecycle
@@ -94,39 +78,31 @@ async fn handle_socket(
     state.registry.unregister(connection_id).await;
 
     if let Err(e) = result {
-        log::error!("Connection {} error: {}", connection_id, e);
+        error!("Connection {connection_id} error: {e}");
     }
 }
 
 /// Extract and validate tenant context from JWT in Authorization header                                                                                                         
-fn extract_tenant_context(
-    headers: &HeaderMap,
-    validator: &JwtValidator,
-) -> Result<TenantContext, StatusCode> {
-    // Get Authorization header
+fn extract_user_id(headers: &HeaderMap, validator: &JwtValidator) -> Result<String, StatusCode> {
     let auth_header = headers
         .get("authorization")
         .and_then(|h| h.to_str().ok())
         .ok_or_else(|| {
-            log::warn!("Missing Authorization header");
+            warn!("Missing Authorization header");
             StatusCode::UNAUTHORIZED
         })?;
 
-    // Check Bearer scheme
     if !auth_header.starts_with("Bearer ") {
-        log::warn!("Invalid authorization scheme: expected 'Bearer'");
+        warn!("Invalid authorization scheme: expected 'Bearer'");
         return Err(StatusCode::UNAUTHORIZED);
     }
 
-    // Extract token
-    let token = &auth_header[7..]; // Skip "Bearer "                                                                                                                             
+    let token = &auth_header[7..];
 
-    // Validate JWT
     let claims = validator.validate(token).map_err(|e| {
-        log::warn!("JWT validation failed: {}", e);
+        warn!("JWT validation failed: {}", e);
         StatusCode::UNAUTHORIZED
     })?;
 
-    // Convert to TenantContext
-    Ok(TenantContext::from_claims(claims))
+    Ok(claims.sub)
 }

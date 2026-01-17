@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use chrono::Utc;
 use pm_core::{
     ActivityLog, Comment, Dependency, DependencyType, Sprint, SprintStatus, SwimLane, TimeEntry,

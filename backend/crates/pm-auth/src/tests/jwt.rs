@@ -15,7 +15,6 @@ fn create_test_token(claims: &Claims, secret: &[u8]) -> String {
 fn valid_claims() -> Claims {
     Claims {
         sub: "user-123".to_string(),
-        tenant_id: "tenant-456".to_string(),
         exp: chrono::Utc::now().timestamp() + 3600,
         iat: chrono::Utc::now().timestamp(),
         roles: vec!["user".to_string()],
@@ -34,7 +33,6 @@ fn given_valid_token_when_validated_then_returns_claims() {
     assert!(result.is_ok());
     let validated = result.unwrap();
     assert_eq!(validated.sub, "user-123");
-    assert_eq!(validated.tenant_id, "tenant-456");
 }
 
 #[test]
@@ -61,17 +59,4 @@ fn given_wrong_secret_when_validated_then_returns_decode_error() {
     let result = validator.validate(&token);
 
     assert!(matches!(result, Err(AuthError::JwtDecode { .. })));
-}
-
-#[test]
-fn given_empty_tenant_id_when_validated_then_returns_invalid_claim() {
-    let secret = b"test-secret-key-at-least-32-bytes";
-    let validator = JwtValidator::with_hs256(secret);
-    let mut claims = valid_claims();
-    claims.tenant_id = "".to_string();
-    let token = create_test_token(&claims, secret);
-
-    let result = validator.validate(&token);
-
-    assert!(matches!(result, Err(AuthError::InvalidClaim { .. })));
 }

@@ -1,8 +1,6 @@
-pub mod connection;
 pub mod error;
 pub mod repositories;
 
-pub use connection::tenant_connection_manager::TenantConnectionManager;
 pub use error::{DbError, Result};
 pub use repositories::activity_log_repository::ActivityLogRepository;
 pub use repositories::comment_repository::CommentRepository;

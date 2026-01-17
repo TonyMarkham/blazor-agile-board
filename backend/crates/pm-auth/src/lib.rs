@@ -5,7 +5,6 @@ pub mod jwt_algorithm;
 pub mod jwt_validator;
 pub mod rate_limit_config;
 pub mod rate_limiter_factory;
-pub mod tenant_context;
 
 pub use claims::Claims;
 pub use connection_rate_limiter::ConnectionRateLimiter;
@@ -14,7 +13,6 @@ pub use jwt_algorithm::JwtAlgorithm;
 pub use jwt_validator::JwtValidator;
 pub use rate_limit_config::RateLimitConfig;
 pub use rate_limiter_factory::RateLimiterFactory;
-pub use tenant_context::TenantContext;
 
 #[cfg(test)]
 mod tests;
