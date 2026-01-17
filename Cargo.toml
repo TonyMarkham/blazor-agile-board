@@ -1,0 +1,51 @@
+[workspace]
+members = [
+    "backend/crates/pm-core",
+    "backend/crates/pm-db",
+    "backend/crates/pm-auth",
+    "backend/crates/pm-proto",
+    "backend/crates/pm-ws",
+    "backend/pm-server",
+    "desktop/src-tauri",
+]
+resolver = "3"
+
+[workspace.dependencies]
+tokio = { version = "1.49.0", features = ["full"] }
+sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "sqlite", "uuid", "chrono"] }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = { version = "1.0.149" }
+prost = { version = "0.14.3" }
+prost-build = { version = "0.14.3" }
+uuid = { version = "1.19.0", features = ["v4", "serde"] }
+chrono = { version = "0.4.43", features = ["serde"] }
+thiserror = { version = "2.0.17" }
+tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
+googletest = { version = "0.14.2" }
+tempfile = { version = "3.24.0" }
+axum = { version = "0.8.8", features = ["ws"] }
+tower = { version = "0.5.3", features = ["timeout", "limit"] }
+tower-http = { version = "0.6.8", features = ["cors"] }
+http = { version = "1.4.0" }
+futures = { version = "0.3.31" }
+bytes = { version = "1.11.0" }
+jsonwebtoken = { version = "10.2.0", features = ["rust_crypto"] }
+log = { version = "0.4.29" }
+fern = { version = "0.7.1", features = ["colored"] }
+tracing = { version = "0.1.44" }
+tracing-log = { version = "0.2.0" }
+metrics = { version = "0.24.3" }
+metrics-exporter-prometheus = { version = "0.18.1" }
+governor = { version = "0.10.4" }
+tokio-test = { version = "0.4.5" }
+dotenvy = { version = "0.15.7" }
+humantime = { version = "2.3.0" }
+error-location = { version = "0.1.0" }
+axum-test = { version = "18.6.0", features = ["ws"] }
+
+# Workspae
+pm-auth = { path = "backend/crates/pm-auth" }
+pm-core = { path = "backend/crates/pm-core" }
+pm-db = { path = "backend/crates/pm-db" }
+pm-proto = { path = "backend/crates/pm-proto" }
+pm-ws = { path = "backend/crates/pm-ws" }
