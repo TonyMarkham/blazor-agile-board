@@ -4,6 +4,7 @@ use common::{create_test_pool, create_test_project, create_test_sprint, create_t
 
 use pm_core::SprintStatus;
 use pm_db::SprintRepository;
+use pm_db::WorkItemRepository;
 
 use chrono::Utc;
 use googletest::prelude::*;
@@ -17,9 +18,8 @@ async fn given_valid_sprint_when_created_then_can_be_found_by_id() {
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    let work_item_repo =
-        pm_db::repositories::work_item_repository::WorkItemRepository::new(pool.clone());
-    work_item_repo.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool, &project).await.unwrap();
 
     let repo = SprintRepository::new(pool.clone());
     let sprint = create_test_sprint(project.id, user_id);
@@ -59,9 +59,8 @@ async fn given_existing_sprint_when_updated_then_changes_are_persisted() {
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    let work_item_repo =
-        pm_db::repositories::work_item_repository::WorkItemRepository::new(pool.clone());
-    work_item_repo.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool, &project).await.unwrap();
 
     let repo = SprintRepository::new(pool.clone());
     let mut sprint = create_test_sprint(project.id, user_id);
@@ -88,9 +87,8 @@ async fn given_existing_sprint_when_soft_deleted_then_not_found_by_id() {
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    let work_item_repo =
-        pm_db::repositories::work_item_repository::WorkItemRepository::new(pool.clone());
-    work_item_repo.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool, &project).await.unwrap();
 
     let repo = SprintRepository::new(pool.clone());
     let sprint = create_test_sprint(project.id, user_id);
@@ -113,9 +111,8 @@ async fn given_multiple_sprints_in_project_when_finding_by_project_then_returns_
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    let work_item_repo =
-        pm_db::repositories::work_item_repository::WorkItemRepository::new(pool.clone());
-    work_item_repo.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool, &project).await.unwrap();
 
     let repo = SprintRepository::new(pool.clone());
 
@@ -146,9 +143,8 @@ async fn given_sprints_with_one_deleted_when_finding_by_project_then_excludes_de
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    let work_item_repo =
-        pm_db::repositories::work_item_repository::WorkItemRepository::new(pool.clone());
-    work_item_repo.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool, &project).await.unwrap();
 
     let repo = SprintRepository::new(pool.clone());
 
@@ -176,9 +172,8 @@ async fn given_empty_project_when_finding_by_project_then_returns_empty_vec() {
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    let work_item_repo =
-        pm_db::repositories::work_item_repository::WorkItemRepository::new(pool.clone());
-    work_item_repo.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool, &project).await.unwrap();
 
     let repo = SprintRepository::new(pool);
 

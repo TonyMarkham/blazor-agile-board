@@ -9,3 +9,5 @@ error-location = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }
 serde = { workspace = true }
+
+pm-proto = { workspace = true }

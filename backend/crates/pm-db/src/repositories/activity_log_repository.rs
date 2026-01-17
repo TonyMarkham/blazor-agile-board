@@ -3,19 +3,15 @@ use crate::Result as DbErrorResult;
 use pm_core::ActivityLog;
 
 use chrono::DateTime;
-use sqlx::SqlitePool;
 use uuid::Uuid;
 
-pub struct ActivityLogRepository {
-    pool: SqlitePool,
-}
+pub struct ActivityLogRepository;
 
 impl ActivityLogRepository {
-    pub fn new(pool: SqlitePool) -> Self {
-        Self { pool }
-    }
-
-    pub async fn create(&self, log: &ActivityLog) -> DbErrorResult<()> {
+    pub async fn create<'e, E>(executor: E, log: &ActivityLog) -> DbErrorResult<()>
+    where
+        E: sqlx::Executor<'e, Database = sqlx::Sqlite>,
+    {
         let id = log.id.to_string();
         let entity_id = log.entity_id.to_string();
         let user_id = log.user_id.to_string();
@@ -40,17 +36,20 @@ impl ActivityLogRepository {
             timestamp,
             log.comment,
         )
-        .execute(&self.pool)
+        .execute(executor)
         .await?;
 
         Ok(())
     }
 
-    pub async fn find_by_entity(
-        &self,
+    pub async fn find_by_entity<'e, E>(
+        executor: E,
         entity_type: &str,
         entity_id: Uuid,
-    ) -> DbErrorResult<Vec<ActivityLog>> {
+    ) -> DbErrorResult<Vec<ActivityLog>>
+    where
+        E: sqlx::Executor<'e, Database = sqlx::Sqlite>,
+    {
         let entity_id_str = entity_id.to_string();
 
         let rows = sqlx::query!(
@@ -65,7 +64,7 @@ impl ActivityLogRepository {
             entity_type,
             entity_id_str
         )
-        .fetch_all(&self.pool)
+        .fetch_all(executor)
         .await?;
 
         Ok(rows
@@ -85,7 +84,14 @@ impl ActivityLogRepository {
             .collect())
     }
 
-    pub async fn find_by_user(&self, user_id: Uuid, limit: i64) -> DbErrorResult<Vec<ActivityLog>> {
+    pub async fn find_by_user<'e, E>(
+        executor: E,
+        user_id: Uuid,
+        limit: i64,
+    ) -> DbErrorResult<Vec<ActivityLog>>
+    where
+        E: sqlx::Executor<'e, Database = sqlx::Sqlite>,
+    {
         let user_id_str = user_id.to_string();
 
         let rows = sqlx::query!(
@@ -101,7 +107,7 @@ impl ActivityLogRepository {
             user_id_str,
             limit
         )
-        .fetch_all(&self.pool)
+        .fetch_all(executor)
         .await?;
 
         Ok(rows

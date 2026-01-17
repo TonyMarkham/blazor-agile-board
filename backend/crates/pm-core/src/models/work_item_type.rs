@@ -43,3 +43,26 @@ impl FromStr for WorkItemType {
         }
     }
 }
+
+impl From<WorkItemType> for i32 {
+    fn from(item_type: WorkItemType) -> Self {
+        match item_type {
+            WorkItemType::Project => 1,
+            WorkItemType::Epic => 2,
+            WorkItemType::Story => 3,
+            WorkItemType::Task => 4,
+        }
+    }
+}
+
+impl From<i32> for WorkItemType {
+    fn from(value: i32) -> Self {
+        match value {
+            1 => WorkItemType::Project,
+            2 => WorkItemType::Epic,
+            3 => WorkItemType::Story,
+            4 => WorkItemType::Task,
+            _ => WorkItemType::Project, // Default to Project for unknown values
+        }
+    }
+}

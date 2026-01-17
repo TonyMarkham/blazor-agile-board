@@ -25,8 +25,8 @@ async fn given_new_tenant_when_getting_pool_then_creates_database_and_runs_migra
     let user_id = Uuid::new_v4();
     create_test_user(&pool, user_id).await;
     let project = create_test_project(user_id);
-    let repo = WorkItemRepository::new(pool.clone());
-    repo.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool, &project).await.unwrap();
 }
 
 #[tokio::test]
@@ -46,11 +46,13 @@ async fn given_existing_tenant_when_getting_pool_again_then_returns_cached_pool(
     create_test_user(&pool1, user_id).await;
 
     let project = create_test_project(user_id);
-    let repo1 = WorkItemRepository::new(pool1);
-    repo1.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool1, &project).await.unwrap();
 
-    let repo2 = WorkItemRepository::new(pool2);
-    let found = repo2.find_by_id(project.id).await.unwrap();
+    // WorkItemRepository is now stateless
+    let found = WorkItemRepository::find_by_id(&pool2, project.id)
+        .await
+        .unwrap();
     assert_that!(found, some(anything()));
 }
 
@@ -69,19 +71,27 @@ async fn given_multiple_tenants_when_creating_data_then_data_is_isolated() {
 
     // When: Creating a work item in tenant A only
     let project_a = create_test_project(user_id);
-    let repo_a = WorkItemRepository::new(pool_a.clone());
-    repo_a.create(&project_a).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool_a, &project_a)
+        .await
+        .unwrap();
 
     let work_item = create_test_work_item(project_a.id, user_id);
-    repo_a.create(&work_item).await.unwrap();
+    WorkItemRepository::create(&pool_a, &work_item)
+        .await
+        .unwrap();
 
     // Then: Work item exists in tenant A
-    let result_a = repo_a.find_by_id(work_item.id).await.unwrap();
+    let result_a = WorkItemRepository::find_by_id(&pool_a, work_item.id)
+        .await
+        .unwrap();
     assert_that!(result_a, some(anything()));
 
     // Then: Work item does NOT exist in tenant B
-    let repo_b = WorkItemRepository::new(pool_b);
-    let result_b = repo_b.find_by_id(work_item.id).await.unwrap();
+    // WorkItemRepository is now stateless
+    let result_b = WorkItemRepository::find_by_id(&pool_b, work_item.id)
+        .await
+        .unwrap();
     assert_that!(result_b, none());
 }
 
@@ -109,16 +119,25 @@ async fn given_multiple_tenants_when_creating_same_id_then_both_succeed() {
     project_b.project_id = shared_id;
     project_b.title = "Different Title".to_string();
 
-    let repo_a = WorkItemRepository::new(pool_a.clone());
-    let repo_b = WorkItemRepository::new(pool_b.clone());
+    // WorkItemRepository is now stateless
 
     // Then: Both creates succeed (no collision)
-    repo_a.create(&project_a).await.unwrap();
-    repo_b.create(&project_b).await.unwrap();
+    WorkItemRepository::create(&pool_a, &project_a)
+        .await
+        .unwrap();
+    WorkItemRepository::create(&pool_b, &project_b)
+        .await
+        .unwrap();
 
     // Then: Each tenant sees their own data
-    let found_a = repo_a.find_by_id(shared_id).await.unwrap().unwrap();
-    let found_b = repo_b.find_by_id(shared_id).await.unwrap().unwrap();
+    let found_a = WorkItemRepository::find_by_id(&pool_a, shared_id)
+        .await
+        .unwrap()
+        .unwrap();
+    let found_b = WorkItemRepository::find_by_id(&pool_b, shared_id)
+        .await
+        .unwrap()
+        .unwrap();
 
     assert_that!(found_a.title, eq(&project_a.title));
     assert_that!(found_b.title, eq("Different Title"));
@@ -156,8 +175,8 @@ async fn given_tenant_pool_when_inserting_with_foreign_key_violation_then_fails(
     let non_existent_project = Uuid::new_v4();
     let work_item = create_test_work_item(non_existent_project, user_id);
 
-    let repo = WorkItemRepository::new(pool);
-    let result = repo.create(&work_item).await;
+    // WorkItemRepository is now stateless
+    let result = WorkItemRepository::create(&pool, &work_item).await;
 
     // Then: Operation fails due to foreign key constraint
     assert_that!(result, err(anything()));

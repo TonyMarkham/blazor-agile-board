@@ -21,9 +21,7 @@ pub async fn validate_hierarchy(
     child_type: WorkItemType,
     parent_id: Uuid,
 ) -> WsErrorResult<()> {
-    let repo = WorkItemRepository::new(pool.clone());
-    let parent = repo
-        .find_by_id(parent_id)
+    let parent = WorkItemRepository::find_by_id(pool, parent_id)
         .await
         .map_err(|e| WsError::Internal {
             message: format!("Failed to fetch parent: {e}"),

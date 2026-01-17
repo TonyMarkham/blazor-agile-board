@@ -20,8 +20,8 @@ async fn given_valid_swim_lane_when_created_then_can_be_found_by_id() {
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    let work_item_repo = WorkItemRepository::new(pool.clone());
-    work_item_repo.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool, &project).await.unwrap();
 
     let repo = SwimLaneRepository::new(pool.clone());
     let swim_lane = create_test_swim_lane(project.id);
@@ -61,8 +61,8 @@ async fn given_existing_swim_lane_when_updated_then_changes_are_persisted() {
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    let work_item_repo = WorkItemRepository::new(pool.clone());
-    work_item_repo.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool, &project).await.unwrap();
 
     let repo = SwimLaneRepository::new(pool.clone());
     let mut swim_lane = create_test_swim_lane(project.id);
@@ -89,8 +89,8 @@ async fn given_existing_swim_lane_when_soft_deleted_then_not_found_by_id() {
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    let work_item_repo = WorkItemRepository::new(pool.clone());
-    work_item_repo.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool, &project).await.unwrap();
 
     let repo = SwimLaneRepository::new(pool.clone());
     let swim_lane = create_test_swim_lane(project.id);
@@ -113,8 +113,8 @@ async fn given_default_swim_lane_when_attempting_delete_then_not_deleted() {
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    let work_item_repo = WorkItemRepository::new(pool.clone());
-    work_item_repo.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool, &project).await.unwrap();
 
     let repo = SwimLaneRepository::new(pool.clone());
     let default_lane = create_default_swim_lane(project.id);
@@ -138,8 +138,8 @@ async fn given_multiple_swim_lanes_in_project_when_finding_by_project_then_retur
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    let work_item_repo = WorkItemRepository::new(pool.clone());
-    work_item_repo.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool, &project).await.unwrap();
 
     let repo = SwimLaneRepository::new(pool.clone());
 
@@ -171,8 +171,8 @@ async fn given_swim_lanes_with_one_deleted_when_finding_by_project_then_excludes
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    let work_item_repo = WorkItemRepository::new(pool.clone());
-    work_item_repo.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool, &project).await.unwrap();
 
     let repo = SwimLaneRepository::new(pool.clone());
 
@@ -200,8 +200,8 @@ async fn given_empty_project_when_finding_by_project_then_returns_empty_vec() {
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    let work_item_repo = WorkItemRepository::new(pool.clone());
-    work_item_repo.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool, &project).await.unwrap();
 
     let repo = SwimLaneRepository::new(pool);
 

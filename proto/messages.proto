@@ -42,6 +42,9 @@ message WorkItem {
   string created_by = 13;
   string updated_by = 14;
   optional int64 deleted_at = 15;
+  string priority = 16;
+  optional int32 story_points = 17;
+  int32 version = 18;
 }
 
 enum SprintStatus {
@@ -231,6 +234,8 @@ message UpdateWorkItemRequest {
   optional string assignee_id = 6;
   optional string sprint_id = 7;
   optional int32 position = 8;
+  optional string priority = 9;
+  optional int32 story_points = 10;
 }
 
 message DeleteWorkItemRequest {

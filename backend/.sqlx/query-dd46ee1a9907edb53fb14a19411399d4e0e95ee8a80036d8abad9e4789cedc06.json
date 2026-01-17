@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n              SELECT\n                  id, item_type, parent_id, project_id, position,\n                  title, description, status, assignee_id, sprint_id,\n                  created_at, updated_at, created_by, updated_by, deleted_at\n              FROM pm_work_items\n              WHERE id = ? AND deleted_at IS NULL\n              ",
+  "query": "\n              SELECT\n                  id, item_type, parent_id, project_id, position,\n                  title, description, status, priority, assignee_id,\n                  story_points, sprint_id, version,\n                  created_at, updated_at, created_by, updated_by, deleted_at\n              FROM pm_work_items\n              WHERE id = ? AND deleted_at IS NULL\n              ",
   "describe": {
     "columns": [
       {
@@ -44,38 +44,53 @@
         "type_info": "Text"
       },
       {
-        "name": "assignee_id",
+        "name": "priority",
         "ordinal": 8,
         "type_info": "Text"
       },
       {
-        "name": "sprint_id",
+        "name": "assignee_id",
         "ordinal": 9,
         "type_info": "Text"
       },
       {
-        "name": "created_at",
+        "name": "story_points",
         "ordinal": 10,
         "type_info": "Integer"
       },
       {
-        "name": "updated_at",
+        "name": "sprint_id",
         "ordinal": 11,
+        "type_info": "Text"
+      },
+      {
+        "name": "version",
+        "ordinal": 12,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 13,
+        "type_info": "Integer"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 14,
         "type_info": "Integer"
       },
       {
         "name": "created_by",
-        "ordinal": 12,
+        "ordinal": 15,
         "type_info": "Text"
       },
       {
         "name": "updated_by",
-        "ordinal": 13,
+        "ordinal": 16,
         "type_info": "Text"
       },
       {
         "name": "deleted_at",
-        "ordinal": 14,
+        "ordinal": 17,
         "type_info": "Integer"
       }
     ],
@@ -91,8 +106,11 @@
       false,
       true,
       false,
+      false,
       true,
       true,
+      true,
+      false,
       false,
       false,
       false,
@@ -100,5 +118,5 @@
       true
     ]
   },
-  "hash": "43e50925ad79abfa5b48ffe003d7e2491b54efbd3cee8db06179220645031838"
+  "hash": "dd46ee1a9907edb53fb14a19411399d4e0e95ee8a80036d8abad9e4789cedc06"
 }

@@ -20,12 +20,19 @@ pub struct WorkItem {
 
     // Workflow
     pub status: String,
+    pub priority: String,
 
     // Assignment
     pub assignee_id: Option<Uuid>,
 
+    // Agile
+    pub story_points: Option<i32>,
+
     // Sprint
     pub sprint_id: Option<Uuid>,
+
+    // Concurrency control
+    pub version: i32,
 
     // Audit
     pub created_at: DateTime<Utc>,
@@ -54,8 +61,11 @@ impl WorkItem {
             title,
             description,
             status: "backlog".to_string(),
+            priority: "medium".to_string(),
             assignee_id: None,
+            story_points: None,
             sprint_id: None,
+            version: 0,
             created_at: now,
             updated_at: now,
             created_by,

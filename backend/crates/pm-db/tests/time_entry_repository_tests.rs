@@ -20,11 +20,11 @@ async fn given_valid_time_entry_when_created_then_can_be_found_by_id() {
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    let work_item_repo = WorkItemRepository::new(pool.clone());
-    work_item_repo.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool, &project).await.unwrap();
 
     let work_item = create_test_work_item(project.id, user_id);
-    work_item_repo.create(&work_item).await.unwrap();
+    WorkItemRepository::create(&pool, &work_item).await.unwrap();
 
     let repo = TimeEntryRepository::new(pool.clone());
     let time_entry = create_test_time_entry(work_item.id, user_id);
@@ -64,11 +64,11 @@ async fn given_running_timer_when_updated_to_stopped_then_changes_are_persisted(
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    let work_item_repo = WorkItemRepository::new(pool.clone());
-    work_item_repo.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool, &project).await.unwrap();
 
     let work_item = create_test_work_item(project.id, user_id);
-    work_item_repo.create(&work_item).await.unwrap();
+    WorkItemRepository::create(&pool, &work_item).await.unwrap();
 
     let repo = TimeEntryRepository::new(pool.clone());
     let mut time_entry = create_running_time_entry(work_item.id, user_id);
@@ -96,11 +96,11 @@ async fn given_existing_time_entry_when_soft_deleted_then_not_found_by_id() {
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    let work_item_repo = WorkItemRepository::new(pool.clone());
-    work_item_repo.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool, &project).await.unwrap();
 
     let work_item = create_test_work_item(project.id, user_id);
-    work_item_repo.create(&work_item).await.unwrap();
+    WorkItemRepository::create(&pool, &work_item).await.unwrap();
 
     let repo = TimeEntryRepository::new(pool.clone());
     let time_entry = create_test_time_entry(work_item.id, user_id);
@@ -123,11 +123,11 @@ async fn given_multiple_time_entries_on_work_item_when_finding_by_work_item_then
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    let work_item_repo = WorkItemRepository::new(pool.clone());
-    work_item_repo.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool, &project).await.unwrap();
 
     let work_item = create_test_work_item(project.id, user_id);
-    work_item_repo.create(&work_item).await.unwrap();
+    WorkItemRepository::create(&pool, &work_item).await.unwrap();
 
     let repo = TimeEntryRepository::new(pool.clone());
 
@@ -158,11 +158,11 @@ async fn given_running_and_stopped_timers_when_finding_running_then_returns_only
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    let work_item_repo = WorkItemRepository::new(pool.clone());
-    work_item_repo.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool, &project).await.unwrap();
 
     let work_item = create_test_work_item(project.id, user_id);
-    work_item_repo.create(&work_item).await.unwrap();
+    WorkItemRepository::create(&pool, &work_item).await.unwrap();
 
     let repo = TimeEntryRepository::new(pool.clone());
 
@@ -196,11 +196,11 @@ async fn given_no_running_timers_when_finding_running_then_returns_empty_vec() {
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    let work_item_repo = WorkItemRepository::new(pool.clone());
-    work_item_repo.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool, &project).await.unwrap();
 
     let work_item = create_test_work_item(project.id, user_id);
-    work_item_repo.create(&work_item).await.unwrap();
+    WorkItemRepository::create(&pool, &work_item).await.unwrap();
 
     let repo = TimeEntryRepository::new(pool.clone());
 
@@ -223,11 +223,11 @@ async fn given_time_entries_with_one_deleted_when_finding_by_work_item_then_excl
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    let work_item_repo = WorkItemRepository::new(pool.clone());
-    work_item_repo.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool, &project).await.unwrap();
 
     let work_item = create_test_work_item(project.id, user_id);
-    work_item_repo.create(&work_item).await.unwrap();
+    WorkItemRepository::create(&pool, &work_item).await.unwrap();
 
     let repo = TimeEntryRepository::new(pool.clone());
 

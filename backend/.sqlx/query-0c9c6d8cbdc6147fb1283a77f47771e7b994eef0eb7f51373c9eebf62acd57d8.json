@@ -1,0 +1,122 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                SELECT\n                    id, item_type, parent_id, project_id, position,\n                    title, description, status, priority, assignee_id,\n                    story_points, sprint_id, version,\n                    created_at, updated_at, created_by, updated_by, deleted_at\n                FROM pm_work_items\n                WHERE parent_id = ? AND deleted_at IS NULL\n                ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "item_type",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "parent_id",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "project_id",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "position",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "title",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "description",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "status",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "priority",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "assignee_id",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "story_points",
+        "ordinal": 10,
+        "type_info": "Integer"
+      },
+      {
+        "name": "sprint_id",
+        "ordinal": 11,
+        "type_info": "Text"
+      },
+      {
+        "name": "version",
+        "ordinal": 12,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 13,
+        "type_info": "Integer"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 14,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_by",
+        "ordinal": 15,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_by",
+        "ordinal": 16,
+        "type_info": "Text"
+      },
+      {
+        "name": "deleted_at",
+        "ordinal": 17,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "0c9c6d8cbdc6147fb1283a77f47771e7b994eef0eb7f51373c9eebf62acd57d8"
+}

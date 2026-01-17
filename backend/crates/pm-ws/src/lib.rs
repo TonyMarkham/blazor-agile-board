@@ -1,5 +1,6 @@
 pub mod app_state;
 pub mod broadcast_config;
+pub mod broadcast_info;
 pub mod broadcast_message;
 pub mod client_subscriptions;
 pub mod connection_config;
@@ -20,6 +21,7 @@ pub mod web_socket_connection;
 
 pub use app_state::{AppState, handler};
 pub use broadcast_config::BroadcastConfig;
+pub use broadcast_info::BroadcastInfo;
 pub use broadcast_message::BroadcastMessage;
 pub use client_subscriptions::ClientSubscriptions;
 pub use connection_config::ConnectionConfig;

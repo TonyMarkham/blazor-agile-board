@@ -20,11 +20,11 @@ async fn given_valid_comment_when_created_then_can_be_found_by_id() {
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    let work_item_repo = WorkItemRepository::new(pool.clone());
-    work_item_repo.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool, &project).await.unwrap();
 
     let work_item = create_test_work_item(project.id, user_id);
-    work_item_repo.create(&work_item).await.unwrap();
+    WorkItemRepository::create(&pool, &work_item).await.unwrap();
 
     let repo = CommentRepository::new(pool.clone());
     let comment = create_test_comment(work_item.id, user_id);
@@ -64,11 +64,11 @@ async fn given_existing_comment_when_updated_then_changes_are_persisted() {
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    let work_item_repo = WorkItemRepository::new(pool.clone());
-    work_item_repo.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool, &project).await.unwrap();
 
     let work_item = create_test_work_item(project.id, user_id);
-    work_item_repo.create(&work_item).await.unwrap();
+    WorkItemRepository::create(&pool, &work_item).await.unwrap();
 
     let repo = CommentRepository::new(pool.clone());
     let mut comment = create_test_comment(work_item.id, user_id);
@@ -93,11 +93,11 @@ async fn given_existing_comment_when_soft_deleted_then_not_found_by_id() {
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    let work_item_repo = WorkItemRepository::new(pool.clone());
-    work_item_repo.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool, &project).await.unwrap();
 
     let work_item = create_test_work_item(project.id, user_id);
-    work_item_repo.create(&work_item).await.unwrap();
+    WorkItemRepository::create(&pool, &work_item).await.unwrap();
 
     let repo = CommentRepository::new(pool.clone());
     let comment = create_test_comment(work_item.id, user_id);
@@ -120,11 +120,11 @@ async fn given_multiple_comments_on_work_item_when_finding_by_work_item_then_ret
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    let work_item_repo = WorkItemRepository::new(pool.clone());
-    work_item_repo.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool, &project).await.unwrap();
 
     let work_item = create_test_work_item(project.id, user_id);
-    work_item_repo.create(&work_item).await.unwrap();
+    WorkItemRepository::create(&pool, &work_item).await.unwrap();
 
     let repo = CommentRepository::new(pool.clone());
 
@@ -155,11 +155,11 @@ async fn given_comments_with_one_deleted_when_finding_by_work_item_then_excludes
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    let work_item_repo = WorkItemRepository::new(pool.clone());
-    work_item_repo.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool, &project).await.unwrap();
 
     let work_item = create_test_work_item(project.id, user_id);
-    work_item_repo.create(&work_item).await.unwrap();
+    WorkItemRepository::create(&pool, &work_item).await.unwrap();
 
     let repo = CommentRepository::new(pool.clone());
 
@@ -187,11 +187,11 @@ async fn given_work_item_with_no_comments_when_finding_by_work_item_then_returns
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    let work_item_repo = WorkItemRepository::new(pool.clone());
-    work_item_repo.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool, &project).await.unwrap();
 
     let work_item = create_test_work_item(project.id, user_id);
-    work_item_repo.create(&work_item).await.unwrap();
+    WorkItemRepository::create(&pool, &work_item).await.unwrap();
 
     let repo = CommentRepository::new(pool);
 

@@ -20,13 +20,13 @@ async fn given_valid_dependency_when_created_then_can_be_found_by_id() {
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    let work_item_repo = WorkItemRepository::new(pool.clone());
-    work_item_repo.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool, &project).await.unwrap();
 
     let item1 = create_test_work_item(project.id, user_id);
     let item2 = create_test_work_item(project.id, user_id);
-    work_item_repo.create(&item1).await.unwrap();
-    work_item_repo.create(&item2).await.unwrap();
+    WorkItemRepository::create(&pool, &item1).await.unwrap();
+    WorkItemRepository::create(&pool, &item2).await.unwrap();
 
     let repo = DependencyRepository::new(pool.clone());
     let dependency = create_test_dependency(item1.id, item2.id, user_id);
@@ -66,13 +66,13 @@ async fn given_existing_dependency_when_soft_deleted_then_not_found_by_id() {
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    let work_item_repo = WorkItemRepository::new(pool.clone());
-    work_item_repo.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool, &project).await.unwrap();
 
     let item1 = create_test_work_item(project.id, user_id);
     let item2 = create_test_work_item(project.id, user_id);
-    work_item_repo.create(&item1).await.unwrap();
-    work_item_repo.create(&item2).await.unwrap();
+    WorkItemRepository::create(&pool, &item1).await.unwrap();
+    WorkItemRepository::create(&pool, &item2).await.unwrap();
 
     let repo = DependencyRepository::new(pool.clone());
     let dependency = create_test_dependency(item1.id, item2.id, user_id);
@@ -95,15 +95,15 @@ async fn given_item_with_blockers_when_finding_blocking_then_returns_blockers() 
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    let work_item_repo = WorkItemRepository::new(pool.clone());
-    work_item_repo.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool, &project).await.unwrap();
 
     let item_a = create_test_work_item(project.id, user_id);
     let item_b = create_test_work_item(project.id, user_id);
     let item_c = create_test_work_item(project.id, user_id);
-    work_item_repo.create(&item_a).await.unwrap();
-    work_item_repo.create(&item_b).await.unwrap();
-    work_item_repo.create(&item_c).await.unwrap();
+    WorkItemRepository::create(&pool, &item_a).await.unwrap();
+    WorkItemRepository::create(&pool, &item_b).await.unwrap();
+    WorkItemRepository::create(&pool, &item_c).await.unwrap();
 
     let repo = DependencyRepository::new(pool.clone());
 
@@ -134,15 +134,15 @@ async fn given_item_blocking_others_when_finding_blocked_then_returns_blocked_it
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    let work_item_repo = WorkItemRepository::new(pool.clone());
-    work_item_repo.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool, &project).await.unwrap();
 
     let item_a = create_test_work_item(project.id, user_id);
     let item_b = create_test_work_item(project.id, user_id);
     let item_c = create_test_work_item(project.id, user_id);
-    work_item_repo.create(&item_a).await.unwrap();
-    work_item_repo.create(&item_b).await.unwrap();
-    work_item_repo.create(&item_c).await.unwrap();
+    WorkItemRepository::create(&pool, &item_a).await.unwrap();
+    WorkItemRepository::create(&pool, &item_b).await.unwrap();
+    WorkItemRepository::create(&pool, &item_c).await.unwrap();
 
     let repo = DependencyRepository::new(pool.clone());
 
@@ -173,11 +173,11 @@ async fn given_item_with_no_blockers_when_finding_blocking_then_returns_empty_ve
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    let work_item_repo = WorkItemRepository::new(pool.clone());
-    work_item_repo.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool, &project).await.unwrap();
 
     let item = create_test_work_item(project.id, user_id);
-    work_item_repo.create(&item).await.unwrap();
+    WorkItemRepository::create(&pool, &item).await.unwrap();
 
     let repo = DependencyRepository::new(pool);
 
@@ -196,11 +196,11 @@ async fn given_item_blocking_none_when_finding_blocked_then_returns_empty_vec() 
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    let work_item_repo = WorkItemRepository::new(pool.clone());
-    work_item_repo.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool, &project).await.unwrap();
 
     let item = create_test_work_item(project.id, user_id);
-    work_item_repo.create(&item).await.unwrap();
+    WorkItemRepository::create(&pool, &item).await.unwrap();
 
     let repo = DependencyRepository::new(pool);
 
@@ -219,15 +219,15 @@ async fn given_dependencies_with_one_deleted_when_finding_blocking_then_excludes
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    let work_item_repo = WorkItemRepository::new(pool.clone());
-    work_item_repo.create(&project).await.unwrap();
+    // WorkItemRepository is now stateless
+    WorkItemRepository::create(&pool, &project).await.unwrap();
 
     let item_a = create_test_work_item(project.id, user_id);
     let item_b = create_test_work_item(project.id, user_id);
     let item_c = create_test_work_item(project.id, user_id);
-    work_item_repo.create(&item_a).await.unwrap();
-    work_item_repo.create(&item_b).await.unwrap();
-    work_item_repo.create(&item_c).await.unwrap();
+    WorkItemRepository::create(&pool, &item_a).await.unwrap();
+    WorkItemRepository::create(&pool, &item_b).await.unwrap();
+    WorkItemRepository::create(&pool, &item_c).await.unwrap();
 
     let repo = DependencyRepository::new(pool.clone());
 
