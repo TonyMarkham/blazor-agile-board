@@ -4,12 +4,12 @@ use std::time::SystemTime;
 
 use fern::Dispatch;
 use fern::colors::{Color, ColoredLevelConfig};
-use log::{LevelFilter, info};
+use log::info;
 
 /// Initialize logger with fern (stdout only, colored optional)
 #[track_caller]
-pub fn initialize(log_level: &str, colored: bool) -> ServerErrorResult<()> {
-    let level_filter = parse_log_level(log_level)?;
+pub fn initialize(log_level: pm_config::LogLevel, colored: bool) -> ServerErrorResult<()> {
+    let level_filter = log_level.0; // Extract inner LevelFilter
 
     let base_dispatch = Dispatch::new().level(level_filter);
 
@@ -63,19 +63,4 @@ pub fn initialize(log_level: &str, colored: bool) -> ServerErrorResult<()> {
     tracing_log::LogTracer::init().ok();
 
     Ok(())
-}
-
-/// Parse log level string to LevelFilter
-fn parse_log_level(level: &str) -> ServerErrorResult<LevelFilter> {
-    match level.to_lowercase().as_str() {
-        "trace" => Ok(LevelFilter::Trace),
-        "debug" => Ok(LevelFilter::Debug),
-        "info" => Ok(LevelFilter::Info),
-        "warn" => Ok(LevelFilter::Warn),
-        "error" => Ok(LevelFilter::Error),
-        "off" => Ok(LevelFilter::Off),
-        _ => Err(ServerError::EnvVar {
-            message: format!("Invalid log level: {level}"),
-        }),
-    }
 }

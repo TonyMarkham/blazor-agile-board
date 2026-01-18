@@ -1,6 +1,11 @@
 use crate::{
     ConnectionConfig, ConnectionRegistry, Metrics, ShutdownCoordinator, WebSocketConnection,
 };
+
+use pm_auth::{JwtValidator, RateLimiterFactory};
+
+use std::sync::Arc;
+
 use axum::{
     extract::{
         State,
@@ -9,16 +14,13 @@ use axum::{
     http::{HeaderMap, StatusCode},
     response::Response,
 };
-use pm_auth::{JwtValidator, RateLimiterFactory};
-
-use std::sync::Arc;
-
 use log::{debug, error, info, warn};
 
 /// Shared application state for WebSocket handlers
 #[derive(Clone)]
 pub struct AppState {
-    pub jwt_validator: Arc<JwtValidator>,
+    pub jwt_validator: Option<Arc<JwtValidator>>,
+    pub desktop_user_id: String,
     pub rate_limiter_factory: RateLimiterFactory,
     pub registry: ConnectionRegistry,
     pub metrics: Metrics,
@@ -26,14 +28,14 @@ pub struct AppState {
     pub config: ConnectionConfig,
 }
 
-/// WebSocket upgrade handler                                                                                                                                                    
+/// WebSocket upgrade handler
 pub async fn handler(
     State(state): State<AppState>,
     headers: HeaderMap,
     ws: WebSocketUpgrade,
 ) -> Result<Response, StatusCode> {
-    // Extract and validate JWT from Authorization header
-    let user_id = extract_user_id(&headers, &state.jwt_validator)?;
+    // Extract and validate user ID (JWT or desktop mode)
+    let user_id = extract_user_id(&headers, &state.jwt_validator, &state.desktop_user_id)?;
     debug!("WebSocket upgrade request from user {}", user_id);
 
     // Register connection (enforces connection limits)
@@ -55,7 +57,7 @@ pub async fn handler(
     Ok(ws.on_upgrade(move |socket| handle_socket(socket, connection_id, state, rate_limiter)))
 }
 
-/// Handle WebSocket connection after upgrade                                                                                                                                    
+/// Handle WebSocket connection after upgrade
 async fn handle_socket(
     socket: WebSocket,
     connection_id: crate::ConnectionId,
@@ -82,27 +84,41 @@ async fn handle_socket(
     }
 }
 
-/// Extract and validate tenant context from JWT in Authorization header                                                                                                         
-fn extract_user_id(headers: &HeaderMap, validator: &JwtValidator) -> Result<String, StatusCode> {
-    let auth_header = headers
-        .get("authorization")
-        .and_then(|h| h.to_str().ok())
-        .ok_or_else(|| {
-            warn!("Missing Authorization header");
-            StatusCode::UNAUTHORIZED
-        })?;
+/// Extract and validate user ID from Authorization header or use desktop user ID
+fn extract_user_id(
+    headers: &HeaderMap,
+    validator: &Option<Arc<JwtValidator>>,
+    desktop_user_id: &str,
+) -> Result<String, StatusCode> {
+    match validator {
+        Some(v) => {
+            // JWT validation required
+            let auth_header = headers
+                .get("authorization")
+                .and_then(|h| h.to_str().ok())
+                .ok_or_else(|| {
+                    warn!("Missing Authorization header");
+                    StatusCode::UNAUTHORIZED
+                })?;
 
-    if !auth_header.starts_with("Bearer ") {
-        warn!("Invalid authorization scheme: expected 'Bearer'");
-        return Err(StatusCode::UNAUTHORIZED);
+            if !auth_header.starts_with("Bearer ") {
+                warn!("Invalid authorization scheme: expected 'Bearer'");
+                return Err(StatusCode::UNAUTHORIZED);
+            }
+
+            let token = &auth_header[7..];
+
+            let claims = v.validate(token).map_err(|e| {
+                warn!("JWT validation failed: {}", e);
+                StatusCode::UNAUTHORIZED
+            })?;
+
+            Ok(claims.sub)
+        }
+        None => {
+            // Auth disabled - use configured desktop user ID
+            debug!("Auth disabled, using desktop user ID: {}", desktop_user_id);
+            Ok(desktop_user_id.to_string())
+        }
     }
-
-    let token = &auth_header[7..];
-
-    let claims = validator.validate(token).map_err(|e| {
-        warn!("JWT validation failed: {}", e);
-        StatusCode::UNAUTHORIZED
-    })?;
-
-    Ok(claims.sub)
 }

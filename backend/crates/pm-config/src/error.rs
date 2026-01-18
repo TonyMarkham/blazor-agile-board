@@ -1,3 +1,4 @@
+use std::panic::Location;
 use std::path::PathBuf;
 use std::result::Result as StdResult;
 
@@ -38,7 +39,7 @@ impl ConfigError {
         ConfigError::Generic {
             category: "Auth",
             message: message.into(),
-            location: ErrorLocation::from(std::panic::Location::caller()),
+            location: ErrorLocation::from(Location::caller()),
         }
     }
 
@@ -48,7 +49,7 @@ impl ConfigError {
         ConfigError::Generic {
             category: "Config",
             message: message.into(),
-            location: ErrorLocation::from(std::panic::Location::caller()),
+            location: ErrorLocation::from(Location::caller()),
         }
     }
 
@@ -58,7 +59,7 @@ impl ConfigError {
         ConfigError::Generic {
             category: "Database",
             message: message.into(),
-            location: ErrorLocation::from(std::panic::Location::caller()),
+            location: ErrorLocation::from(Location::caller()),
         }
     }
 
@@ -68,7 +69,7 @@ impl ConfigError {
         ConfigError::Generic {
             category: "Logging",
             message: message.into(),
-            location: ErrorLocation::from(std::panic::Location::caller()),
+            location: ErrorLocation::from(Location::caller()),
         }
     }
 
@@ -78,7 +79,7 @@ impl ConfigError {
         ConfigError::Generic {
             category: "Server",
             message: message.into(),
-            location: ErrorLocation::from(std::panic::Location::caller()),
+            location: ErrorLocation::from(Location::caller()),
         }
     }
 
@@ -88,7 +89,7 @@ impl ConfigError {
         ConfigError::Generic {
             category: "Serde",
             message: message.into(),
-            location: ErrorLocation::from(std::panic::Location::caller()),
+            location: ErrorLocation::from(Location::caller()),
         }
     }
 

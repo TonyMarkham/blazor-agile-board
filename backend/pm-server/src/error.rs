@@ -1,17 +1,16 @@
-use std::net::AddrParseError;
-
 use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum ServerError {
-    #[error("Invalid bind address: {source}")]
-    InvalidBindAddr {
-        #[source]
-        source: AddrParseError,
-    },
+    #[error("Config error: {0}")]
+    Config(#[from] pm_config::ConfigError),
 
-    #[error("Missing JWT configuration: must provide either JWT_SECRET or JWT_PUBLIC_KEY")]
-    MissingJwtConfig,
+    #[error("Failed to read JWT key file {path}: {source}")]
+    JwtKeyFile {
+        path: String,
+        #[source]
+        source: std::io::Error,
+    },
 
     #[error("Environment variable error: {message}")]
     EnvVar { message: String },

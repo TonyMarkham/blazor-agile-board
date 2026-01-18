@@ -1,0 +1,110 @@
+# PM Server Configuration Example
+# ================================
+# Copy to .pm/config.toml in your working directory (relative to where you run pm-server).
+# All values shown are defaults - only override what you need.
+#
+# Environment variables override TOML values with PM_ prefix:
+#   PM_SERVER_PORT=9000        overrides [server].port
+#   PM_AUTH_ENABLED=true       overrides [auth].enabled
+#   PM_LOG_LEVEL=debug         overrides [logging].level
+#
+# Config directory can be overridden with PM_CONFIG_DIR environment variable.
+
+# =============================================================================
+# Server Configuration
+# =============================================================================
+
+[server]
+# Bind address (default: 127.0.0.1)
+# Use "0.0.0.0" to listen on all interfaces
+host = "127.0.0.1"
+
+# Server port (range: 1024-65535, default: 8000)
+# Ports below 1024 require root/admin privileges
+port = 8000
+
+# Maximum concurrent connections (range: 1-100000, default: 10000)
+max_connections = 10000
+
+# =============================================================================
+# Database Configuration
+# =============================================================================
+
+[database]
+# SQLite database file path (relative to .pm/ directory, default: "data.db")
+# Must be relative and cannot contain '..' for security
+path = "data.db"
+
+# =============================================================================
+# Authentication Configuration
+# =============================================================================
+
+[auth]
+# Enable JWT authentication (default: false)
+# When false, server runs in desktop/development mode
+enabled = false
+
+# === JWT Secret (HS256) ===
+# Symmetric key for HS256 JWT validation
+# Minimum length: 32 characters
+# Only used when auth.enabled = true
+# NEVER commit this to version control!
+# jwt_secret = "your-secret-key-minimum-32-characters-long"
+
+# === JWT Public Key (RS256) ===
+# Path to RSA public key PEM file for RS256 JWT validation
+# Path is relative to .pm/ directory and cannot contain '..'
+# Only used when auth.enabled = true and jwt_secret is not provided
+# jwt_public_key_path = "public.pem"
+
+# === Desktop Mode User ID ===
+# User ID when auth is disabled (default: "local-user")
+# Set to empty string "" to generate a unique session ID per server start
+# desktop_user_id = "local-user"
+
+# =============================================================================
+# Logging Configuration
+# =============================================================================
+
+[logging]
+# Log level (default: "info")
+# Options: "trace", "debug", "info", "warn", "error", "off"
+level = "info"
+
+# Log directory (relative to .pm/ directory, default: "log")
+dir = "log"
+
+# Enable colored output (default: true)
+# Set to false for non-TTY environments (CI, Docker logs, systemd)
+colored = true
+
+# =============================================================================
+# WebSocket Configuration
+# =============================================================================
+
+[websocket]
+# Send buffer size per connection (range: 1-10000, default: 100)
+# Higher values = more memory, lower risk of backpressure
+send_buffer_size = 100
+
+# Heartbeat ping interval in seconds (range: 5-300, default: 30)
+# How often the server sends ping messages to clients
+heartbeat_interval_secs = 30
+
+# Heartbeat timeout in seconds (range: 10-600, default: 60)
+# Must be greater than heartbeat_interval_secs
+# Connection closed if no pong received within this time
+heartbeat_timeout_secs = 60
+
+# =============================================================================
+# Rate Limiting Configuration
+# =============================================================================
+
+[rate_limit]
+# Maximum requests per window (range: 1-10000, default: 100)
+# Applied per WebSocket connection to prevent abuse
+max_requests = 100
+
+# Rate limit window in seconds (range: 1-3600, default: 60)
+# Requests are counted within this sliding window
+window_secs = 60

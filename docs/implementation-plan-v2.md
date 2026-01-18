@@ -16,20 +16,19 @@ This plan picks up from the architecture simplification refactor. The multi-tena
 
 ---
 
-## Current State (Pre-Session 05)
+## Current State (Post-Session 05)
 
 ### What Exists ✅
 - `pm-core`: Domain models (WorkItem, Sprint, Comment, TimeEntry, etc.)
 - `pm-db`: Repositories, migrations, 60+ integration tests
 - `pm-proto`: Protobuf messages and code generation
 - `pm-auth`: JWT validation (HS256/RS256), rate limiting
-- `pm-config`: Config loading (TOML, env, CLI) - **exists but NOT used by pm-server**
-- `pm-ws`: WebSocket infrastructure, connection handling, handler framework
-- `pm-server`: Axum server with `/ws` endpoint (runs but no DB)
-- `desktop/src-tauri`: Tauri app shell (scaffolded)
+- `pm-config`: **Production-grade config system** - TOML + env vars, comprehensive validation, security hardening
+- `pm-ws`: WebSocket infrastructure, connection handling, handler framework, **optional auth support**
+- `pm-server`: Axum server with `/ws` endpoint, **fully integrated with pm-config**
+- `desktop/src-tauri`: Tauri app shell with bundled config.example.toml
 
 ### What's Missing ❌
-- **pm-server not using pm-config** (has its own env-only config)
 - Database not wired to server
 - Handlers not dispatching messages
 - No broadcast channel for real-time events
@@ -38,11 +37,12 @@ This plan picks up from the architecture simplification refactor. The multi-tena
 
 ---
 
-## Session 05: Integrate pm-config into pm-server
+## Session 05: Integrate pm-config into pm-server ✅ COMPLETE
 
 **Goal**: pm-server uses pm-config crate for unified configuration
 
 **Estimated Tokens**: ~40k (smaller session)
+**Actual Tokens**: ~108k (2.7x estimate due to quality improvements)
 
 ### Context
 
@@ -236,15 +236,43 @@ dir = "logs"
 - `pm-config/tests/` - Config loading tests
 
 ### Success Criteria
-- [ ] pm-config is single source of truth for all config structs
-- [ ] pm-auth uses `pm_config::RateLimitConfig`
-- [ ] pm-ws uses `pm_config::WebSocketConfig`
-- [ ] pm-server uses `pm_config::Config::load()`
-- [ ] Config loads from `.pm/config.toml` (relative to cwd)
-- [ ] Server starts without config file (uses defaults)
-- [ ] Auth disabled by default (desktop mode)
-- [ ] `cargo run --bin pm-server` works without env vars
-- [ ] All existing tests pass
+- [x] pm-config is single source of truth for all config structs
+- [x] pm-auth uses `pm_config::RateLimitConfig`
+- [x] pm-ws uses `pm_config::WebSocketConfig`
+- [x] pm-server uses `pm_config::Config::load()`
+- [x] Config loads from `.pm/config.toml` (relative to cwd)
+- [x] Server starts without config file (uses defaults)
+- [x] Auth disabled by default (desktop mode)
+- [x] `cargo run --bin pm-server` works without env vars
+- [x] All existing tests pass
+
+### Completion Notes (2026-01-17)
+
+**What was delivered:**
+- ✅ Production-grade config system with constants, proper error handling, validation
+- ✅ WebSocket and rate limit config types with range validation
+- ✅ Server config with max_connections and port validation (1024-65535)
+- ✅ Auth config with JWT support (HS256/RS256), path traversal protection, desktop mode
+- ✅ Optional authentication (`Option<Arc<JwtValidator>>`)
+- ✅ Comprehensive tests using `googletest`, `serial_test`, RAII `EnvGuard` pattern
+- ✅ Environment variable overrides with clean helper functions
+- ✅ Config example bundled in Tauri app
+- ✅ All clippy warnings resolved, all tests passing
+
+**Quality improvements beyond original plan:**
+- Constants defined once, used consistently (single source of truth)
+- Proper `ConfigError` types instead of `Result<(), String>`
+- Port validation corrected (MIN_PORT = 1024 for unprivileged ports)
+- Removed impossible MAX_PORT check (u16 type enforces it)
+- Refactored repetitive env parsing into reusable helper functions
+- Removed function-level `use` statements (moved to proper imports)
+- Organized tests into separate modules by concern
+- Fixed Tauri resource bundling (avoided `_up_` directory issue)
+
+**Files created:** 3 (websocket_config.rs, rate_limit_config.rs, config.example.toml)
+**Files modified:** 15+ (across pm-config, pm-server, pm-ws)
+**Files deleted:** 2 (old pm-server/config.rs, unused error variants)
+**Tests added:** 30+ comprehensive test cases
 
 ---
 
@@ -718,17 +746,17 @@ Running timer logic: only one active timer per user
 
 ## Session Summary
 
-| Session | Focus | Tokens | Deliverable |
-|---------|-------|--------|-------------|
-| **05** | Config Integration | ~40k | pm-server uses pm-config, auth optional |
-| **10** | Database & Handlers | ~100k | Working backend with WebSocket CRUD |
-| **20** | Blazor Foundation | ~100k | WebSocket client & state management |
-| **30** | Work Item UI | ~100k | Functional work item management |
-| **40** | Tauri Integration | ~80k | Desktop app with embedded server |
-| **50** | Sprints & Comments | ~100k | Sprint planning & commenting |
-| **60** | Time & Dependencies | ~100k | Time tracking & dependency management |
-| **70** | Polish & Docs | ~80k | Production-ready application |
-| **Total** | | **~700k** | Complete desktop application |
+| Session | Focus | Est. Tokens | Actual Tokens | Status | Deliverable |
+|---------|-------|-------------|---------------|--------|-------------|
+| **05** | Config Integration | ~40k | **~108k** | ✅ Complete | pm-server uses pm-config, auth optional, production-grade |
+| **10** | Database & Handlers | ~100k | TBD | 🔜 Next | Working backend with WebSocket CRUD |
+| **20** | Blazor Foundation | ~100k | TBD | Planned | WebSocket client & state management |
+| **30** | Work Item UI | ~100k | TBD | Planned | Functional work item management |
+| **40** | Tauri Integration | ~80k | TBD | Planned | Desktop app with embedded server |
+| **50** | Sprints & Comments | ~100k | TBD | Planned | Sprint planning & commenting |
+| **60** | Time & Dependencies | ~100k | TBD | Planned | Time tracking & dependency management |
+| **70** | Polish & Docs | ~80k | TBD | Planned | Production-ready application |
+| **Total** | | **~700k** | **~108k / ~768k** | In Progress | Complete desktop application |
 
 ---
 

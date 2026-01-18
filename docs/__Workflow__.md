@@ -16,7 +16,7 @@ Looks like we have finished Phase 2, if you agree, can you please update `SESSIO
 
 ### Plan
 ```txt
-Please look at planning how to implement Session 30 to give the developer agent a solid foundation. Recognize, your role is to plan, not to code.
+Please look at planning how to implement Session 05 to give the developer agent a solid foundation. Recognize, your role is to plan, not to code.
 ```
 
 ---
@@ -64,4 +64,11 @@ I'd like you to read `CRITICAL_OPERATING_CONSTRAINTS.md`  And using those guidel
  You won't be writing or editing any code. You'll be presenting code snippets to me, for me to implement, so that I understand what's going on incrementally.
 
  Please break the presentation to me up into digestible slices that won't over-tax my cognitive awareness.
+```
+
+### Other
+```text
+The doc should be a fairly comprehensive impl plan, I want you to teach me by presenting me with bite-sized chunks for      
+  me to write/edit keeping the commentary seperate from the code snippets to make the code snippets easier for me to          
+  follow  
 ```

@@ -25,7 +25,13 @@ dotenvy = { workspace = true }
 humantime = { workspace = true }
 chrono = { workspace = true }
 
+pm-config = { workspace = true }
 pm-core = { workspace = true }
 pm-db = { workspace = true }
 pm-auth = { workspace = true }
 pm-ws = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+googletest = { workspace = true }
+serial_test = { workspace = true }

@@ -5,16 +5,22 @@ use pm_ws::{
     AppState, ConnectionConfig, ConnectionLimits, ConnectionRegistry, Metrics, ShutdownCoordinator,
 };
 
+use std::sync::Arc;
+
 use axum::{Router, routing::get};
 use axum_test::TestServer;
 
 /// Default JWT secret for all tests (HS256 requires at least 32 bytes)
 pub const TEST_JWT_SECRET: &[u8] = b"test-secret-key-for-integration-tests-min-32-bytes-long";
 
+/// Default desktop user ID for tests
+pub const TEST_DESKTOP_USER_ID: &str = "test-user";
+
 /// Configuration for test server instances
 #[derive(Debug, Clone)]
 pub struct TestServerConfig {
-    pub jwt_secret: Vec<u8>,
+    pub jwt_secret: Option<Vec<u8>>,
+    pub desktop_user_id: String,
     pub max_connections_total: usize,
     pub rate_limit_max_requests: u32,
     pub rate_limit_window_secs: u64,
@@ -23,7 +29,8 @@ pub struct TestServerConfig {
 impl Default for TestServerConfig {
     fn default() -> Self {
         Self {
-            jwt_secret: TEST_JWT_SECRET.to_vec(),
+            jwt_secret: Some(TEST_JWT_SECRET.to_vec()),
+            desktop_user_id: TEST_DESKTOP_USER_ID.to_string(),
             max_connections_total: 100,
             rate_limit_max_requests: 100,
             rate_limit_window_secs: 60,
@@ -32,6 +39,24 @@ impl Default for TestServerConfig {
 }
 
 impl TestServerConfig {
+    /// Create config for desktop mode (no JWT authentication)
+    pub fn with_desktop_mode() -> Self {
+        Self {
+            jwt_secret: None,
+            desktop_user_id: "local-user".to_string(),
+            ..Default::default()
+        }
+    }
+
+    /// Create config with custom desktop user ID
+    pub fn with_desktop_user_id(user_id: impl Into<String>) -> Self {
+        Self {
+            jwt_secret: None,
+            desktop_user_id: user_id.into(),
+            ..Default::default()
+        }
+    }
+
     /// Create config with strict connection limits (for limit tests)
     pub fn with_strict_limits() -> Self {
         Self {
@@ -74,8 +99,10 @@ pub fn create_test_server_with_config(config: TestServerConfig) -> TestServerWit
 
 /// Build the Axum Router with AppState
 fn create_app(config: TestServerConfig) -> (Router, AppState) {
-    // Create JWT validator (HS256)
-    let jwt_validator = JwtValidator::with_hs256(&config.jwt_secret);
+    // Create JWT validator (optional based on config)
+    let jwt_validator: Option<Arc<JwtValidator>> = config
+        .jwt_secret
+        .map(|secret| Arc::new(JwtValidator::with_hs256(&secret)));
 
     // Create rate limiter factory
     let rate_limit_config = RateLimitConfig {
@@ -101,7 +128,8 @@ fn create_app(config: TestServerConfig) -> (Router, AppState) {
 
     // Build AppState
     let app_state = AppState {
-        jwt_validator: std::sync::Arc::new(jwt_validator),
+        jwt_validator,
+        desktop_user_id: config.desktop_user_id,
         rate_limiter_factory,
         registry,
         metrics,

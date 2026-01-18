@@ -4,9 +4,15 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+dirs = { workspace = true }
 error-location = { workspace = true }
+log = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
-log = { workspace = true }
 toml = { workspace = true }
-dirs = { workspace = true }
+uuid = { workspace = true }
+
+[dev-dependencies]
+googletest = { workspace = true }
+serial_test = { workspace = true }
+tempfile = { workspace = true }

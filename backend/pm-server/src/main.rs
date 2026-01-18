@@ -1,12 +1,9 @@
-mod config;
 mod error;
 mod health;
 mod logger;
 mod routes;
 
-use crate::config::Config;
-
-use pm_auth::{JwtValidator, RateLimitConfig, RateLimiterFactory};
+use pm_auth::{JwtValidator, RateLimiterFactory};
 use pm_ws::{
     AppState, ConnectionConfig, ConnectionLimits, ConnectionRegistry, Metrics, ShutdownCoordinator,
 };
@@ -14,40 +11,58 @@ use pm_ws::{
 use std::error::Error;
 use std::sync::Arc;
 
-use log::{error, info};
+use log::{error, info, warn};
 use tokio::net::TcpListener;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    // Load configuration from environment
-    let config = Config::from_env()?;
+    // Load and validate configuration
+    let config = pm_config::Config::load()?;
+    config.validate()?;
 
-    // Initialize logger
-    logger::initialize(&config.log_level, config.log_colored)?;
+    // Initialize logger (before any other logging)
+    logger::initialize(config.logging.level, config.logging.colored)?;
 
     info!("Starting pm-server v{}", env!("CARGO_PKG_VERSION"));
-    info!("Configuration loaded: bind_addr={}", config.bind_addr);
+    config.log_summary();
 
-    // Create JWT validator (HS256 or RS256 based on config)
-    let jwt_validator = if let Some(secret) = &config.jwt_secret {
-        info!("Using HS256 JWT validation");
-        Arc::new(JwtValidator::with_hs256(secret.as_bytes()))
-    } else if let Some(public_key) = &config.jwt_public_key {
-        info!("Using RS256 JWT validation");
-        Arc::new(JwtValidator::with_rs256(public_key)?)
+    // Create JWT validator (optional based on auth.enabled)
+    let jwt_validator: Option<Arc<JwtValidator>> = if config.auth.enabled {
+        let validator = if let Some(ref secret) = config.auth.jwt_secret {
+            info!("JWT: HS256 authentication enabled");
+            JwtValidator::with_hs256(secret.as_bytes())
+        } else if let Some(ref key_path) = config.auth.jwt_public_key_path {
+            let config_dir = pm_config::Config::config_dir()?;
+            let full_path = config_dir.join(key_path);
+            let public_key = std::fs::read_to_string(&full_path).map_err(|e| {
+                error::ServerError::JwtKeyFile {
+                    path: full_path.display().to_string(),
+                    source: e,
+                }
+            })?;
+            info!("JWT: RS256 authentication enabled");
+            JwtValidator::with_rs256(&public_key)?
+        } else {
+            unreachable!("validate() ensures JWT config when auth.enabled")
+        };
+        Some(Arc::new(validator))
     } else {
-        unreachable!("Config validation ensures at least one JWT method is present");
+        warn!("Authentication DISABLED - running in desktop/development mode");
+        None
     };
 
-    // Create rate limiter factory
-    let rate_limiter_factory = RateLimiterFactory::new(RateLimitConfig {
-        max_requests: config.rate_limit_requests,
-        window_secs: config.rate_limit_window_secs,
+    // Get desktop user ID for anonymous mode
+    let desktop_user_id = config.auth.get_desktop_user_id();
+
+    // Convert config types for pm-auth
+    let rate_limiter_factory = RateLimiterFactory::new(pm_auth::RateLimitConfig {
+        max_requests: config.rate_limit.max_requests,
+        window_secs: config.rate_limit.window_secs,
     });
 
     // Create connection registry with limits
     let registry = ConnectionRegistry::new(ConnectionLimits {
-        max_total: config.max_total_connections,
+        max_total: config.server.max_connections,
     });
 
     // Create metrics collector
@@ -56,16 +71,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Create shutdown coordinator
     let shutdown = ShutdownCoordinator::new();
 
-    // Create connection config
+    // Create connection config for pm-ws
     let connection_config = ConnectionConfig {
-        send_buffer_size: config.ws_send_buffer_size,
-        heartbeat_interval_secs: config.heartbeat_interval_secs,
-        heartbeat_timeout_secs: config.heartbeat_timeout_secs,
+        send_buffer_size: config.websocket.send_buffer_size,
+        heartbeat_interval_secs: config.websocket.heartbeat_interval_secs,
+        heartbeat_timeout_secs: config.websocket.heartbeat_timeout_secs,
     };
 
     // Build application state
     let app_state = AppState {
         jwt_validator,
+        desktop_user_id,
         rate_limiter_factory,
         registry,
         metrics,
@@ -77,8 +93,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let app = routes::build_router(app_state);
 
     // Create TCP listener
-    let listener = TcpListener::bind(&config.bind_addr).await?;
-    info!("Server listening on {}", config.bind_addr);
+    let bind_addr = config.bind_addr();
+    let listener = TcpListener::bind(&bind_addr).await?;
+    info!("Server listening on {}", bind_addr);
 
     // Spawn signal handler for graceful shutdown
     let shutdown_for_signal = shutdown.clone();
