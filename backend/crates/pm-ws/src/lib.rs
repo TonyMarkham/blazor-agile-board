@@ -46,7 +46,10 @@ pub use handlers::{
         build_error_response, build_work_item_created_response, build_work_item_deleted_response,
         build_work_item_updated_response, build_work_items_list_response,
     },
-    work_item::{handle_create, handle_delete, handle_update},
+    work_item::{
+        handle_create, handle_delete, handle_update, sanitize_string, validate_priority,
+        validate_status,
+    },
 };
 pub use message_validator::MessageValidator;
 pub use metrics::Metrics;

@@ -12,7 +12,7 @@ use tokio::time::{Duration, sleep};
 async fn given_server_at_total_limit_when_new_connection_then_rejected_503() {
     // Given - Server with total limit of 5 connections
     let config = TestServerConfig::with_strict_limits();
-    let test_server = create_test_server_with_config(config);
+    let test_server = create_test_server_with_config(config).await;
 
     // Create 5 connections (at total limit)
     let _client1 = WsTestClient::connect(&test_server.server, "user-1", TEST_JWT_SECRET).await;
@@ -39,7 +39,7 @@ async fn given_server_at_total_limit_when_new_connection_then_rejected_503() {
 async fn given_server_at_limit_when_one_disconnects_then_new_can_connect() {
     // Given - Server at limit
     let config = TestServerConfig::with_strict_limits();
-    let test_server = create_test_server_with_config(config);
+    let test_server = create_test_server_with_config(config).await;
 
     let client1 = WsTestClient::connect(&test_server.server, "user-1", TEST_JWT_SECRET).await;
     let _client2 = WsTestClient::connect(&test_server.server, "user-2", TEST_JWT_SECRET).await;

@@ -1,46 +1,84 @@
-use axum::{
-    Json,
-    http::StatusCode,
-    response::{IntoResponse, Response},
-};
+use pm_ws::AppState;
 
-use serde_json::json;
+use axum::{Json, extract::State, http::StatusCode};
+use serde::Serialize;
 
-/// GET /health - Comprehensive health check with component status                                                                                                               
-pub async fn health_check() -> Response {
-    // TODO: Add actual component checks in future sessions:
-    // - Database connection pool status
-    // - WebSocket connection count
-    // - Broadcast channel status
-    // - Memory usage
+#[derive(Serialize)]
+pub struct HealthResponse {
+    pub status: &'static str,
+    pub version: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub database: Option<DatabaseHealth>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub circuit_breaker: Option<CircuitBreakerHealth>,
+}
 
-    let health = json!({
-        "status": "healthy",
-        "version": env!("CARGO_PKG_VERSION"),
-        "components": {
-            "websocket": "operational",
-            "auth": "operational",
-            "database": "not_implemented",  // TODO: Session 30+
+#[derive(Serialize)]
+pub struct DatabaseHealth {
+    pub status: &'static str,
+    pub latency_ms: u64,
+}
+
+#[derive(Serialize)]
+pub struct CircuitBreakerHealth {
+    pub state: String,
+}
+
+/// Liveness probe - is the process running?
+/// Used by Kubernetes/container orchestrators
+pub async fn liveness() -> StatusCode {
+    StatusCode::OK
+}
+
+/// Readiness probe - can we serve requests?
+/// Checks database connectivity and circuit breaker state
+pub async fn readiness(State(state): State<AppState>) -> (StatusCode, Json<HealthResponse>) {
+    let start = std::time::Instant::now();
+
+    // Check database connection
+    let db_result = sqlx::query("SELECT 1").execute(&state.pool).await;
+
+    let db_health = match db_result {
+        Ok(_) => DatabaseHealth {
+            status: "healthy",
+            latency_ms: start.elapsed().as_millis() as u64,
         },
-        "timestamp": chrono::Utc::now().to_rfc3339(),
-    });
+        Err(_) => DatabaseHealth {
+            status: "unhealthy",
+            latency_ms: start.elapsed().as_millis() as u64,
+        },
+    };
 
-    (StatusCode::OK, Json(health)).into_response()
+    // Check circuit breaker state
+    let cb_state = format!("{:?}", state.circuit_breaker.state());
+
+    let overall_status = if db_health.status == "healthy" {
+        StatusCode::OK
+    } else {
+        StatusCode::SERVICE_UNAVAILABLE
+    };
+
+    let response = HealthResponse {
+        status: if overall_status == StatusCode::OK {
+            "healthy"
+        } else {
+            "unhealthy"
+        },
+        version: env!("CARGO_PKG_VERSION"),
+        database: Some(db_health),
+        circuit_breaker: Some(CircuitBreakerHealth { state: cb_state }),
+    };
+
+    (overall_status, Json(response))
 }
 
-/// GET /live - Kubernetes liveness probe (is the process alive?)                                                                                                                
-pub async fn liveness_check() -> Response {
-    // Simple check: if we can respond, we're alive
-    (StatusCode::OK, "OK").into_response()
-}
-
-/// GET /ready - Kubernetes readiness probe (ready to accept traffic?)                                                                                                           
-pub async fn readiness_check() -> Response {
-    // TODO: Add actual readiness checks:
-    // - Can we accept WebSocket connections?
-    // - Is database pool ready?
-    // - Are broadcast channels initialized?
-
-    // For now, if server is running, it's ready
-    (StatusCode::OK, "Ready").into_response()
+/// Simple health check for load balancers
+/// Returns immediately without checking dependencies
+pub async fn health() -> Json<HealthResponse> {
+    Json(HealthResponse {
+        status: "ok",
+        version: env!("CARGO_PKG_VERSION"),
+        database: None,
+        circuit_breaker: None,
+    })
 }

@@ -2,13 +2,15 @@
 
 use pm_auth::{JwtValidator, RateLimitConfig, RateLimiterFactory};
 use pm_ws::{
-    AppState, ConnectionConfig, ConnectionLimits, ConnectionRegistry, Metrics, ShutdownCoordinator,
+    AppState, CircuitBreaker, CircuitBreakerConfig, ConnectionConfig, ConnectionLimits,
+    ConnectionRegistry, Metrics, ShutdownCoordinator,
 };
 
 use std::sync::Arc;
 
 use axum::{Router, routing::get};
 use axum_test::TestServer;
+use sqlx::sqlite::SqlitePoolOptions;
 
 /// Default JWT secret for all tests (HS256 requires at least 32 bytes)
 pub const TEST_JWT_SECRET: &[u8] = b"test-secret-key-for-integration-tests-min-32-bytes-long";
@@ -82,13 +84,13 @@ pub struct TestServerWithState {
 }
 
 /// Create a TestServer with default configuration
-pub fn create_test_server() -> TestServerWithState {
-    create_test_server_with_config(TestServerConfig::default())
+pub async fn create_test_server() -> TestServerWithState {
+    create_test_server_with_config(TestServerConfig::default()).await
 }
 
 /// Create a TestServer with custom configuration
-pub fn create_test_server_with_config(config: TestServerConfig) -> TestServerWithState {
-    let (app, app_state) = create_app(config);
+pub async fn create_test_server_with_config(config: TestServerConfig) -> TestServerWithState {
+    let (app, app_state) = create_app(config).await;
     let server = TestServer::builder()
         .http_transport()
         .build(app)
@@ -98,7 +100,17 @@ pub fn create_test_server_with_config(config: TestServerConfig) -> TestServerWit
 }
 
 /// Build the Axum Router with AppState
-fn create_app(config: TestServerConfig) -> (Router, AppState) {
+async fn create_app(config: TestServerConfig) -> (Router, AppState) {
+    // Create in-memory SQLite database for tests
+    let pool = SqlitePoolOptions::new()
+        .max_connections(5)
+        .connect(":memory:")
+        .await
+        .expect("Failed to create test database pool");
+
+    // Create circuit breaker with default config
+    let circuit_breaker = Arc::new(CircuitBreaker::new(CircuitBreakerConfig::default()));
+
     // Create JWT validator (optional based on config)
     let jwt_validator: Option<Arc<JwtValidator>> = config
         .jwt_secret
@@ -128,6 +140,8 @@ fn create_app(config: TestServerConfig) -> (Router, AppState) {
 
     // Build AppState
     let app_state = AppState {
+        pool,
+        circuit_breaker,
         jwt_validator,
         desktop_user_id: config.desktop_user_id,
         rate_limiter_factory,

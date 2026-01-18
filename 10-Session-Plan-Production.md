@@ -23,7 +23,7 @@ This plan has been split into sub-sessions to fit within token budgets:
 | **[10.05](10.05-Session-Plan.md)** | Configuration Extensions (pm-config) | ~35-45k | ✅ Complete |
 | **[10.1](10.1-Session-Plan.md)** | Foundation Infrastructure | ~50-60k | ✅ Complete |
 | **[10.2](10.2-Session-Plan.md)** | Handler Infrastructure & Business Logic | ~65-75k | ✅ Complete |
-| **[10.3](10.3-Session-Plan.md)** | Server Integration & Testing | ~70-85k | Pending |
+| **[10.3](10.3-Session-Plan.md)** | Server Integration & Testing | ~70-85k | ✅ Complete |
 
 ---
 
@@ -92,7 +92,7 @@ This plan has been split into sub-sessions to fit within token budgets:
 - `pm-server/src/health.rs` - Database probe + circuit breaker status
 - `pm-server/src/error.rs` - Database error variants
 
-**Verification:** `cargo check --workspace && cargo test --workspace`
+**Verification:** ✅ Complete - All 166 tests passing, clippy clean
 
 ---
 
@@ -108,7 +108,7 @@ Before starting **any** sub-session:
 
 ## Files Summary
 
-### Create (14 files)
+### Create (15 files)
 
 | File | Purpose |
 |------|---------|
@@ -126,8 +126,9 @@ Before starting **any** sub-session:
 | `pm-ws/src/handlers/work_item.rs` | CRUD handlers |
 | `pm-ws/src/handlers/query.rs` | Read handlers |
 | `pm-ws/tests/property_tests.rs` | Property-based tests |
+| `pm-ws/tests/dispatcher_integration.rs` | Integration tests |
 
-### Modify (13 files)
+### Modify (18 files)
 
 | File | Change |
 |------|--------|
@@ -144,6 +145,11 @@ Before starting **any** sub-session:
 | `pm-server/src/main.rs` | Initialize circuit breaker + DB |
 | `pm-server/src/health.rs` | Add database probe |
 | `pm-server/src/error.rs` | Add database error variants |
+| `pm-server/src/routes.rs` | Update health endpoint names |
+| `pm-ws/tests/common/test_server.rs` | Add pool + circuit_breaker to fixtures |
+| `pm-ws/tests/connection_tests.rs` | Add .await to test helpers |
+| `pm-ws/tests/jwt_auth_tests.rs` | Add .await to test helpers |
+| `pm-ws/tests/connection_limits_tests.rs` | Add .await to test helpers |
 
 ---
 

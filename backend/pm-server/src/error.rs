@@ -14,6 +14,23 @@ pub enum ServerError {
 
     #[error("Environment variable error: {message}")]
     EnvVar { message: String },
+
+    #[error("Database connection failed: {0}")]
+    DatabaseConnection(String),
+
+    #[allow(dead_code)]
+    #[error("Database pool exhausted")]
+    PoolExhausted,
+
+    #[allow(dead_code)]
+    #[error("JWT validation error: {0}")]
+    JwtValidation(String),
+}
+
+impl From<sqlx::Error> for ServerError {
+    fn from(err: sqlx::Error) -> Self {
+        Self::DatabaseConnection(err.to_string())
+    }
 }
 
 pub type Result<T> = std::result::Result<T, ServerError>;

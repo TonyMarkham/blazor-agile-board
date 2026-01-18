@@ -1,5 +1,6 @@
 use crate::{
     ConnectionConfig, ConnectionRegistry, Metrics, ShutdownCoordinator, WebSocketConnection,
+    circuit_breaker::CircuitBreaker,
 };
 
 use pm_auth::{JwtValidator, RateLimiterFactory};
@@ -15,10 +16,13 @@ use axum::{
     response::Response,
 };
 use log::{debug, error, info, warn};
+use sqlx::SqlitePool;
 
 /// Shared application state for WebSocket handlers
 #[derive(Clone)]
 pub struct AppState {
+    pub pool: SqlitePool,                     // NEW
+    pub circuit_breaker: Arc<CircuitBreaker>, // NEW
     pub jwt_validator: Option<Arc<JwtValidator>>,
     pub desktop_user_id: String,
     pub rate_limiter_factory: RateLimiterFactory,
@@ -53,8 +57,13 @@ pub async fn handler(
     // Create rate limiter for this connection
     let rate_limiter = state.rate_limiter_factory.create();
 
+    // Parse user_id to Uuid for handlers
+    let user_uuid = uuid::Uuid::parse_str(&user_id).unwrap_or_else(|_| uuid::Uuid::new_v4());
+
     // Upgrade to WebSocket
-    Ok(ws.on_upgrade(move |socket| handle_socket(socket, connection_id, state, rate_limiter)))
+    Ok(ws.on_upgrade(move |socket| {
+        handle_socket(socket, connection_id, state, rate_limiter, user_uuid)
+    }))
 }
 
 /// Handle WebSocket connection after upgrade
@@ -63,6 +72,7 @@ async fn handle_socket(
     connection_id: crate::ConnectionId,
     state: AppState,
     rate_limiter: pm_auth::ConnectionRateLimiter,
+    user_id: uuid::Uuid,
 ) {
     let shutdown_guard = state.shutdown.subscribe_guard();
 
@@ -71,6 +81,9 @@ async fn handle_socket(
         state.config,
         state.metrics.clone(),
         rate_limiter,
+        state.pool.clone(),            // NEW
+        state.circuit_breaker.clone(), // NEW
+        user_id,                       // NEW
     );
 
     // Handle connection lifecycle

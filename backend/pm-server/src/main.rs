@@ -5,13 +5,15 @@ mod routes;
 
 use pm_auth::{JwtValidator, RateLimiterFactory};
 use pm_ws::{
-    AppState, ConnectionConfig, ConnectionLimits, ConnectionRegistry, Metrics, ShutdownCoordinator,
+    AppState, CircuitBreaker, CircuitBreakerConfig, ConnectionConfig, ConnectionLimits,
+    ConnectionRegistry, Metrics, ShutdownCoordinator,
 };
 
 use std::error::Error;
 use std::sync::Arc;
 
 use log::{error, info, warn};
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use tokio::net::TcpListener;
 
 #[tokio::main]
@@ -25,6 +27,35 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     info!("Starting pm-server v{}", env!("CARGO_PKG_VERSION"));
     config.log_summary();
+
+    // Initialize database pool
+    let database_path = &config.database.path;
+    info!("Connecting to database: {}", database_path);
+
+    let pool = SqlitePoolOptions::new()
+        .max_connections(10)
+        .connect_with(
+            SqliteConnectOptions::new()
+                .filename(database_path)
+                .create_if_missing(true)
+                .journal_mode(sqlx::sqlite::SqliteJournalMode::Wal)
+                .synchronous(sqlx::sqlite::SqliteSynchronous::Normal)
+                .busy_timeout(std::time::Duration::from_secs(5)),
+        )
+        .await?;
+
+    info!("Database connection established");
+
+    // Run migrations
+    info!("Running database migrations...");
+    sqlx::migrate!("../crates/pm-db/migrations")
+        .run(&pool)
+        .await?;
+    info!("Migrations complete");
+
+    // Create circuit breaker
+    let circuit_breaker = Arc::new(CircuitBreaker::new(CircuitBreakerConfig::default()));
+    info!("Circuit breaker initialized");
 
     // Create JWT validator (optional based on auth.enabled)
     let jwt_validator: Option<Arc<JwtValidator>> = if config.auth.enabled {
@@ -80,6 +111,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // Build application state
     let app_state = AppState {
+        pool,
+        circuit_breaker,
         jwt_validator,
         desktop_user_id,
         rate_limiter_factory,

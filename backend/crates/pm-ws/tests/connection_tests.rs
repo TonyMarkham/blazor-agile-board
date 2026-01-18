@@ -6,7 +6,7 @@ use common::test_server::{TEST_JWT_SECRET, create_test_server};
 #[tokio::test]
 async fn given_valid_jwt_when_connecting_then_succeeds() {
     // Given
-    let server = create_test_server();
+    let server = create_test_server().await;
 
     // When - Connect with valid JWT
     let client = WsTestClient::connect(&server.server, "user-1", TEST_JWT_SECRET).await;
@@ -20,7 +20,7 @@ async fn given_valid_jwt_when_connecting_then_succeeds() {
 #[tokio::test]
 async fn given_connected_client_when_closed_then_server_cleans_up() {
     // Given - Server with connection registry tracking
-    let server = create_test_server();
+    let server = create_test_server().await;
 
     // When - Client connects and then disconnects
     {

@@ -1,17 +1,22 @@
 use crate::{
-    ClientSubscriptions, ConnectionConfig, ConnectionId, Metrics, Result as WsErrorResult,
-    ShutdownGuard, WsError,
+    CircuitBreaker, ClientSubscriptions, ConnectionConfig, ConnectionId, HandlerContext, Metrics,
+    Result as WsErrorResult, ShutdownGuard, WsError, dispatch,
 };
 
 use pm_auth::ConnectionRateLimiter;
+use pm_proto::WebSocketMessage;
+use prost::Message as ProstMessage;
+use sqlx::SqlitePool;
 
 use std::panic::Location;
+use std::sync::Arc;
 
 use axum::extract::ws::{Message, WebSocket};
 use error_location::ErrorLocation;
 use futures::{SinkExt, StreamExt};
 use log::{debug, error, info, warn};
 use tokio::sync::mpsc;
+use uuid::Uuid;
 
 pub const MAX_VIOLATIONS: u32 = 5;
 
@@ -21,6 +26,9 @@ pub struct WebSocketConnection {
     config: ConnectionConfig,
     metrics: Metrics,
     rate_limiter: ConnectionRateLimiter,
+    pool: SqlitePool,
+    circuit_breaker: Arc<CircuitBreaker>,
+    user_id: Uuid,
     #[allow(dead_code)]
     subscriptions: ClientSubscriptions,
     rate_limit_violations: u32,
@@ -32,12 +40,18 @@ impl WebSocketConnection {
         config: ConnectionConfig,
         metrics: Metrics,
         rate_limiter: ConnectionRateLimiter,
+        pool: SqlitePool,
+        circuit_breaker: Arc<CircuitBreaker>,
+        user_id: Uuid,
     ) -> Self {
         Self {
             connection_id,
             config,
             metrics,
             rate_limiter,
+            pool,
+            circuit_breaker,
+            user_id,
             subscriptions: ClientSubscriptions::new(),
             rate_limit_violations: 0,
         }
@@ -207,21 +221,43 @@ impl WebSocketConnection {
     async fn handle_binary_message(
         &mut self,
         data: bytes::Bytes,
-        _tx: &mpsc::Sender<Message>,
+        tx: &mpsc::Sender<Message>,
     ) -> WsErrorResult<()> {
-        // Decode protobuf message
-        // TODO: Once protobuf client messages are defined, decode here
-        // For now, just log
         debug!(
             "Received binary message ({} bytes) from connection {}",
             data.len(),
             self.connection_id
         );
 
-        self.metrics.message_received("unknown");
+        // Decode protobuf message
+        let msg = WebSocketMessage::decode(&data[..]).map_err(|e| WsError::Internal {
+            message: format!("Failed to decode protobuf message: {}", e),
+            location: ErrorLocation::from(Location::caller()),
+        })?;
 
-        // Example: Subscribe/Unsubscribe handling
-        // This will be expanded when protobuf definitions are complete
+        self.metrics.message_received("binary");
+
+        // Create handler context
+        let ctx = HandlerContext::new(
+            msg.message_id.clone(),
+            self.user_id,
+            self.pool.clone(),
+            self.circuit_breaker.clone(),
+            self.connection_id.to_string(),
+        );
+
+        // Dispatch to appropriate handler
+        let response = dispatch(msg, ctx).await;
+
+        // Encode response
+        let response_bytes = response.encode_to_vec();
+
+        // Send response back to client
+        tx.send(Message::Binary(response_bytes.into()))
+            .await
+            .map_err(|_| WsError::SendBufferFull {
+                location: ErrorLocation::from(Location::caller()),
+            })?;
 
         Ok(())
     }

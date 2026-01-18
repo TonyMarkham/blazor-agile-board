@@ -9,21 +9,22 @@ path = "src/main.rs"
 
 [dependencies]
 axum = { workspace = true }
-tower = { workspace = true }
-tower-http = { workspace = true }
-http = { workspace = true }
-tokio = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
-log = { workspace = true }
+chrono = { workspace = true }
+dotenvy = { workspace = true }
 fern = { workspace = true }
-tracing-log = { workspace = true }
+http = { workspace = true }
+humantime = { workspace = true }
+log = { workspace = true }
 metrics = { workspace = true }
 metrics-exporter-prometheus = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sqlx = { workspace = true }
 thiserror = { workspace = true }
-dotenvy = { workspace = true }
-humantime = { workspace = true }
-chrono = { workspace = true }
+tokio = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+tracing-log = { workspace = true }
 
 pm-config = { workspace = true }
 pm-core = { workspace = true }
