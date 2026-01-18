@@ -21,7 +21,7 @@ This plan has been split into sub-sessions to fit within token budgets:
 | Session | Scope | Est. Tokens | Status |
 |---------|-------|-------------|--------|
 | **[10.05](10.05-Session-Plan.md)** | Configuration Extensions (pm-config) | ~35-45k | ✅ Complete |
-| **[10.1](10.1-Session-Plan.md)** | Foundation Infrastructure | ~50-60k | Pending |
+| **[10.1](10.1-Session-Plan.md)** | Foundation Infrastructure | ~50-60k | ✅ Complete |
 | **[10.2](10.2-Session-Plan.md)** | Handler Infrastructure & Business Logic | ~65-75k | Pending |
 | **[10.3](10.3-Session-Plan.md)** | Server Integration & Testing | ~70-85k | Pending |
 
@@ -48,7 +48,7 @@ This plan has been split into sub-sessions to fit within token budgets:
 
 **Files Created:**
 - `pm-ws/src/request_context.rs` - Correlation ID tracking
-- `pm-ws/src/tracing.rs` - Structured logging with macros
+- `pm-ws/src/request_logging.rs` - Structured logging with macros
 - `pm-ws/src/circuit_breaker.rs` - Database resilience pattern
 - `pm-ws/src/retry.rs` - Exponential backoff with jitter
 
@@ -57,7 +57,7 @@ This plan has been split into sub-sessions to fit within token budgets:
 - `pm-ws/src/lib.rs` - Export new modules
 - `pm-ws/src/error.rs` - Add `Database`, `ServiceUnavailable`, `Timeout` variants
 
-**Verification:** `cargo check -p pm-ws`
+**Verification:** ✅ Complete - All tests passing
 
 ---
 
@@ -117,7 +117,7 @@ Before starting **any** sub-session:
 | `pm-config/src/handler_config.rs` | Handler timeout settings |
 | `pm-config/src/validation_config.rs` | Field length limits |
 | `pm-ws/src/request_context.rs` | Correlation ID tracking |
-| `pm-ws/src/tracing.rs` | Structured logging |
+| `pm-ws/src/request_logging.rs` | Structured logging |
 | `pm-ws/src/circuit_breaker.rs` | Database resilience |
 | `pm-ws/src/retry.rs` | Exponential backoff |
 | `pm-ws/src/handlers/error_boundary.rs` | Panic recovery |

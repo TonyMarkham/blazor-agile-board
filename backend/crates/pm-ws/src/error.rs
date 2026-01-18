@@ -1,3 +1,5 @@
+use crate::circuit_breaker::CircuitBreakerError;
+
 use std::panic::Location;
 
 use error_location::ErrorLocation;
@@ -89,6 +91,27 @@ pub enum WsError {
         message: String,
         location: ErrorLocation,
     },
+
+    // Database error with details
+    #[error("Database error: {message}")]
+    Database {
+        message: String,
+        location: ErrorLocation,
+    },
+
+    // Service unavailable (circuit breaker open)
+    #[error("Service temporarily unavailable. Retry after {retry_after_secs} seconds")]
+    ServiceUnavailable {
+        retry_after_secs: u64,
+        location: ErrorLocation,
+    },
+
+    // Request timeout
+    #[error("Request timed out after {timeout_secs} seconds")]
+    Timeout {
+        timeout_secs: u64,
+        location: ErrorLocation,
+    },
 }
 
 impl WsError {
@@ -120,7 +143,18 @@ impl WsError {
             Self::ConflictError { .. } => "CONFLICT",
             Self::DeleteBlocked { .. } => "DELETE_BLOCKED",
             Self::Unauthorized { .. } => "UNAUTHORIZED",
+            Self::Database { .. } => "DATABASE_ERROR",
+            Self::ServiceUnavailable { .. } => "SERVICE_UNAVAILABLE",
+            Self::Timeout { .. } => "TIMEOUT",
         }
+    }
+
+    /// Check if this error is retryable
+    pub fn is_retryable(&self) -> bool {
+        matches!(
+            self,
+            Self::Database { .. } | Self::ServiceUnavailable { .. } | Self::Timeout { .. }
+        )
     }
 }
 
@@ -140,6 +174,38 @@ impl From<prost::EncodeError> for WsError {
         Self::ProtoEncode {
             source,
             location: ErrorLocation::from(Location::caller()),
+        }
+    }
+}
+
+impl From<pm_db::DbError> for WsError {
+    #[track_caller]
+    fn from(err: pm_db::DbError) -> Self {
+        Self::Database {
+            message: err.to_string(),
+            location: ErrorLocation::from(Location::caller()),
+        }
+    }
+}
+
+impl From<sqlx::Error> for WsError {
+    #[track_caller]
+    fn from(err: sqlx::Error) -> Self {
+        Self::Database {
+            message: err.to_string(),
+            location: ErrorLocation::from(Location::caller()),
+        }
+    }
+}
+
+impl From<CircuitBreakerError> for WsError {
+    #[track_caller]
+    fn from(err: CircuitBreakerError) -> Self {
+        match err {
+            CircuitBreakerError::CircuitOpen { retry_after_secs } => Self::ServiceUnavailable {
+                retry_after_secs,
+                location: ErrorLocation::from(Location::caller()),
+            },
         }
     }
 }

@@ -138,7 +138,7 @@ fn create_app(config: TestServerConfig) -> (Router, AppState) {
     };
 
     let router = Router::new()
-        .route("/ws", get(pm_ws::app_state::handler))
+        .route("/ws", get(pm_ws::handler))
         .with_state(app_state.clone());
 
     (router, app_state)
