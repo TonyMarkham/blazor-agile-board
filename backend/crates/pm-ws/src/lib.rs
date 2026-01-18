@@ -28,18 +28,25 @@ pub use connection_info::ConnectionInfo;
 pub use connection_limits::ConnectionLimits;
 pub use connection_registry::ConnectionRegistry;
 pub use error::{Result, WsError};
-pub use handlers::authorization::check_permission;
-pub use handlers::change_tracker::track_changes;
-pub use handlers::context::HandlerContext;
-pub use handlers::error_codes::{
-    CONFLICT, DELETE_BLOCKED, INTERNAL_ERROR, INVALID_MESSAGE, NOT_FOUND, RATE_LIMITED,
-    UNAUTHORIZED, VALIDATION_ERROR,
-};
-pub use handlers::hierarchy_validator::validate_hierarchy;
-pub use handlers::idempotency::{check_idempotency, store_idempotency};
-pub use handlers::response_builder::{
-    build_work_item_created_response, build_work_item_deleted_response,
-    build_work_item_updated_response, build_work_items_list_response,
+pub use handlers::{
+    authorization::check_permission,
+    change_tracker::track_changes,
+    context::HandlerContext,
+    db_ops::{db_read, db_transaction, db_write},
+    dispatcher::dispatch,
+    error_boundary::{sanitize_error_message, with_error_boundary},
+    error_codes::{
+        CONFLICT, DELETE_BLOCKED, INTERNAL_ERROR, INVALID_MESSAGE, NOT_FOUND, RATE_LIMITED,
+        UNAUTHORIZED, VALIDATION_ERROR,
+    },
+    hierarchy_validator::validate_hierarchy,
+    idempotency::{check_idempotency, store_idempotency},
+    query::handle_get_work_items,
+    response_builder::{
+        build_error_response, build_work_item_created_response, build_work_item_deleted_response,
+        build_work_item_updated_response, build_work_items_list_response,
+    },
+    work_item::{handle_create, handle_delete, handle_update},
 };
 pub use message_validator::MessageValidator;
 pub use metrics::Metrics;

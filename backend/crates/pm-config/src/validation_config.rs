@@ -56,9 +56,7 @@ impl ValidationConfig {
             )));
         }
 
-        if self.max_description_length < MIN_DESCRIPTION_LENGTH
-            || self.max_description_length > MAX_DESCRIPTION_LENGTH
-        {
+        if self.max_description_length > MAX_DESCRIPTION_LENGTH {
             return Err(ConfigError::config(format!(
                 "validation.max_description_length must be {}-{}, got {}",
                 MIN_DESCRIPTION_LENGTH, MAX_DESCRIPTION_LENGTH, self.max_description_length
