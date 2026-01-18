@@ -13,11 +13,11 @@ Every `pm-server` instance serves exactly one tenant. Multi-tenancy is achieved 
 ```
 Desktop Mode:                    SaaS Mode (per-tenant process):
 
-~/.pm/                           /data/tenants/acme-corp/
+.pm/                             /data/tenants/acme-corp/
 ├── config.toml                  ├── main.db (platform + pm_* tables)
 ├── data.db                      └── .pm/
 └── logs/                            ├── config.toml → db: ../main.db
-                                     └── logs/
+(adjacent to executable)             └── logs/
      ↓                                    ↓
 ┌─────────────┐                  ┌─────────────┐
 │ pm-server   │                  │ pm-server   │
@@ -49,8 +49,8 @@ Desktop Mode:                    SaaS Mode (per-tenant process):
 │  └────┬─────┘  └──────────┘            │
 │       │                                │
 │  ┌────▼─────┐                          │
-│  │  SQLite  │  ~/.pm/data.db           │
-│  └──────────┘                          │
+│  │  SQLite  │  .pm/data.db             │
+│  └──────────┘  (adjacent to exe)       │
 └────────────────────────────────────────┘
 ```
 
@@ -154,7 +154,7 @@ blazor-agile-board/
 
 ## Configuration
 
-Single config file at `~/.pm/config.toml` (or `.pm/config.toml` relative to tenant directory):
+Single config file at `.pm/config.toml` (relative to working directory/executable):
 
 ```toml
 [server]
@@ -177,7 +177,7 @@ dir = "logs"
 
 **Loading order:**
 1. Built-in defaults
-2. Config file (`~/.pm/config.toml`)
+2. Config file (`.pm/config.toml`)
 3. Environment variables (`PM_SERVER_PORT`, etc.)
 4. CLI flags (`--port 8080`)
 
@@ -253,7 +253,7 @@ async fn handle_message(
 ### Desktop Mode
 
 ```
-~/.pm/data.db
+.pm/data.db
 ├── pm_work_items
 ├── pm_sprints
 ├── pm_comments
@@ -312,7 +312,7 @@ cargo run --bin pm-server -- --port 9000 --log-level debug
 
 ```bash
 # Apply migrations to development database
-cargo sqlx migrate run --database-url sqlite:~/.pm/data.db
+cargo sqlx migrate run --database-url sqlite:.pm/data.db
 
 # Generate offline query cache after schema changes
 cargo sqlx prepare --workspace
