@@ -6,7 +6,7 @@
 
 ### Init
 ```txt
-We have now implemented session 30
+We just finished implementing session 05
 ```
 
 ### Followup
@@ -16,7 +16,7 @@ Looks like we have finished Phase 2, if you agree, can you please update `SESSIO
 
 ### Plan
 ```txt
-Please look at planning how to implement Session 05 to give the developer agent a solid foundation. Recognize, your role is to plan, not to code.
+Please look at planning how to implement Session 10 from `docs/implementation-plan-v2.md` to give the developer agent a solid foundation. Recognize, your role is to plan, not to code.
 ```
 
 ---
