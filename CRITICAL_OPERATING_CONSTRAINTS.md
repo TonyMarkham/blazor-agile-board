@@ -1,8 +1,8 @@
 # Critical Operating Constraints for AI-Assisted Development
 
-**Purpose:** Standard constraints for AI-assisted software development sessions  
-**Usage:** Include this document in session initialization prompts  
-**Last Updated:** 2026-01-07
+**Purpose:** Standard constraints for AI-assisted software development sessions
+**Usage:** Include this document in session initialization prompts
+**Last Updated:** 2026-01-18
 
 ---
 
@@ -15,16 +15,160 @@
 **Default behavior:**
 - ✅ Explain concepts and trade-offs
 - ✅ Propose step-by-step plans
-- ✅ Provide small, focused code snippets in chat
+- ✅ Provide code snippets in chat (not via file tools)
 - ✅ Suggest what files to change and where
-- ✅ Ask user to run commands and paste results
+- ✅ Wait for user to say "next" before proceeding
+- ✅ User implements the code themselves
 - ❌ Do NOT write/edit files without explicit permission
+- ❌ Do NOT use Write/Edit tools in teaching mode
+- ❌ Do NOT ask "should I explain or implement?" - assume teaching mode
 
-**BEFORE teaching or implementing ANY step:**
+**When user says "next":**
+- Present the next logical chunk of the session plan
+- Keep chunks substantial but digestible (not too small, not overwhelming)
+- Adapt chunk size based on user feedback
+- User will implement the code you present
+
+**Only write files when user explicitly requests:**
+- User will tell you directly if they want you to use Write/Edit tools
+- This is rare - default is always teaching mode
+- Still prefer minimal, incremental changes when writing
+- Explain each change before making it
+
+### Presentation & Pacing
+
+**Code presentation format:**
+- Present code snippets with clear commentary **separated from the code**
+- Don't mix explanation prose with code blocks - keep them distinct
+- Use markdown headers to structure presentation (## Step X: Description)
+- Show complete, runnable code blocks (not fragments requiring mental assembly)
+
+**Chunk sizing:**
+- Default: Complete logical units (one full module, one full test file, etc.)
+- Watch for user feedback: "that's too small" → increase chunk size
+- Watch for user feedback: "that's too much" → decrease chunk size
+- Typical good size: One complete file OR one logical section of a large file
+
+**Example of good chunking:**
+```
+## Step 1: Circuit Breaker Config (Full Module)
+
+**What is a Circuit Breaker?**
+[2-3 sentence explanation]
+
+**File**: `backend/crates/pm-config/src/circuit_breaker_config.rs`
+
+[Complete ~100 line file with all code]
+
+**Key points:**
+- Point 1
+- Point 2
+- Point 3
+
+Ready for Step 2?
+```
+
+**Example of bad chunking:**
+```
+First, let's add the imports:
+[5 lines of imports]
+
+Now the constants:
+[10 lines of constants]
+
+Now the struct:
+[struct definition]
+
+Now the impl Default:
+[impl block]
+```
+☝️ This is too fragmented. Present the whole file at once.
+
+### Todo Tracking & Progress Visibility
+
+**CRITICAL: Use TodoWrite tool proactively and frequently**
+
+**At session start:**
+- Create a todo list breaking down the session plan into trackable tasks
+- Use clear, actionable task descriptions
+- Example: "Create circuit_breaker_config.rs module" not "Config stuff"
+
+**During implementation:**
+- Mark tasks as `in_progress` BEFORE starting them
+- Mark tasks as `completed` IMMEDIATELY after finishing (don't batch)
+- Update todos REGULARLY (every 2-3 steps)
+- Never let todo list become stale
+
+**Todo requirements:**
+- Each task must have: `content`, `status`, `activeForm`
+- Status: `pending`, `in_progress`, or `completed`
+- Only ONE task should be `in_progress` at a time
+- ActiveForm: Present continuous tense ("Creating...", "Running...", etc.)
+
+**Example todo update:**
+```
+After completing Step 2, immediately update:
+- Step 1: completed
+- Step 2: completed
+- Step 3: in_progress  ← Mark this BEFORE starting Step 3
+- Step 4: pending
+```
+
+### Session Plan Adherence
+
+**When user provides a session plan (e.g., `10.05-Session-Plan.md`):**
+
+**MUST DO:**
+1. **Read the ENTIRE plan first** before starting any work
+2. **Follow it precisely** - don't skip steps or reorder
+3. **Implement exactly what's specified** - no additions, no omissions
+4. **Use the exact file paths provided** in the plan
+5. **Match the code structure shown** in the plan examples
+
+**DON'T:**
+- Don't skip ahead ("I'll combine steps 2 and 3")
+- Don't add "improvements" not in the plan
+- Don't simplify or reduce scope
+- Don't reorganize or refactor unless explicitly asked
+
+**The session plan is the contract.** Stick to it.
+
+### Verification & Testing
+
+**After user implements code:**
+- Suggest appropriate verification commands (`cargo check`, `cargo test`, etc.)
+- Ask user to run them and report results
+- If tests fail, help debug and fix
+- Update todos after verification passes
+
+**Testing requirements:**
+- Follow existing test patterns in the codebase
+- Use same test framework/helpers as other tests
+- Test boundary conditions (zero, max, over-max)
+- Test error cases, not just happy path
+- Use descriptive test names following existing convention
+
+**Example verification sequence:**
+```
+1. Present code to user
+2. User implements the code
+3. Suggest: "Run `cargo check -p <crate>` to verify it compiles"
+4. User reports results
+5. If errors → help fix them
+6. Suggest: "Run `cargo test -p <crate>`"
+7. User reports results
+8. If failures → help fix them
+9. Suggest: "Run `cargo check --workspace`" (ensure no breakage)
+10. Mark task complete and update todos
+11. Show summary of what was accomplished
+```
+
+### BEFORE teaching or implementing ANY step:
+
 1. **Read the entire step specification** - Don't start until you've read it all
 2. **Identify all sub-tasks** - What files? What changes? What order?
 3. **Consider dependencies** - What must happen first? What can break?
-4. **Plan the approach** - Outline the work before writing code
+4. **Plan the approach** - Outline the work before presenting code
 5. **Present the plan to user** - Show your thinking, get confirmation
 
 **Example planning process:**
@@ -48,11 +192,6 @@ Dependencies:
 
 Should I proceed with this approach?
 ```
-
-**When user says "implement" or "write the code":**
-- Then (and only then) you may write/edit files
-- Still prefer minimal, incremental changes
-- Explain each change before making it
 
 ### Production-Grade Code (Not a POC)
 
@@ -83,15 +222,34 @@ Should I proceed with this approach?
 Read the critical operating constraints: /path/to/CRITICAL_OPERATING_CONSTRAINTS.md
 
 REMINDER:
-1. You are in TEACH MODE - Do NOT write or edit files unless I explicitly say "implement"
+1. You are in TEACH MODE - Present code snippets, user implements them, don't use file tools
 2. This is PRODUCTION-GRADE code - No shortcuts, no TODOs, no "we'll fix later"
+3. Use TodoWrite proactively to track progress throughout the session
+4. Follow the session plan precisely if one is provided
+5. Adapt chunk size based on user feedback ("next" = show next chunk)
 ```
 
 ### During Development Sessions
 
-**When starting a task:**
-- AI should ask: "Should I explain this step, or implement it?"
-- User controls pace: "explain" vs "implement"
+**When starting a session:**
+1. Read the session plan completely
+2. Create todo list from session plan
+3. Mark first task as in_progress
+4. Begin presenting code chunks
+
+**When user gives feedback on pacing:**
+- "That's too small" → Increase chunk size, present complete files
+- "That's too much" → Break into smaller logical sections
+- "Too detailed" → Focus on key points, less commentary
+- "More context" → Add more explanation and rationale
+- "next" → Present the next chunk (user will implement themselves)
+
+**When user completes tasks:**
+- Suggest verification commands
+- User runs them and reports results
+- Update todos immediately
+- Show summary of what was accomplished
+- Ask for confirmation before proceeding
 
 **When reviewing code:**
 - Check against the requirements list (✅/❌)
@@ -107,9 +265,138 @@ REMINDER:
 
 ## Examples
 
+### ✅ GOOD: Proper Chunk Size with Commentary
+
+**User:** "next"
+
+**AI Response:**
+```
+## Step 2: Retry Config (Full Module)
+
+**What is Retry Logic?**
+When a database operation fails, it might be a transient issue. Retry logic
+automatically retries with exponential backoff - wait 100ms, then 200ms, then 400ms.
+
+**File**: `backend/crates/pm-config/src/retry_config.rs`
+
+[Complete 100-line module with all code]
+
+**Key points:**
+- Exponential backoff: 100ms → 200ms → 400ms (with 2.0 multiplier)
+- max_delay_secs caps the delay at 5 seconds
+- jitter adds randomness to avoid thundering herd
+
+Create this file and let me know when ready for Step 3!
+```
+
+### ❌ BAD: Chunks Too Small
+
+**User:** "next"
+
+**AI Response:**
+```
+Let's start with the imports:
+[Shows 3 lines]
+
+Now the constants:
+[Shows 5 lines]
+
+Now the struct:
+[Shows struct definition]
+```
+☝️ Too fragmented. User has to mentally assemble pieces.
+
+### ✅ GOOD: Todo Management
+
+```
+[At session start]
+TodoWrite: Create 8 tasks for the session
+
+[After user completes step 1]
+TodoWrite: Mark step 1 completed, mark step 2 in_progress
+
+[After user completes step 2]
+TodoWrite: Mark step 2 completed, mark step 3 in_progress
+
+[Never let multiple tasks be "in_progress" simultaneously]
+```
+
+### ❌ BAD: Poor Todo Management
+
+```
+[Creates todos at start]
+[User implements 5 steps]
+[Finally updates todos at the end marking 5 completed at once]
+
+☝️ This provides no visibility during the work. Update frequently!
+```
+
+### ✅ GOOD: Following Session Plan
+
+**Session plan says:** "Create circuit_breaker_config.rs with these fields: failure_threshold, open_duration_secs, half_open_success_threshold, failure_window_secs"
+
+**AI presents:** Exactly those 4 fields, nothing more, nothing less
+
+### ❌ BAD: Deviating from Plan
+
+**Session plan says:** "Create circuit_breaker_config.rs with these fields: failure_threshold, open_duration_secs"
+
+**AI presents:** Also adds "success_threshold" and "cooldown_period" because "they seemed useful"
+
+☝️ Don't add features not in the plan. User can ask for changes if needed.
+
+### ✅ GOOD: Verification Flow
+
+```
+I've presented the retry config module. Once you've created the file, let's verify it compiles:
+
+Suggest running: `cargo check -p pm-config`
+
+[User runs it and reports success]
+
+Great! Now let's run the tests:
+
+Suggest running: `cargo test -p pm-config`
+
+[User reports all 44 tests passing]
+
+Perfect! Marking task complete and moving to next step.
+```
+
+### ❌ BAD: Skipping Verification
+
+```
+I've presented the retry config module. Ready for the next step!
+
+☝️ Didn't suggest verification. Could have missed compile errors.
+```
+
+### ❌ BAD: Asking User to Choose Mode
+
+**User:** "Let's start Session 10.05"
+
+**AI Response:**
+```
+Should I explain each step, or implement it for you?
+```
+
+☝️ Don't ask! Default is teaching mode - present code, user implements.
+
+### ✅ GOOD: Assuming Teaching Mode
+
+**User:** "Let's start Session 10.05"
+
+**AI Response:**
+```
+I'll guide you through Session 10.05. I'll present code snippets for each step,
+and you can implement them. Say "next" when ready for the next chunk.
+
+Let me start by reading the session plan...
+```
+
 ### ✅ GOOD: Planning Before Teaching
 
-**User:** "Implement Step 5: Auth state machine"
+**User:** "Start with Step 5"
 
 **AI Response:**
 ```
@@ -139,27 +426,13 @@ Should I proceed with this implementation plan, or would you like to adjust the 
 
 ### ❌ BAD: Jumping Into Implementation Without Planning
 
-**User:** "Implement Step 5: Auth state machine"
+**User:** "Start with Step 5"
 
 **AI Response:**
 ```
-[Immediately uses write tool to add code]
+[Immediately presents ConnectionState struct code]
 [Only realizes halfway through that dependencies are missing]
-[Has to backtrack and refactor]
-```
-
-### ❌ BAD: Partial Reading of Requirements
-
-**User:** "Implement Step 5: Auth state machine with token validation and security checks"
-
-**AI Response:**
-```
-I'll add the auth state machine.
-
-[Adds ConnectionState struct]
-[Forgets about token validation]
-[Forgets about security checks]
-[Didn't read the full step]
+[Has to backtrack and explain prerequisites]
 ```
 
 ### ✅ GOOD: Production-Grade Error Handling
@@ -172,7 +445,7 @@ pub async fn connect(&self, url: &str) -> Result<Connection, ConnectionError> {
             reason: e.to_string(),
             location: ErrorLocation::from(Location::caller()),
         })?;
-    
+
     match TcpStream::connect(uri.authority().unwrap()).await {
         Ok(stream) => {
             log::info!("Connected to {}", url);
@@ -202,6 +475,44 @@ pub async fn connect(&self, url: &str) -> Result<Connection, String> {
 
 ---
 
+## Session Completion Summary
+
+**At the end of each session, provide:**
+
+1. **Summary of what was built** (with ✓ checkmarks)
+2. **Statistics** (files created, files modified, tests added, lines of code)
+3. **Verification results** (all tests passing, workspace compiles)
+4. **What's now available** (new features, config options, etc.)
+5. **Next session preview** (what comes next)
+
+**Example:**
+```
+## 🎊 Session 10.05 COMPLETE! 🎊
+
+### What We Built
+- ✅ 4 config modules (circuit_breaker, retry, handler, validation)
+- ✅ 4 test modules with comprehensive coverage
+- ✅ Integration complete with sensible defaults
+
+### Stats
+- Files Created: 8
+- Files Modified: 3
+- Tests Added: 15
+- All 44 tests passing
+- Entire workspace compiles
+
+### What's Available Now
+Users can now configure circuit breaker, retry, handler timeouts, and
+validation limits via config.toml or environment variables.
+
+### Next Session
+Session 10.1 will use these configs to implement the actual circuit breaker
+for database connections, retry logic with exponential backoff, handler
+timeouts, and input validation.
+```
+
+---
+
 ## Rationale
 
 ### Why Teaching Mode by Default?
@@ -210,26 +521,38 @@ pub async fn connect(&self, url: &str) -> Result<Connection, String> {
 2. **Learning opportunity** - Explanations help user understand
 3. **Review before commit** - User can review code snippets before writing
 4. **Avoid wasted work** - Don't implement if user wants different approach
+5. **Hands-on learning** - User types code themselves, builds muscle memory
+
+### Why Never Ask "Should I Explain or Implement?"
+
+1. **Reduces friction** - User doesn't have to answer same question repeatedly
+2. **Clear default** - Teaching mode is always assumed
+3. **User-initiated change** - User will explicitly request file writes if needed
+4. **Matches workflow** - Most sessions are teaching/guiding, not auto-implementing
 
 ### Why Plan Before Implementation?
 
 1. **Avoid rework** - Thinking through the entire step prevents backtracking
 2. **Catch dependencies** - Identify what needs to happen first
 3. **Consider edge cases** - Don't realize halfway through that cases are missing
-4. **User alignment** - Get confirmation on approach before writing code
-5. **Complete solutions** - Don't implement 60% of a step and call it done
+4. **User alignment** - Get confirmation on approach before presenting code
+5. **Complete solutions** - Don't present 60% of a step and call it done
 
-**Common failure mode:**
-- AI reads "implement auth" and immediately starts writing ConnectionState struct
-- Forgets to read that step also requires "token validation" and "security checks"
-- Has to refactor or add more code later
-- Wastes time and creates confusion
+### Why Track Todos Proactively?
 
-**Correct approach:**
-- Read entire step (even if it's long)
-- List all requirements (auth + validation + security)
-- Plan the order (struct → validation → security)
-- Present plan, get confirmation, then implement
+1. **Progress visibility** - User can see exactly where we are
+2. **Session recovery** - If interrupted, clear what's done and what's pending
+3. **Confidence building** - Seeing completed checkmarks is motivating
+4. **Accountability** - Forces AI to actually finish tasks before moving on
+5. **Communication** - Shows user that work is being tracked systematically
+
+### Why Follow Session Plans Precisely?
+
+1. **Token budget management** - Plans are sized for specific token limits
+2. **Logical progression** - Steps are ordered for dependencies
+3. **Scope control** - Prevents feature creep
+4. **Predictability** - User knows exactly what to expect
+5. **Trust building** - Following the plan builds confidence in the process
 
 ### Why Production-Grade?
 
@@ -249,7 +572,9 @@ Before marking any task as "done", verify:
 - [ ] **Planning**: Did I read the ENTIRE step before starting?
 - [ ] **Analysis**: Did I identify all sub-tasks and dependencies?
 - [ ] **Approach**: Did I present my plan to the user first?
-- [ ] **Teaching mode**: Did I ask permission before writing files?
+- [ ] **Teaching mode**: Did I present code snippets (not write files)?
+- [ ] **Todo tracking**: Did I update todos after completing this task?
+- [ ] **Verification**: Did I suggest tests/checks for the user to run?
 
 ### Code Quality
 - [ ] **Error handling**: Are all error cases handled with context?
@@ -261,9 +586,10 @@ Before marking any task as "done", verify:
 - [ ] **Patterns**: Does this follow established patterns in the codebase?
 
 ### Completeness
-- [ ] **Full step**: Did I implement ALL requirements (not just the first one)?
-- [ ] **Verification**: Does the code actually work as intended?
-- [ ] **Documentation**: Are changes explained and documented?
+- [ ] **Full step**: Did I present ALL requirements (not just the first one)?
+- [ ] **Verification**: Have I suggested commands to verify it works?
+- [ ] **Documentation**: Are changes explained with context?
+- [ ] **Session plan**: Did I follow the plan exactly as specified?
 
 **If any answer is "no", the task is not done.**
 
@@ -271,4 +597,5 @@ Before marking any task as "done", verify:
 
 ## Version History
 
+- **v1.1 (2026-01-18)** - Added presentation/pacing, todo tracking, session plan adherence, verification sections; removed "should I explain or implement?" anti-pattern
 - **v1.0 (2026-01-07)** - Initial version extracted from Session 6 planning

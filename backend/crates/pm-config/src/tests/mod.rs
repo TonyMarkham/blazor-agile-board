@@ -1,8 +1,12 @@
 mod auth;
+mod circuit_breaker;
 mod config;
 mod desktop_id;
 mod edge_cases;
+mod handler;
+mod retry;
 mod server;
+mod validation;
 mod web_socket;
 
 use std::env;

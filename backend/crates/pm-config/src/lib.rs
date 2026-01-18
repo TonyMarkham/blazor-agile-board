@@ -1,24 +1,32 @@
 mod auth_config;
+mod circuit_breaker_config;
 mod config;
 mod database_config;
 mod error;
+mod handler_config;
 mod log_level;
 mod logging_config;
 mod rate_limit_config;
+mod retry_config;
 mod server_config;
+mod validation_config;
 mod websocket_config;
 
 #[cfg(test)]
 mod tests;
 
 pub use auth_config::AuthConfig;
+pub use circuit_breaker_config::CircuitBreakerConfig;
 pub use config::Config;
 pub use database_config::DatabaseConfig;
 pub use error::{ConfigError, ConfigErrorResult};
+pub use handler_config::HandlerConfig;
 pub use log_level::LogLevel;
 pub use logging_config::LoggingConfig;
 pub use rate_limit_config::RateLimitConfig;
+pub use retry_config::RetryConfig;
 pub use server_config::ServerConfig;
+pub use validation_config::ValidationConfig;
 pub use websocket_config::WebSocketConfig;
 
 // =============================================================================

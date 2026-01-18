@@ -1,6 +1,7 @@
 use crate::{
-    AuthConfig, ConfigError, ConfigErrorResult, DatabaseConfig, LoggingConfig, RateLimitConfig,
-    ServerConfig, WebSocketConfig,
+    AuthConfig, CircuitBreakerConfig, ConfigError, ConfigErrorResult, DatabaseConfig,
+    HandlerConfig, LoggingConfig, RateLimitConfig, RetryConfig, ServerConfig, ValidationConfig,
+    WebSocketConfig,
 };
 
 use std::path::PathBuf;
@@ -17,6 +18,10 @@ pub struct Config {
     pub logging: LoggingConfig,
     pub websocket: WebSocketConfig,
     pub rate_limit: RateLimitConfig,
+    pub circuit_breaker: CircuitBreakerConfig,
+    pub retry: RetryConfig,
+    pub handler: HandlerConfig,
+    pub validation: ValidationConfig,
 }
 
 impl Config {
@@ -88,6 +93,10 @@ impl Config {
         self.auth.validate(&config_dir)?;
         self.websocket.validate()?;
         self.rate_limit.validate()?;
+        self.circuit_breaker.validate()?;
+        self.retry.validate()?;
+        self.handler.validate()?;
+        self.validation.validate()?;
 
         // Validate database path doesn't escape config dir
         let db_path = std::path::Path::new(&self.database.path);
@@ -154,6 +163,31 @@ impl Config {
             "  rate_limit: {}/{}s",
             self.rate_limit.max_requests, self.rate_limit.window_secs
         );
+
+        // NEW LOGGING BELOW
+        info!(
+            "  circuit_breaker: threshold={}, open={}s, window={}s",
+            self.circuit_breaker.failure_threshold,
+            self.circuit_breaker.open_duration_secs,
+            self.circuit_breaker.failure_window_secs
+        );
+
+        info!(
+            "  retry: attempts={}, initial={}ms, max={}s, backoff={}x",
+            self.retry.max_attempts,
+            self.retry.initial_delay_ms,
+            self.retry.max_delay_secs,
+            self.retry.backoff_multiplier
+        );
+
+        info!("  handler: timeout={}s", self.handler.timeout_secs);
+
+        info!(
+            "  validation: title={}, desc={}, points={}",
+            self.validation.max_title_length,
+            self.validation.max_description_length,
+            self.validation.max_story_points
+        );
     }
 
     fn apply_env_overrides(&mut self) {
@@ -203,6 +237,60 @@ impl Config {
         Self::apply_env_parse(
             "PM_RATE_LIMIT_WINDOW_SECS",
             &mut self.rate_limit.window_secs,
+        );
+
+        // NEW OVERRIDES BELOW
+
+        // Circuit Breaker
+        Self::apply_env_parse(
+            "PM_CB_FAILURE_THRESHOLD",
+            &mut self.circuit_breaker.failure_threshold,
+        );
+        Self::apply_env_parse(
+            "PM_CB_OPEN_DURATION_SECS",
+            &mut self.circuit_breaker.open_duration_secs,
+        );
+        Self::apply_env_parse(
+            "PM_CB_HALF_OPEN_SUCCESS_THRESHOLD",
+            &mut self.circuit_breaker.half_open_success_threshold,
+        );
+        Self::apply_env_parse(
+            "PM_CB_FAILURE_WINDOW_SECS",
+            &mut self.circuit_breaker.failure_window_secs,
+        );
+
+        // Retry
+        Self::apply_env_parse("PM_RETRY_MAX_ATTEMPTS", &mut self.retry.max_attempts);
+        Self::apply_env_parse(
+            "PM_RETRY_INITIAL_DELAY_MS",
+            &mut self.retry.initial_delay_ms,
+        );
+        Self::apply_env_parse("PM_RETRY_MAX_DELAY_SECS", &mut self.retry.max_delay_secs);
+        Self::apply_env_parse(
+            "PM_RETRY_BACKOFF_MULTIPLIER",
+            &mut self.retry.backoff_multiplier,
+        );
+        Self::apply_env_bool("PM_RETRY_JITTER", &mut self.retry.jitter);
+
+        // Handler
+        Self::apply_env_parse("PM_HANDLER_TIMEOUT_SECS", &mut self.handler.timeout_secs);
+
+        // Validation
+        Self::apply_env_parse(
+            "PM_VALIDATION_MAX_TITLE_LENGTH",
+            &mut self.validation.max_title_length,
+        );
+        Self::apply_env_parse(
+            "PM_VALIDATION_MAX_DESCRIPTION_LENGTH",
+            &mut self.validation.max_description_length,
+        );
+        Self::apply_env_parse(
+            "PM_VALIDATION_MAX_STORY_POINTS",
+            &mut self.validation.max_story_points,
+        );
+        Self::apply_env_parse(
+            "PM_VALIDATION_MAX_ERROR_MESSAGE_LENGTH",
+            &mut self.validation.max_error_message_length,
         );
     }
 
