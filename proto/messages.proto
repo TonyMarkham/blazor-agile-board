@@ -1,6 +1,7 @@
 syntax = "proto3";
 
 package pm;
+option csharp_namespace = "ProjectManagement.Core.Proto";
 
 // ============================================================================
 // Entity Messages (match database models exactly)

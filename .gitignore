@@ -85,9 +85,11 @@ yarn-error.log*
 # Node modules (if any JS tooling is added)
 node_modules/
 
-# Package managers
-*.nuget.props
-*.nuget.targets
+# Package managers (but keep Directory.*.props)
+**/obj/**/*.nuget.props
+**/obj/**/*.nuget.targets
+*.nuget.g.props
+*.nuget.g.targets
 
 # Temporary files
 *.tmp
