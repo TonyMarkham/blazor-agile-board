@@ -3,8 +3,10 @@
 ## Status
 Accepted
 
+> **Updated (2026-01-19)**: Primary deployment is now desktop-first (see [ADR-0006](0006-single-tenant-desktop-first.md)). Plugin mode remains a future goal. The table prefix convention still applies.
+
 ## Context
-The project management application needs to work both as a standalone application and as a plugin for an existing multi-tenant SaaS coaching platform. We need to decide how to structure the data storage to support both deployment modes while maintaining clean integration with the host platform.
+The project management application needs to work both as a standalone desktop application and potentially as a plugin for an existing Blazor-based coaching platform. We need to decide how to structure the data storage to support both deployment modes while maintaining clean integration with any host platform.
 
 Two primary options were considered:
 1. Separate database per plugin (e.g., `project_management.db` alongside `main.db`)

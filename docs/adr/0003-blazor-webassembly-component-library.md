@@ -3,8 +3,10 @@
 ## Status
 Accepted
 
+> **Updated (2026-01-19)**: Primary deployment is now a Tauri desktop app (see [ADR-0006](0006-single-tenant-desktop-first.md)). The Blazor WASM frontend is hosted within Tauri, with pm-server running as a sidecar process.
+
 ## Context
-The project management application needs to be deployable both as a standalone application and as a plugin integrated into an existing Blazor-based coaching SaaS platform. We need to choose a frontend technology and architecture that supports both deployment scenarios.
+The project management application needs to be deployable as a cross-platform desktop application via Tauri, and potentially as a plugin integrated into an existing Blazor-based coaching platform. We need to choose a frontend technology and architecture that supports both deployment scenarios.
 
 Options considered:
 1. Blazor Server (server-side rendering with SignalR)
@@ -54,9 +56,14 @@ UI Technology:
 
 ### Implementation Structure
 ```
-/ProjectManagement.Core           - Shared models, interfaces, DTOs
-/ProjectManagement.Components     - Razor Class Library (UI components)
-/ProjectManagement.Wasm          - Standalone WASM host
+frontend/
+├── ProjectManagement.Core        - Shared models, interfaces, DTOs
+├── ProjectManagement.Services    - WebSocket client, state management
+├── ProjectManagement.Components  - Razor Class Library (UI components)
+└── ProjectManagement.Wasm        - WASM host (used by Tauri)
+
+desktop/
+└── src-tauri/                    - Tauri app shell, spawns pm-server sidecar
 ```
 
 ### Integration Strategy

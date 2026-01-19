@@ -3,8 +3,10 @@
 ## Status
 Accepted
 
+> **Updated (2026-01-19)**: Simplified for single-tenant desktop deployment (see [ADR-0006](0006-single-tenant-desktop-first.md)). No multi-tenant broadcast channels needed. Authentication is optional in desktop mode.
+
 ## Context
-The project management application requires real-time updates for collaborative features. Multiple users may view and edit the same projects, tasks, and sprints simultaneously. We need to choose a real-time communication protocol and serialization format suitable for a production SaaS platform.
+The project management application requires real-time updates for collaborative features. Multiple users may view and edit the same projects, tasks, and sprints simultaneously. We need to choose a real-time communication protocol and serialization format.
 
 Options considered:
 
@@ -67,9 +69,9 @@ Technology stack:
 **WebSocket Lifecycle:**
 ```
 1. Client connects to /ws
-2. Server validates JWT and extracts tenant_id
+2. Server validates JWT (if auth enabled) or accepts connection (desktop mode)
 3. Client subscribes to specific projects/sprints
-4. Server adds client to tenant broadcast channel
+4. Server adds client to broadcast channel
 5. Bidirectional message exchange
 6. Heartbeat/ping-pong for connection health
 7. Graceful disconnect and cleanup
@@ -92,10 +94,10 @@ message WebSocketMessage {
 ```
 
 **Broadcasting Strategy:**
-- Per-tenant broadcast channel using `tokio::sync::broadcast`
-- Clients subscribe to channels for projects/sprints they're viewing
-- Server publishes updates to relevant channels
-- Automatic fan-out to all subscribed clients
+- Single broadcast channel using `tokio::sync::broadcast` (single-tenant)
+- Clients subscribe to projects/sprints they're viewing
+- Server publishes updates to subscribed clients
+- Automatic fan-out to all connected clients viewing relevant entities
 
 **Fallback Strategy:**
 - If WebSocket fails, client can fall back to REST + polling

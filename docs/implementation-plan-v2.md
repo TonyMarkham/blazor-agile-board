@@ -14,6 +14,12 @@ This plan picks up from the architecture simplification refactor. The multi-tena
 **Budget**: ~100k tokens per session for context headroom
 **Pattern**: Each session delivers working, tested functionality
 
+**Sub-session Design Philosophy**:
+- Split large sessions into **10-35k token sub-sessions** (conservative estimates)
+- Historical overruns run 1.5-2.7x → still fits in 50-75k context with room to spare
+- Smaller context = better Claude performance + human sense of progress
+- Each sub-session is a complete, testable deliverable
+
 ---
 
 ## Current State (Post-Session 10)
@@ -404,6 +410,13 @@ Each handler follows the pattern:
 **Goal**: Blazor project structure with working WebSocket client
 
 **Estimated Tokens**: ~100k
+
+**Detailed Plan**: See `docs/session-plans/session-20-plan.md` for full implementation spec (~3700 lines)
+
+**Key Alignments with Backend**:
+- Validation limits match `pm-config` defaults (MaxTitleLength=200, MaxDescriptionLength=10000)
+- Retry policy uses same max_delay (5s) as backend `RetryConfig`
+- Circuit breaker thresholds mirror `CircuitBreakerConfig` defaults
 
 ### Phase 1: Project Structure
 
@@ -815,10 +828,12 @@ These are out of scope for the initial implementation but noted for future:
 - Tests for all new functionality
 
 ### Architecture Principles
-- One process = one tenant (from ProjectManager.md)
-- WebSocket-first for all mutations
+- One process = one tenant (see [ADR-0006](adr/0006-single-tenant-desktop-first.md))
+- WebSocket-first for all mutations (see [ADR-0005](adr/0005-websocket-with-protobuf.md))
 - Optimistic UI with server confirmation
 - Real-time broadcasts for collaboration
+- Desktop-first with Tauri sidecar (see [ADR-0004](adr/0004-rust-axum-backend.md))
+- Auth optional in desktop mode, required for SaaS
 
 ### Testing Strategy
 - Each session includes its own tests

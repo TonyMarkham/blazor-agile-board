@@ -15,7 +15,8 @@
       "Bash(cargo fmt:*)",
       "Bash(cargo build:*)",
       "Bash(find:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(sqlite3:*)"
     ]
   }
 }

@@ -3,8 +3,10 @@
 ## Status
 Accepted
 
+> **Updated (2026-01-19)**: pm-server now runs as a Tauri sidecar for desktop deployment (see [ADR-0006](0006-single-tenant-desktop-first.md)). The same binary works for both desktop (sidecar) and future SaaS (orchestrated) deployments.
+
 ## Context
-The project management application requires a backend API server. The existing coaching SaaS platform is built with Rust and Axum. We need to choose a backend technology that can work standalone and integrate cleanly with the host platform.
+The project management application requires a backend API server. For desktop deployment, the server runs as a sidecar process managed by Tauri. We need a backend technology that is efficient, compiles to a single binary, and can work both as an embedded sidecar and as a standalone service.
 
 Options considered:
 1. ASP.NET Core (matches frontend technology)
@@ -46,7 +48,8 @@ Technology stack:
 - **Error handling**: Consistent error types and handling across platform and plugin
 - **Observability**: Same tracing, metrics, and logging infrastructure
 
-### Integration Patterns
-- **Standalone**: Axum server runs independently with own configuration
-- **Plugin**: Backend services registered into host platform's router
-- Both modes share identical business logic and data access code
+### Deployment Patterns
+- **Desktop (Tauri sidecar)**: pm-server binary bundled with app, started/stopped by Tauri lifecycle
+- **Standalone**: Axum server runs independently for development or headless deployment
+- **SaaS (future)**: Orchestrator spawns pm-server instances per tenant
+- All modes share identical business logic and data access code

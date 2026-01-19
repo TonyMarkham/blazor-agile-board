@@ -1,7 +1,9 @@
 # ADR-0002: Per-Tenant SQLite Databases
 
 ## Status
-Accepted
+**Superseded** by [ADR-0006](0006-single-tenant-desktop-first.md)
+
+> **Note (2026-01-19)**: This ADR described the original multi-tenant SaaS architecture. The project has pivoted to a desktop-first, single-tenant approach. See ADR-0006 for the current architecture. This ADR is retained for historical context.
 
 ## Context
 The application is designed for a multi-tenant SaaS environment. We need to determine the database architecture for tenant isolation. The host coaching platform uses a dedicated SQLite database per tenant.

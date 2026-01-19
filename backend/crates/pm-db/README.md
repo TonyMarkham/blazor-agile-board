@@ -6,6 +6,9 @@ SQLite-based repository layer with SQLx for compile-time query verification.
 
 ## Database Workflow
 
+> **Note:** The workspace `Cargo.toml` is at the repo root. The `.sqlx/` cache lives there too.
+> All commands below assume you're at the repo root unless otherwise noted.
+
 ### 1. Create a Migration
 
 **When:** Schema changes needed (add table, add column, modify constraints, etc.)
@@ -13,6 +16,7 @@ SQLite-based repository layer with SQLx for compile-time query verification.
 **Command:**
 ```bash
 # From backend/crates/pm-db/
+cd backend/crates/pm-db
 sqlx migrate add <descriptive_name>
 
 # Example:
@@ -37,8 +41,10 @@ ALTER TABLE pm_work_items ADD COLUMN priority TEXT NOT NULL DEFAULT 'medium';
 
 **Command:**
 ```bash
-# From backend/crates/pm-db/
-sqlx migrate run --database-url sqlite:.sqlx-test/test.db
+# From repo root
+sqlx migrate run \
+  --source backend/crates/pm-db/migrations \
+  --database-url sqlite:backend/crates/pm-db/.sqlx-test/test.db
 ```
 
 **What this does:**
@@ -54,14 +60,14 @@ sqlx migrate run --database-url sqlite:.sqlx-test/test.db
 
 **Command:**
 ```bash
-# From backend/ (workspace root)
-DATABASE_URL=sqlite:crates/pm-db/.sqlx-test/test.db cargo sqlx prepare --workspace
+# From repo root
+DATABASE_URL=sqlite:backend/crates/pm-db/.sqlx-test/test.db cargo sqlx prepare --workspace
 ```
 
 **What this does:**
 - Connects to database
 - Validates all `sqlx::query!()` macros in the workspace
-- Generates `.sqlx/` cache files for offline compilation
+- Generates `.sqlx/` cache files at repo root for offline compilation
 - Enables CI builds without a live database
 
 ---
@@ -78,15 +84,17 @@ sqlx migrate add add_priority_column
 # Step 2: Edit migration file
 # (Add your ALTER TABLE statement)
 
-# Step 3: Run migration
-sqlx migrate run --database-url sqlite:.sqlx-test/test.db
+# Step 3: Back to repo root and run migration
+cd ../../..
+sqlx migrate run \
+  --source backend/crates/pm-db/migrations \
+  --database-url sqlite:backend/crates/pm-db/.sqlx-test/test.db
 
 # Step 4: Update Rust code
 # (Update WorkItem struct, repository queries, etc.)
 
 # Step 5: Regenerate query cache
-cd ../..  # back to backend/
-DATABASE_URL=sqlite:crates/pm-db/.sqlx-test/test.db cargo sqlx prepare --workspace
+DATABASE_URL=sqlite:backend/crates/pm-db/.sqlx-test/test.db cargo sqlx prepare --workspace
 
 # Step 6: Verify build
 cargo build --workspace
@@ -108,7 +116,7 @@ cargo build --workspace
 
 **Fix:** Ensure `DATABASE_URL` is set when running `prepare`:
 ```bash
-DATABASE_URL=sqlite:crates/pm-db/.sqlx-test/test.db cargo sqlx prepare --workspace
+DATABASE_URL=sqlite:backend/crates/pm-db/.sqlx-test/test.db cargo sqlx prepare --workspace
 ```
 
 ### "no such column: priority"
@@ -119,9 +127,17 @@ DATABASE_URL=sqlite:crates/pm-db/.sqlx-test/test.db cargo sqlx prepare --workspa
 
 ---
 
-## Database Location
+## Directory Layout
 
-**Test Database:** `crates/pm-db/.sqlx-test/test.db`
+```
+blazor-agile-board/                    # Repo root (workspace Cargo.toml)
+├── Cargo.toml                         # Workspace manifest
+├── .sqlx/                             # Query cache (workspace level)
+└── backend/crates/pm-db/
+    ├── migrations/                    # SQL migration files
+    ├── .sqlx-test/test.db             # Test database
+    └── src/                           # Repository code
+```
 
 **Production:** Per-tenant SQLite files at `/data/tenants/{tenant_id}/main.db`
 
@@ -131,22 +147,26 @@ DATABASE_URL=sqlite:crates/pm-db/.sqlx-test/test.db cargo sqlx prepare --workspa
 
 **Check migration status:**
 ```bash
-sqlx migrate info --database-url sqlite:.sqlx-test/test.db
+sqlx migrate info \
+  --source backend/crates/pm-db/migrations \
+  --database-url sqlite:backend/crates/pm-db/.sqlx-test/test.db
 ```
 
 **Inspect test database schema:**
 ```bash
-sqlite3 .sqlx-test/test.db ".schema pm_work_items"
+sqlite3 backend/crates/pm-db/.sqlx-test/test.db ".schema pm_work_items"
 ```
 
 **Reset test database (reapply all migrations):**
 ```bash
-rm .sqlx-test/test.db
-sqlx migrate run --database-url sqlite:.sqlx-test/test.db
+rm backend/crates/pm-db/.sqlx-test/test.db
+sqlx migrate run \
+  --source backend/crates/pm-db/migrations \
+  --database-url sqlite:backend/crates/pm-db/.sqlx-test/test.db
 ```
 
 ---
 
 ## CI/CD Note
 
-The `.sqlx/` directory is checked into git. This allows CI builds to run without a database connection by setting `SQLX_OFFLINE=true`. Always regenerate the cache before committing schema changes.
+The `.sqlx/` directory at the repo root is checked into git. This allows CI builds to run without a database connection by setting `SQLX_OFFLINE=true`. Always regenerate the cache before committing schema changes.
