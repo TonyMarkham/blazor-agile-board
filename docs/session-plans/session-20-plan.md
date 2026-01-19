@@ -41,9 +41,9 @@ This plan has been split into sub-sessions to fit within token budgets:
 
 | Session | Scope | Est. Tokens | Files | Status |
 |---------|-------|-------------|-------|--------|
-| **[20.01](session-20.01-plan.md)** | Database FK constraint fixes (structural debt) | ~10k | ~3 | 🔜 Next |
-| **[20.1](session-20.1-plan.md)** | Project structure, Protobuf, Domain models | ~30k | ~55 | Planned |
-| **[20.2](session-20.2-plan.md)** | WebSocket client foundation | ~35k | ~9 | Planned |
+| **[20.01](session-20.01-plan.md)** | Database FK constraint fixes (structural debt) | ~10k | ~3 | ⏸️ Deferred |
+| **[20.1](session-20.1-plan.md)** | Project structure, Protobuf, Domain models | ~30k | ~55 | ✅ Complete |
+| **[20.2](session-20.2-plan.md)** | WebSocket client foundation | ~35k | ~9 | 🔜 Next |
 | **[20.3](session-20.3-plan.md)** | Resilience patterns (circuit breaker, retry, health) | ~30k | ~7 | Planned |
 | **[20.4](session-20.4-plan.md)** | State management with thread safety | ~30k | ~4 | Planned |
 | **[20.5](session-20.5-plan.md)** | WASM host, error boundaries, observability | ~25k | ~8 | Planned |
@@ -51,12 +51,16 @@ This plan has been split into sub-sessions to fit within token budgets:
 
 ---
 
-## Session 20.01: Database FK Constraint Fixes
+## Session 20.01: Database FK Constraint Fixes ⏸️
 
-**Files Created:**
+**Status**: Deferred (will be implemented in separate session)
+
+**Reason**: Not blocking for frontend development. FK constraints are nice-to-have but frontend can treat sprint_id/assignee_id as optional references without DB-level enforcement.
+
+**Files to Create:**
 - `backend/crates/pm-db/migrations/20260119000001_add_work_item_fks.sql` - FK constraints
 
-**Files Modified:**
+**Files to Modify:**
 - `backend/crates/pm-db/tests/work_item_repository_tests.rs` - FK tests
 - `docs/database-relationships.md` - Documentation
 
@@ -64,7 +68,9 @@ This plan has been split into sub-sessions to fit within token budgets:
 
 ---
 
-## Session 20.1: Foundation
+## Session 20.1: Foundation ✅
+
+**Status**: Complete (2026-01-19) - Commit c5cf698
 
 **Files Created:**
 - `frontend/ProjectManagement.sln` - Solution file
@@ -72,7 +78,13 @@ This plan has been split into sub-sessions to fit within token budgets:
 - `frontend/Directory.Packages.props` - Central package management
 - `frontend/ProjectManagement.Core/` - Models, interfaces, validation (~55 files)
 
-**Verification:** `dotnet build frontend/ProjectManagement.sln`
+**Actual Implementation:**
+- .NET 10.0 with latest stable packages (Protobuf 3.33.4, Radzen 8.6.2)
+- Shared proto file from monorepo root
+- Type aliases in ProtoConverter to avoid naming collisions
+- 445KB generated Protobuf C# code
+
+**Verification:** ✅ `dotnet build frontend/ProjectManagement.sln` - 0 warnings, 0 errors
 
 ---
 
