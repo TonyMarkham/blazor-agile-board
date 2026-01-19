@@ -12,16 +12,132 @@
 
 **Estimated Tokens**: ~25k
 
-### Phase 5.1: Program.cs with Full DI Setup
+## Context: Types Available from Previous Sessions
+
+**From Session 20.1 (ProjectManagement.Core):**
+- `ProjectManagement.Core.Models.*` - WorkItem, Sprint, CreateWorkItemRequest, UpdateWorkItemRequest, FieldChange, ConnectionState
+- `ProjectManagement.Core.Interfaces.*` - IWebSocketClient, IConnectionHealth, IWorkItemStore, ISprintStore
+- `ProjectManagement.Core.Exceptions.*` - ConnectionException, RequestTimeoutException, ServerRejectedException, ValidationException, VersionConflictException, CircuitOpenException
+- `ProjectManagement.Core.Validation.*` - IValidator, CreateWorkItemRequestValidator, UpdateWorkItemRequestValidator
+
+**From Session 20.2 (ProjectManagement.Services.WebSocket):**
+- `WebSocketOptions`, `WebSocketClient`, `ConnectionHealthTracker`
+
+**From Session 20.3 (ProjectManagement.Services.Resilience):**
+- `CircuitBreaker`, `CircuitBreakerOptions`, `CircuitState`
+- `RetryPolicy`, `RetryPolicyOptions`
+- `ReconnectionService`, `ReconnectionOptions`
+- `ResilientWebSocketClient`
+
+**From Session 20.4 (ProjectManagement.Services.State):**
+- `WorkItemStore`, `SprintStore`, `AppState`, `OptimisticUpdate<T>`
+
+---
+
+### Phase 5.1: Correlation ID Logger
+
+```csharp
+// CorrelationIdLoggerProvider.cs
+using Microsoft.Extensions.Logging;
+
+namespace ProjectManagement.Services.Logging;
+
+/// <summary>
+/// Logger provider that adds correlation IDs to all log messages.
+/// </summary>
+public sealed class CorrelationIdLoggerProvider : ILoggerProvider
+{
+    private readonly LogLevel _minLevel;
+
+    public CorrelationIdLoggerProvider(LogLevel minLevel = LogLevel.Debug)
+    {
+        _minLevel = minLevel;
+    }
+
+    public ILogger CreateLogger(string categoryName)
+    {
+        return new CorrelationIdLogger(categoryName, _minLevel);
+    }
+
+    public void Dispose() { }
+}
+```
+
+```csharp
+// CorrelationIdLogger.cs
+using Microsoft.Extensions.Logging;
+
+namespace ProjectManagement.Services.Logging;
+
+/// <summary>
+/// Logger that includes correlation IDs for request tracing.
+/// </summary>
+public sealed class CorrelationIdLogger : ILogger
+{
+    private readonly string _categoryName;
+    private readonly LogLevel _minLevel;
+    private static readonly AsyncLocal<string?> _correlationId = new();
+
+    public static string CorrelationId
+    {
+        get => _correlationId.Value ?? Guid.NewGuid().ToString("N")[..8];
+        set => _correlationId.Value = value;
+    }
+
+    public CorrelationIdLogger(string categoryName, LogLevel minLevel = LogLevel.Debug)
+    {
+        _categoryName = categoryName;
+        _minLevel = minLevel;
+    }
+
+    public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+    {
+        return null;
+    }
+
+    public bool IsEnabled(LogLevel logLevel) => logLevel >= _minLevel;
+
+    public void Log<TState>(
+        LogLevel logLevel,
+        EventId eventId,
+        TState state,
+        Exception? exception,
+        Func<TState, Exception?, string> formatter)
+    {
+        if (!IsEnabled(logLevel))
+            return;
+
+        var message = formatter(state, exception);
+        var timestamp = DateTime.UtcNow.ToString("HH:mm:ss.fff");
+        var level = logLevel.ToString()[..3].ToUpper();
+        var category = _categoryName.Split('.').LastOrDefault() ?? _categoryName;
+
+        Console.WriteLine($"[{timestamp}] [{level}] [{CorrelationId}] {category}: {message}");
+
+        if (exception != null)
+        {
+            Console.WriteLine($"  Exception: {exception.GetType().Name}: {exception.Message}");
+        }
+    }
+}
+```
+
+### Phase 5.2: Program.cs with Full DI Setup
 
 ```csharp
 // Program.cs
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using ProjectManagement.Services.WebSocket;
-using ProjectManagement.Services.State;
-using ProjectManagement.Services.Resilience;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using ProjectManagement.Core.Interfaces;
+using ProjectManagement.Core.Models;
+using ProjectManagement.Core.Validation;
 using ProjectManagement.Services.Logging;
+using ProjectManagement.Services.Resilience;
+using ProjectManagement.Services.State;
+using ProjectManagement.Services.WebSocket;
 using ProjectManagement.Wasm;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
@@ -44,6 +160,10 @@ builder.Services.AddLogging(logging =>
     logging.SetMinimumLevel(LogLevel.Debug);
     logging.AddProvider(new CorrelationIdLoggerProvider());
 });
+
+// Validators (required by WebSocketClient)
+builder.Services.AddSingleton<IValidator<CreateWorkItemRequest>, CreateWorkItemRequestValidator>();
+builder.Services.AddSingleton<IValidator<UpdateWorkItemRequest>, UpdateWorkItemRequestValidator>();
 
 // Resilience
 builder.Services.AddSingleton<CircuitBreaker>();
@@ -88,20 +208,71 @@ catch (Exception ex)
 await app.RunAsync();
 ```
 
-### Phase 5.2: Error Boundary Component
+### Phase 5.3: App.razor (Root Component)
 
 ```razor
-@* ErrorBoundary.razor *@
+@* App.razor *@
+<Router AppAssembly="@typeof(App).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <PageTitle>Not found</PageTitle>
+        <LayoutView Layout="@typeof(MainLayout)">
+            <p role="alert">Sorry, there's nothing at this address.</p>
+        </LayoutView>
+    </NotFound>
+</Router>
+```
+
+### Phase 5.4: MainLayout.razor
+
+```razor
+@* MainLayout.razor *@
+@inherits LayoutComponentBase
+@using ProjectManagement.Core.Exceptions
+
+<RadzenLayout>
+    <RadzenHeader>
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem" class="px-4">
+            <RadzenText TextStyle="TextStyle.H5" class="m-0">Project Management</RadzenText>
+            <ConnectionStatus />
+        </RadzenStack>
+    </RadzenHeader>
+
+    <RadzenBody>
+        <div class="rz-p-4">
+            <AppErrorBoundary>
+                @Body
+            </AppErrorBoundary>
+        </div>
+    </RadzenBody>
+</RadzenLayout>
+
+<RadzenDialog />
+<RadzenNotification />
+<RadzenContextMenu />
+<RadzenTooltip />
+```
+
+### Phase 5.5: Error Boundary Component
+
+```razor
+@* AppErrorBoundary.razor *@
 @using Microsoft.AspNetCore.Components.Web
+@using ProjectManagement.Core.Exceptions
 @inherits ErrorBoundaryBase
+@inject ILogger<AppErrorBoundary> Logger
 
 @if (CurrentException is not null)
 {
     <div class="error-boundary">
         <div class="error-content">
-            <h3>Something went wrong</h3>
-            <p>@GetUserFriendlyMessage()</p>
-            <button class="btn btn-primary" @onclick="Recover">Try Again</button>
+            <RadzenIcon Icon="error" Style="font-size: 3rem; color: var(--rz-danger);" />
+            <RadzenText TextStyle="TextStyle.H5">Something went wrong</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body1">@GetUserFriendlyMessage()</RadzenText>
+            <RadzenButton Text="Try Again" Click="Recover" ButtonStyle="ButtonStyle.Primary" class="mt-3" />
         </div>
     </div>
 }
@@ -113,9 +284,6 @@ else
 @code {
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
-
-    [Inject]
-    private ILogger<ErrorBoundary> Logger { get; set; } = default!;
 
     protected override Task OnErrorAsync(Exception exception)
     {
@@ -138,71 +306,234 @@ else
 }
 ```
 
-### Phase 5.3: Correlation ID Logger
+### Phase 5.6: Connection Status Component
 
-```csharp
-// CorrelationIdLogger.cs
-namespace ProjectManagement.Services.Logging;
+```razor
+@* ConnectionStatus.razor *@
+@using ProjectManagement.Core.Models
+@using ProjectManagement.Services.State
+@inject AppState AppState
+@implements IDisposable
 
-public sealed class CorrelationIdLoggerProvider : ILoggerProvider
-{
-    public ILogger CreateLogger(string categoryName)
+<div class="connection-status @GetStatusClass()">
+    <RadzenIcon Icon="@GetStatusIcon()" />
+    <span>@GetStatusText()</span>
+</div>
+
+@code {
+    private ConnectionState _state;
+
+    protected override void OnInitialized()
     {
-        return new CorrelationIdLogger(categoryName);
+        _state = AppState.ConnectionState;
+        AppState.OnConnectionStateChanged += HandleStateChanged;
     }
 
-    public void Dispose() { }
-}
-
-public sealed class CorrelationIdLogger : ILogger
-{
-    private readonly string _categoryName;
-    private static readonly AsyncLocal<string?> _correlationId = new();
-
-    public static string CorrelationId
+    private void HandleStateChanged(ConnectionState state)
     {
-        get => _correlationId.Value ?? Guid.NewGuid().ToString("N")[..8];
-        set => _correlationId.Value = value;
+        _state = state;
+        InvokeAsync(StateHasChanged);
     }
 
-    public CorrelationIdLogger(string categoryName)
+    private string GetStatusClass() => _state switch
     {
-        _categoryName = categoryName;
-    }
+        ConnectionState.Connected => "connected",
+        ConnectionState.Connecting => "connecting",
+        ConnectionState.Reconnecting => "reconnecting",
+        ConnectionState.Disconnected => "disconnected",
+        ConnectionState.Closed => "closed",
+        _ => "unknown"
+    };
 
-    public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+    private string GetStatusIcon() => _state switch
     {
-        return null;
-    }
+        ConnectionState.Connected => "wifi",
+        ConnectionState.Connecting => "sync",
+        ConnectionState.Reconnecting => "sync_problem",
+        ConnectionState.Disconnected => "wifi_off",
+        ConnectionState.Closed => "close",
+        _ => "help"
+    };
 
-    public bool IsEnabled(LogLevel logLevel) => true;
-
-    public void Log<TState>(
-        LogLevel logLevel,
-        EventId eventId,
-        TState state,
-        Exception? exception,
-        Func<TState, Exception?, string> formatter)
+    private string GetStatusText() => _state switch
     {
-        if (!IsEnabled(logLevel))
-            return;
+        ConnectionState.Connected => "Connected",
+        ConnectionState.Connecting => "Connecting...",
+        ConnectionState.Reconnecting => "Reconnecting...",
+        ConnectionState.Disconnected => "Disconnected",
+        ConnectionState.Closed => "Closed",
+        _ => "Unknown"
+    };
 
-        var message = formatter(state, exception);
-        var timestamp = DateTime.UtcNow.ToString("HH:mm:ss.fff");
-        var level = logLevel.ToString()[..3].ToUpper();
-        var category = _categoryName.Split('.').LastOrDefault() ?? _categoryName;
-
-        Console.WriteLine($"[{timestamp}] [{level}] [{CorrelationId}] {category}: {message}");
-
-        if (exception != null)
-        {
-            Console.WriteLine($"  Exception: {exception.GetType().Name}: {exception.Message}");
-        }
+    public void Dispose()
+    {
+        AppState.OnConnectionStateChanged -= HandleStateChanged;
     }
 }
 ```
 
-### Phase 5.4: appsettings.json
+### Phase 5.7: _Imports.razor
+
+```razor
+@* _Imports.razor *@
+@using System.Net.Http
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+@using Microsoft.AspNetCore.Components.WebAssembly.Http
+@using Microsoft.Extensions.Logging
+@using Microsoft.JSInterop
+@using Radzen
+@using Radzen.Blazor
+@using ProjectManagement.Core.Models
+@using ProjectManagement.Core.Interfaces
+@using ProjectManagement.Core.Exceptions
+@using ProjectManagement.Services.State
+@using ProjectManagement.Wasm
+@using ProjectManagement.Wasm.Shared
+```
+
+### Phase 5.8: wwwroot/index.html
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Project Management</title>
+    <base href="/" />
+    <link rel="stylesheet" href="_content/Radzen.Blazor/css/material-base.css" />
+    <link rel="stylesheet" href="css/app.css" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link href="ProjectManagement.Wasm.styles.css" rel="stylesheet" />
+</head>
+
+<body>
+    <div id="app">
+        <div class="loading-screen">
+            <div class="spinner"></div>
+            <p>Loading...</p>
+        </div>
+    </div>
+
+    <div id="blazor-error-ui">
+        An unhandled error has occurred.
+        <a href="" class="reload">Reload</a>
+        <a class="dismiss">X</a>
+    </div>
+
+    <script src="_content/Radzen.Blazor/Radzen.Blazor.js"></script>
+    <script src="_framework/blazor.webassembly.js"></script>
+</body>
+
+</html>
+```
+
+### Phase 5.9: wwwroot/css/app.css
+
+```css
+/* app.css */
+
+/* Loading screen */
+.loading-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    color: #666;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Blazor error UI */
+#blazor-error-ui {
+    background: lightyellow;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 0.75rem;
+    top: 0.5rem;
+}
+
+/* Error boundary */
+.error-boundary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    padding: 2rem;
+}
+
+.error-content {
+    text-align: center;
+    max-width: 400px;
+}
+
+/* Connection status */
+.connection-status {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+}
+
+.connection-status.connected {
+    color: var(--rz-success);
+}
+
+.connection-status.connecting,
+.connection-status.reconnecting {
+    color: var(--rz-warning);
+}
+
+.connection-status.disconnected,
+.connection-status.closed {
+    color: var(--rz-danger);
+}
+
+/* General layout adjustments */
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Roboto', sans-serif;
+}
+```
+
+### Phase 5.10: wwwroot/appsettings.json
 
 ```json
 {
@@ -210,7 +541,8 @@ public sealed class CorrelationIdLogger : ILogger
     "ServerUrl": "ws://localhost:8080/ws",
     "HeartbeatInterval": "00:00:30",
     "HeartbeatTimeout": "00:01:00",
-    "RequestTimeout": "00:00:30"
+    "RequestTimeout": "00:00:30",
+    "ReceiveBufferSize": 8192
   },
   "CircuitBreaker": {
     "FailureThreshold": 5,
@@ -221,7 +553,8 @@ public sealed class CorrelationIdLogger : ILogger
   "Retry": {
     "MaxAttempts": 3,
     "InitialDelay": "00:00:00.100",
-    "MaxDelay": "00:00:05"
+    "MaxDelay": "00:00:05",
+    "BackoffMultiplier": 2.0
   },
   "Reconnection": {
     "MaxAttempts": 10,
@@ -235,15 +568,18 @@ public sealed class CorrelationIdLogger : ILogger
 
 | File | Purpose |
 |------|---------|
+| `CorrelationIdLoggerProvider.cs` | Logger provider factory |
+| `CorrelationIdLogger.cs` | Structured logging with correlation IDs |
 | `Program.cs` | Full DI setup |
-| `App.razor` | Root component |
+| `App.razor` | Root component with routing |
+| `MainLayout.razor` | Application layout with error boundary |
+| `AppErrorBoundary.razor` | Error handling component |
+| `ConnectionStatus.razor` | Connection state indicator |
 | `_Imports.razor` | Global imports |
-| `ErrorBoundary.razor` | Error handling |
-| `CorrelationIdLogger.cs` | Structured logging |
 | `wwwroot/index.html` | Host page |
 | `wwwroot/css/app.css` | Base styles |
 | `wwwroot/appsettings.json` | Configuration |
-| **Total** | **8 files** |
+| **Total** | **11 files** |
 
 ### Success Criteria for 20.5
 
@@ -252,6 +588,6 @@ public sealed class CorrelationIdLogger : ILogger
 - [ ] Structured logging with correlation IDs
 - [ ] Configuration loaded from appsettings.json
 - [ ] Radzen components available
+- [ ] Connection status displays current state
 
 ---
-

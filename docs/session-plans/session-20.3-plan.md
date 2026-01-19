@@ -12,10 +12,76 @@
 
 **Estimated Tokens**: ~30k
 
+## Context: Types Available from Previous Sessions
+
+**From Session 20.1 (ProjectManagement.Core):**
+- `ProjectManagement.Core.Models.*` - WorkItem, Sprint, CreateWorkItemRequest, UpdateWorkItemRequest, FieldChange, ConnectionState
+- `ProjectManagement.Core.Interfaces.*` - IWebSocketClient, IConnectionHealth, IWorkItemStore, ISprintStore
+- `ProjectManagement.Core.Exceptions.*` - ConnectionException, RequestTimeoutException, ServerRejectedException, ValidationException, VersionConflictException, CircuitOpenException
+
+**From Session 20.2 (ProjectManagement.Services):**
+- `ProjectManagement.Services.WebSocket.WebSocketOptions`
+- `ProjectManagement.Services.WebSocket.WebSocketClient`
+- `ProjectManagement.Services.WebSocket.ConnectionHealthTracker`
+
+**Protobuf namespace convention:**
+- `using Pm = ProjectManagement.Core.Proto;`
+
+---
+
 ### Phase 3.1: Circuit Breaker
 
 ```csharp
+// CircuitBreakerOptions.cs
+namespace ProjectManagement.Services.Resilience;
+
+/// <summary>
+/// Configuration for circuit breaker behavior.
+/// </summary>
+public sealed class CircuitBreakerOptions
+{
+    /// <summary>Number of failures before opening circuit.</summary>
+    public int FailureThreshold { get; set; } = 5;
+
+    /// <summary>Duration to keep circuit open before testing.</summary>
+    public TimeSpan OpenDuration { get; set; } = TimeSpan.FromSeconds(30);
+
+    /// <summary>Successes needed in half-open to close circuit.</summary>
+    public int HalfOpenSuccessThreshold { get; set; } = 3;
+
+    /// <summary>Window for counting failures.</summary>
+    public TimeSpan FailureWindow { get; set; } = TimeSpan.FromSeconds(60);
+}
+```
+
+```csharp
+// CircuitState.cs
+namespace ProjectManagement.Services.Resilience;
+
+/// <summary>
+/// States for the circuit breaker pattern.
+/// </summary>
+public enum CircuitState
+{
+    /// <summary>Normal operation - requests allowed.</summary>
+    Closed,
+
+    /// <summary>Circuit tripped - requests blocked.</summary>
+    Open,
+
+    /// <summary>Testing recovery - limited requests allowed.</summary>
+    HalfOpen
+}
+```
+
+```csharp
 // CircuitBreaker.cs
+using System.IO;
+using System.Net.WebSockets;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using ProjectManagement.Core.Exceptions;
+
 namespace ProjectManagement.Services.Resilience;
 
 /// <summary>
@@ -182,9 +248,13 @@ public sealed class CircuitBreaker
             RecordSuccess();
             return result;
         }
-        catch (Exception ex) when (ShouldRecordAsFailure(ex))
+        catch (Exception ex)
         {
-            RecordFailure();
+            // Record failure for transient errors, but always re-throw
+            if (ShouldRecordAsFailure(ex))
+            {
+                RecordFailure();
+            }
             throw;
         }
     }
@@ -197,35 +267,35 @@ public sealed class CircuitBreaker
             && ex is not VersionConflictException;
     }
 }
-
-public enum CircuitState
-{
-    Closed,
-    Open,
-    HalfOpen
-}
-
-// CircuitBreakerOptions.cs
-public sealed class CircuitBreakerOptions
-{
-    /// <summary>Number of failures before opening circuit.</summary>
-    public int FailureThreshold { get; set; } = 5;
-
-    /// <summary>Duration to keep circuit open before testing.</summary>
-    public TimeSpan OpenDuration { get; set; } = TimeSpan.FromSeconds(30);
-
-    /// <summary>Successes needed in half-open to close circuit.</summary>
-    public int HalfOpenSuccessThreshold { get; set; } = 3;
-
-    /// <summary>Window for counting failures.</summary>
-    public TimeSpan FailureWindow { get; set; } = TimeSpan.FromSeconds(60);
-}
 ```
 
 ### Phase 3.2: Retry Policy
 
 ```csharp
+// RetryPolicyOptions.cs
+namespace ProjectManagement.Services.Resilience;
+
+/// <summary>
+/// Configuration for retry policy behavior.
+/// </summary>
+public sealed class RetryPolicyOptions
+{
+    public int MaxAttempts { get; set; } = 3;
+    public TimeSpan InitialDelay { get; set; } = TimeSpan.FromMilliseconds(100);
+    // Aligned with pm-config DEFAULT_MAX_DELAY_SECS = 5
+    public TimeSpan MaxDelay { get; set; } = TimeSpan.FromSeconds(5);
+    public double BackoffMultiplier { get; set; } = 2.0;
+}
+```
+
+```csharp
 // RetryPolicy.cs
+using System.IO;
+using System.Net.WebSockets;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using ProjectManagement.Core.Exceptions;
+
 namespace ProjectManagement.Services.Resilience;
 
 /// <summary>
@@ -303,22 +373,35 @@ public sealed class RetryPolicy
         return TimeSpan.FromMilliseconds(delay.TotalMilliseconds * jitterFactor);
     }
 }
-
-// RetryPolicyOptions.cs
-public sealed class RetryPolicyOptions
-{
-    public int MaxAttempts { get; set; } = 3;
-    public TimeSpan InitialDelay { get; set; } = TimeSpan.FromMilliseconds(100);
-    // Aligned with pm-config DEFAULT_MAX_DELAY_SECS = 5
-    public TimeSpan MaxDelay { get; set; } = TimeSpan.FromSeconds(5);
-    public double BackoffMultiplier { get; set; } = 2.0;
-}
 ```
 
 ### Phase 3.3: Reconnection Service
 
 ```csharp
+// ReconnectionOptions.cs
+namespace ProjectManagement.Services.Resilience;
+
+/// <summary>
+/// Configuration for automatic reconnection behavior.
+/// Note: Reconnection is a client-only concern (not present in pm-config).
+/// These values are tuned for desktop/WebSocket UX, not server-side retry policy.
+/// </summary>
+public sealed class ReconnectionOptions
+{
+    public int MaxAttempts { get; set; } = 10;
+    public TimeSpan InitialDelay { get; set; } = TimeSpan.FromSeconds(1);
+    public TimeSpan MaxDelay { get; set; } = TimeSpan.FromSeconds(30);
+}
+```
+
+```csharp
 // ReconnectionService.cs
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using ProjectManagement.Core.Exceptions;
+using ProjectManagement.Core.Interfaces;
+using ProjectManagement.Core.Models;
+
 namespace ProjectManagement.Services.Resilience;
 
 /// <summary>
@@ -517,23 +600,18 @@ public sealed class ReconnectionService : IDisposable
         _lock.Dispose();
     }
 }
-
-// ReconnectionOptions.cs
-// Note: Reconnection is a client-only concern (not present in pm-config).
-// These values are tuned for desktop/WebSocket UX, not server-side retry policy.
-public sealed class ReconnectionOptions
-{
-    public int MaxAttempts { get; set; } = 10;
-    public TimeSpan InitialDelay { get; set; } = TimeSpan.FromSeconds(1);
-    public TimeSpan MaxDelay { get; set; } = TimeSpan.FromSeconds(30);
-}
 ```
 
 ### Phase 3.4: Resilient WebSocket Client Wrapper
 
 ```csharp
 // ResilientWebSocketClient.cs
-namespace ProjectManagement.Services.WebSocket;
+using Microsoft.Extensions.Logging;
+using ProjectManagement.Core.Interfaces;
+using ProjectManagement.Core.Models;
+using ProjectManagement.Services.WebSocket;
+
+namespace ProjectManagement.Services.Resilience;
 
 /// <summary>
 /// WebSocket client wrapper with circuit breaker and retry protection.
@@ -667,14 +745,15 @@ public sealed class ResilientWebSocketClient : IWebSocketClient
 
 | File | Purpose |
 |------|---------|
-| `CircuitBreaker.cs` | Circuit breaker pattern |
 | `CircuitBreakerOptions.cs` | Circuit breaker configuration |
-| `RetryPolicy.cs` | Retry with exponential backoff |
+| `CircuitState.cs` | Circuit breaker state enum |
+| `CircuitBreaker.cs` | Circuit breaker pattern |
 | `RetryPolicyOptions.cs` | Retry configuration |
-| `ReconnectionService.cs` | Automatic reconnection |
+| `RetryPolicy.cs` | Retry with exponential backoff |
 | `ReconnectionOptions.cs` | Reconnection configuration |
+| `ReconnectionService.cs` | Automatic reconnection |
 | `ResilientWebSocketClient.cs` | Wrapper combining resilience patterns |
-| **Total** | **7 files** |
+| **Total** | **8 files** |
 
 ### Success Criteria for 20.3
 
@@ -685,4 +764,3 @@ public sealed class ResilientWebSocketClient : IWebSocketClient
 - [ ] All resilience patterns are thread-safe
 
 ---
-

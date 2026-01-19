@@ -12,14 +12,94 @@
 
 **Estimated Tokens**: ~30k
 
-### Phase 4.1: Work Item Store
+## Context: Types Available from Previous Sessions
+
+**From Session 20.1 (ProjectManagement.Core):**
+- `ProjectManagement.Core.Models.*` - WorkItem, Sprint, CreateWorkItemRequest, UpdateWorkItemRequest, CreateSprintRequest, UpdateSprintRequest, FieldChange, ConnectionState, SprintStatus
+- `ProjectManagement.Core.Interfaces.*` - IWebSocketClient, IConnectionHealth, IWorkItemStore, ISprintStore, ISoftDeletable
+- `ProjectManagement.Core.Exceptions.*` - ConnectionException, RequestTimeoutException, ServerRejectedException, ValidationException, VersionConflictException, CircuitOpenException
+
+**From Session 20.2 (ProjectManagement.Services.WebSocket):**
+- `WebSocketOptions`, `WebSocketClient`, `ConnectionHealthTracker`
+
+**From Session 20.3 (ProjectManagement.Services.Resilience):**
+- `CircuitBreaker`, `CircuitBreakerOptions`, `CircuitState`
+- `RetryPolicy`, `RetryPolicyOptions`
+- `ReconnectionService`, `ReconnectionOptions`
+- `ResilientWebSocketClient`
+
+**Key interface contracts (from Session 20.1):**
+
+```csharp
+// IWorkItemStore - already defined in ProjectManagement.Core.Interfaces
+public interface IWorkItemStore : IDisposable
+{
+    event Action? OnChanged;
+    IReadOnlyList<WorkItem> GetByProject(Guid projectId);
+    WorkItem? GetById(Guid id);
+    IReadOnlyList<WorkItem> GetBySprint(Guid sprintId);
+    IReadOnlyList<WorkItem> GetChildren(Guid parentId);
+    Task<WorkItem> CreateAsync(CreateWorkItemRequest request, CancellationToken ct = default);
+    Task<WorkItem> UpdateAsync(UpdateWorkItemRequest request, CancellationToken ct = default);
+    Task DeleteAsync(Guid id, CancellationToken ct = default);
+    Task RefreshAsync(Guid projectId, CancellationToken ct = default);
+}
+
+// ISprintStore - already defined in ProjectManagement.Core.Interfaces
+public interface ISprintStore : IDisposable
+{
+    event Action? OnChanged;
+    IReadOnlyList<Sprint> GetByProject(Guid projectId);
+    Sprint? GetById(Guid id);
+    Sprint? GetActiveSprint(Guid projectId);
+    Task<Sprint> CreateAsync(CreateSprintRequest request, CancellationToken ct = default);
+    Task<Sprint> UpdateAsync(UpdateSprintRequest request, CancellationToken ct = default);
+    Task<Sprint> StartSprintAsync(Guid sprintId, CancellationToken ct = default);
+    Task<Sprint> CompleteSprintAsync(Guid sprintId, CancellationToken ct = default);
+    Task DeleteAsync(Guid id, CancellationToken ct = default);
+    Task RefreshAsync(Guid projectId, CancellationToken ct = default);
+}
+```
+
+**Note on ISoftDeletable:**
+The `WorkItem` and `Sprint` models have `DeletedAt` property. The `ISoftDeletable` interface provides an `IsDeleted` property via default interface implementation: `bool IsDeleted => DeletedAt.HasValue;`
+
+---
+
+### Phase 4.1: Optimistic Update Tracking
+
+```csharp
+// OptimisticUpdate.cs
+namespace ProjectManagement.Services.State;
+
+/// <summary>
+/// Tracks a pending optimistic update for rollback capability.
+/// </summary>
+internal sealed record OptimisticUpdate<T>(
+    Guid EntityId,
+    T? OriginalValue,
+    T OptimisticValue)
+{
+    public DateTime CreatedAt { get; } = DateTime.UtcNow;
+
+    public bool IsCreate => OriginalValue is null;
+}
+```
+
+### Phase 4.2: Work Item Store
 
 ```csharp
 // WorkItemStore.cs
+using System.Collections.Concurrent;
+using Microsoft.Extensions.Logging;
+using ProjectManagement.Core.Interfaces;
+using ProjectManagement.Core.Models;
+
 namespace ProjectManagement.Services.State;
 
 /// <summary>
 /// Thread-safe state management for work items with optimistic updates.
+/// Uses ConcurrentDictionary for thread-safe access without explicit locks.
 /// </summary>
 public sealed class WorkItemStore : IWorkItemStore
 {
@@ -27,7 +107,6 @@ public sealed class WorkItemStore : IWorkItemStore
     private readonly ConcurrentDictionary<Guid, OptimisticUpdate<WorkItem>> _pendingUpdates = new();
     private readonly IWebSocketClient _client;
     private readonly ILogger<WorkItemStore> _logger;
-    private readonly SemaphoreSlim _operationLock = new(1, 1);
 
     private bool _disposed;
 
@@ -50,14 +129,14 @@ public sealed class WorkItemStore : IWorkItemStore
     public IReadOnlyList<WorkItem> GetByProject(Guid projectId)
     {
         return _workItems.Values
-            .Where(w => w.ProjectId == projectId && !w.IsDeleted)
+            .Where(w => w.ProjectId == projectId && w.DeletedAt == null)
             .OrderBy(w => w.Position)
             .ToList();
     }
 
     public WorkItem? GetById(Guid id)
     {
-        return _workItems.TryGetValue(id, out var item) && !item.IsDeleted
+        return _workItems.TryGetValue(id, out var item) && item.DeletedAt == null
             ? item
             : null;
     }
@@ -65,7 +144,7 @@ public sealed class WorkItemStore : IWorkItemStore
     public IReadOnlyList<WorkItem> GetBySprint(Guid sprintId)
     {
         return _workItems.Values
-            .Where(w => w.SprintId == sprintId && !w.IsDeleted)
+            .Where(w => w.SprintId == sprintId && w.DeletedAt == null)
             .OrderBy(w => w.Position)
             .ToList();
     }
@@ -73,7 +152,7 @@ public sealed class WorkItemStore : IWorkItemStore
     public IReadOnlyList<WorkItem> GetChildren(Guid parentId)
     {
         return _workItems.Values
-            .Where(w => w.ParentId == parentId && !w.IsDeleted)
+            .Where(w => w.ParentId == parentId && w.DeletedAt == null)
             .OrderBy(w => w.Position)
             .ToList();
     }
@@ -98,11 +177,14 @@ public sealed class WorkItemStore : IWorkItemStore
             Description = request.Description,
             ProjectId = request.ProjectId,
             ParentId = request.ParentId,
-            Status = WorkItemDefaults.Status,
-            Priority = WorkItemDefaults.Priority,
+            Status = request.Status, // Use request status (defaults to "backlog")
+            Priority = "medium",
             Position = int.MaxValue, // Will be fixed by server
+            Version = 1,
             CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            UpdatedAt = DateTime.UtcNow,
+            CreatedBy = Guid.Empty, // Will be set by server
+            UpdatedBy = Guid.Empty  // Will be set by server
         };
 
         // Apply optimistically
@@ -335,29 +417,7 @@ public sealed class WorkItemStore : IWorkItemStore
         _client.OnWorkItemCreated -= HandleWorkItemCreated;
         _client.OnWorkItemUpdated -= HandleWorkItemUpdated;
         _client.OnWorkItemDeleted -= HandleWorkItemDeleted;
-
-        _operationLock.Dispose();
     }
-}
-```
-
-### Phase 4.2: Optimistic Update Tracking
-
-```csharp
-// OptimisticUpdate.cs
-namespace ProjectManagement.Services.State;
-
-/// <summary>
-/// Tracks a pending optimistic update for rollback capability.
-/// </summary>
-internal sealed record OptimisticUpdate<T>(
-    Guid EntityId,
-    T? OriginalValue,
-    T OptimisticValue)
-{
-    public DateTime CreatedAt { get; } = DateTime.UtcNow;
-
-    public bool IsCreate => OriginalValue is null;
 }
 ```
 
@@ -365,11 +425,17 @@ internal sealed record OptimisticUpdate<T>(
 
 ```csharp
 // SprintStore.cs
+using System.Collections.Concurrent;
+using Microsoft.Extensions.Logging;
+using ProjectManagement.Core.Interfaces;
+using ProjectManagement.Core.Models;
+
 namespace ProjectManagement.Services.State;
 
 /// <summary>
 /// Thread-safe state management for sprints.
 /// Follows same pattern as WorkItemStore.
+/// Note: Full WebSocket integration deferred to Session 40 (Sprints & Comments).
 /// </summary>
 public sealed class SprintStore : ISprintStore
 {
@@ -388,7 +454,7 @@ public sealed class SprintStore : ISprintStore
         _client = client;
         _logger = logger;
 
-        // TODO: Wire up sprint events when backend adds them
+        // Sprint events will be wired up in Session 40 when backend handlers are implemented
         // _client.OnSprintCreated += HandleSprintCreated;
         // _client.OnSprintUpdated += HandleSprintUpdated;
     }
@@ -398,14 +464,14 @@ public sealed class SprintStore : ISprintStore
     public IReadOnlyList<Sprint> GetByProject(Guid projectId)
     {
         return _sprints.Values
-            .Where(s => s.ProjectId == projectId && !s.IsDeleted)
+            .Where(s => s.ProjectId == projectId && s.DeletedAt == null)
             .OrderBy(s => s.StartDate)
             .ToList();
     }
 
     public Sprint? GetById(Guid id)
     {
-        return _sprints.TryGetValue(id, out var sprint) && !sprint.IsDeleted
+        return _sprints.TryGetValue(id, out var sprint) && sprint.DeletedAt == null
             ? sprint
             : null;
     }
@@ -415,21 +481,20 @@ public sealed class SprintStore : ISprintStore
         return _sprints.Values
             .FirstOrDefault(s => s.ProjectId == projectId
                 && s.Status == SprintStatus.Active
-                && !s.IsDeleted);
+                && s.DeletedAt == null);
     }
 
     #endregion
 
     #region Write Operations
 
-    public async Task<Sprint> CreateAsync(
+    public Task<Sprint> CreateAsync(
         CreateSprintRequest request,
         CancellationToken ct = default)
     {
         ThrowIfDisposed();
 
-        // TODO: Call _client.CreateSprintAsync when backend handler is implemented
-        // For now, create locally (will be replaced in Session 50)
+        // Local-only creation until Session 40 implements WebSocket handlers
         var sprint = new Sprint
         {
             Id = Guid.NewGuid(),
@@ -441,7 +506,7 @@ public sealed class SprintStore : ISprintStore
             Status = SprintStatus.Planned,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
-            CreatedBy = Guid.Empty, // Will be set by server
+            CreatedBy = Guid.Empty, // Will be set by server in Session 40
             UpdatedBy = Guid.Empty
         };
 
@@ -449,10 +514,10 @@ public sealed class SprintStore : ISprintStore
         NotifyChanged();
 
         _logger.LogDebug("Sprint created locally: {Id}", sprint.Id);
-        return sprint;
+        return Task.FromResult(sprint);
     }
 
-    public async Task<Sprint> UpdateAsync(
+    public Task<Sprint> UpdateAsync(
         UpdateSprintRequest request,
         CancellationToken ct = default)
     {
@@ -475,10 +540,10 @@ public sealed class SprintStore : ISprintStore
         _sprints[request.SprintId] = updated;
         NotifyChanged();
 
-        return updated;
+        return Task.FromResult(updated);
     }
 
-    public async Task<Sprint> StartSprintAsync(Guid sprintId, CancellationToken ct = default)
+    public Task<Sprint> StartSprintAsync(Guid sprintId, CancellationToken ct = default)
     {
         ThrowIfDisposed();
 
@@ -509,10 +574,10 @@ public sealed class SprintStore : ISprintStore
         _sprints[sprintId] = started;
         NotifyChanged();
 
-        return started;
+        return Task.FromResult(started);
     }
 
-    public async Task<Sprint> CompleteSprintAsync(Guid sprintId, CancellationToken ct = default)
+    public Task<Sprint> CompleteSprintAsync(Guid sprintId, CancellationToken ct = default)
     {
         ThrowIfDisposed();
 
@@ -535,30 +600,32 @@ public sealed class SprintStore : ISprintStore
         _sprints[sprintId] = completed;
         NotifyChanged();
 
-        return completed;
+        return Task.FromResult(completed);
     }
 
-    public async Task DeleteAsync(Guid id, CancellationToken ct = default)
+    public Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
         ThrowIfDisposed();
 
         if (!_sprints.TryGetValue(id, out var current))
         {
-            return; // Already deleted
+            return Task.CompletedTask; // Already deleted
         }
 
         var deleted = current with { DeletedAt = DateTime.UtcNow };
         _sprints[id] = deleted;
         NotifyChanged();
+
+        return Task.CompletedTask;
     }
 
-    public async Task RefreshAsync(Guid projectId, CancellationToken ct = default)
+    public Task RefreshAsync(Guid projectId, CancellationToken ct = default)
     {
         ThrowIfDisposed();
 
-        // TODO: Call _client.GetSprintsAsync when backend handler is implemented
-        // For now, this is a no-op (will be replaced in Session 50)
-        _logger.LogDebug("Sprint refresh for project {ProjectId} - not yet implemented", projectId);
+        // Will call _client.GetSprintsAsync when backend handler is implemented in Session 40
+        _logger.LogDebug("Sprint refresh for project {ProjectId} - backend not yet implemented", projectId);
+        return Task.CompletedTask;
     }
 
     #endregion
@@ -596,6 +663,10 @@ public sealed class SprintStore : ISprintStore
 
 ```csharp
 // AppState.cs
+using Microsoft.Extensions.Logging;
+using ProjectManagement.Core.Interfaces;
+using ProjectManagement.Core.Models;
+
 namespace ProjectManagement.Services.State;
 
 /// <summary>
@@ -695,13 +766,13 @@ public sealed class AppState : IDisposable
 
 | File | Purpose |
 |------|---------|
-| `WorkItemStore.cs` | Work item state with optimistic updates |
-| `SprintStore.cs` | Sprint state management (stub - full impl in Session 50) |
 | `OptimisticUpdate.cs` | Pending update tracking |
+| `WorkItemStore.cs` | Work item state with optimistic updates |
+| `SprintStore.cs` | Sprint state management (local-only until Session 40) |
 | `AppState.cs` | Root state container |
 | **Total** | **4 files** |
 
-> **Note**: `CommentStore.cs` deferred to Session 50 (Sprints & Comments) to avoid stub proliferation.
+> **Note**: `CommentStore.cs` deferred to Session 40 (Sprints & Comments) to avoid stub proliferation.
 
 ### Success Criteria for 20.4
 
@@ -713,4 +784,3 @@ public sealed class AppState : IDisposable
 - [ ] Proper disposal of resources
 
 ---
-
