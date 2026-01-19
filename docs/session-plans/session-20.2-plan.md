@@ -4,6 +4,42 @@
 **Target**: ~35k tokens
 **Prerequisites**: Session 20.1 complete (Foundation with models and interfaces)
 
+**Status**: ✅ Complete (2026-01-19)
+
+---
+
+## Completion Summary
+
+**What Was Built:**
+- Configuration with constants (no magic numbers)
+- Request/response correlation with timeout handling
+- Modern .NET WebSocket abstraction (ValueTask, ValueWebSocketReceiveResult)
+- Full WebSocket client with thread safety, heartbeat, and proper disposal
+- Per-message latency tracking with connection health metrics
+- Two-constructor pattern for testability
+
+**Key Fixes Applied:**
+- Fixed protobuf namespace: `ProjectManagement.Core.Proto` (not `Protos`)
+- Updated to modern .NET types (ValueTask instead of Task for WebSocket operations)
+- Moved ConnectionState from Exceptions to Models namespace
+- Fixed dependency order (ConnectionHealthTracker created before WebSocketClient)
+- Added stub implementations for unimplemented IWebSocketClient methods
+
+**Files Created:** 7
+- `WebSocketOptions.cs`
+- `PendingRequest.cs`
+- `IWebSocketConnection.cs`
+- `BrowserWebSocketConnection.cs`
+- `WebSocketClient.cs`
+- `ConnectionHealthTracker.cs`
+- `_Imports.cs`
+
+**Files Modified:** 2
+- `ConnectionState.cs` (moved to Models)
+- This plan document (corrected for modern .NET patterns)
+
+**Build Status:** ✅ 0 warnings, 0 errors
+
 ---
 
 ## Scope
@@ -140,6 +176,8 @@ internal sealed class PendingRequest : IDisposable
 // IWebSocketConnection.cs
 namespace ProjectManagement.Services.WebSocket;
 
+using System.Net.WebSockets;
+
 /// <summary>
 /// Abstraction over raw WebSocket for testability.
 /// </summary>
@@ -148,8 +186,8 @@ internal interface IWebSocketConnection : IAsyncDisposable
     WebSocketState State { get; }
 
     Task ConnectAsync(Uri uri, CancellationToken ct);
-    Task SendAsync(ReadOnlyMemory<byte> buffer, CancellationToken ct);
-    Task<WebSocketReceiveResult> ReceiveAsync(Memory<byte> buffer, CancellationToken ct);
+    ValueTask SendAsync(ReadOnlyMemory<byte> buffer, CancellationToken ct);
+    ValueTask<ValueWebSocketReceiveResult> ReceiveAsync(Memory<byte> buffer, CancellationToken ct);
     Task CloseAsync(WebSocketCloseStatus status, string? description, CancellationToken ct);
 }
 
@@ -174,12 +212,12 @@ internal sealed class BrowserWebSocketConnection : IWebSocketConnection
         _logger.LogInformation("Connected to {Uri}", uri);
     }
 
-    public Task SendAsync(ReadOnlyMemory<byte> buffer, CancellationToken ct)
+    public ValueTask SendAsync(ReadOnlyMemory<byte> buffer, CancellationToken ct)
     {
         return _socket.SendAsync(buffer, WebSocketMessageType.Binary, true, ct);
     }
 
-    public Task<WebSocketReceiveResult> ReceiveAsync(Memory<byte> buffer, CancellationToken ct)
+    public ValueTask<ValueWebSocketReceiveResult> ReceiveAsync(Memory<byte> buffer, CancellationToken ct)
     {
         return _socket.ReceiveAsync(buffer, ct);
     }
@@ -220,6 +258,8 @@ internal sealed class BrowserWebSocketConnection : IWebSocketConnection
 ```csharp
 // WebSocketClient.cs
 namespace ProjectManagement.Services.WebSocket;
+
+using Pm = ProjectManagement.Core.Proto;
 
 public sealed class WebSocketClient : IWebSocketClient
 {
@@ -336,7 +376,7 @@ public sealed class WebSocketClient : IWebSocketClient
         // Validate using injected validator
         _createValidator.Validate(request).ThrowIfInvalid();
 
-        var message = new WebSocketMessage
+        var message = new Pm.WebSocketMessage
         {
             MessageId = Guid.NewGuid().ToString(),
             Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
@@ -355,7 +395,7 @@ public sealed class WebSocketClient : IWebSocketClient
 
         var response = await SendRequestAsync(message, ct);
 
-        if (response.PayloadCase == WebSocketMessage.PayloadOneofCase.Error)
+        if (response.PayloadCase == Pm.WebSocketMessage.PayloadOneofCase.Error)
         {
             throw new ServerRejectedException(
                 response.Error.Code,
@@ -363,7 +403,7 @@ public sealed class WebSocketClient : IWebSocketClient
                 response.Error.Field);
         }
 
-        if (response.PayloadCase != WebSocketMessage.PayloadOneofCase.WorkItemCreated)
+        if (response.PayloadCase != Pm.WebSocketMessage.PayloadOneofCase.WorkItemCreated)
         {
             throw new InvalidOperationException(
                 $"Unexpected response type: {response.PayloadCase}");
@@ -376,8 +416,8 @@ public sealed class WebSocketClient : IWebSocketClient
 
     #region Private Methods
 
-    private async Task<WebSocketMessage> SendRequestAsync(
-        WebSocketMessage request,
+    private async Task<Pm.WebSocketMessage> SendRequestAsync(
+        Pm.WebSocketMessage request,
         CancellationToken ct)
     {
         using var pending = new PendingRequest(
@@ -404,7 +444,7 @@ public sealed class WebSocketClient : IWebSocketClient
         }
     }
 
-    private async Task SendMessageAsync(WebSocketMessage message, CancellationToken ct)
+    private async Task SendMessageAsync(Pm.WebSocketMessage message, CancellationToken ct)
     {
         var bytes = message.ToByteArray();
 
@@ -469,7 +509,7 @@ public sealed class WebSocketClient : IWebSocketClient
     {
         try
         {
-            var message = WebSocketMessage.Parser.ParseFrom(bytes);
+            var message = Pm.WebSocketMessage.Parser.ParseFrom(bytes);
             _health.RecordMessageReceived();
 
             _logger.LogDebug("Received message {MessageId} ({Type})",
@@ -492,21 +532,21 @@ public sealed class WebSocketClient : IWebSocketClient
         }
     }
 
-    private void HandleBroadcastEvent(WebSocketMessage message)
+    private void HandleBroadcastEvent(Pm.WebSocketMessage message)
     {
         switch (message.PayloadCase)
         {
-            case WebSocketMessage.PayloadOneofCase.Pong:
+            case Pm.WebSocketMessage.PayloadOneofCase.Pong:
                 // Pass messageId to correlate with specific ping for accurate latency
                 _health.RecordPong(message.MessageId, message.Pong.Timestamp);
                 break;
 
-            case WebSocketMessage.PayloadOneofCase.WorkItemCreated:
+            case Pm.WebSocketMessage.PayloadOneofCase.WorkItemCreated:
                 var created = ProtoConverter.ToDomain(message.WorkItemCreated.WorkItem);
                 OnWorkItemCreated?.Invoke(created);
                 break;
 
-            case WebSocketMessage.PayloadOneofCase.WorkItemUpdated:
+            case Pm.WebSocketMessage.PayloadOneofCase.WorkItemUpdated:
                 var updated = ProtoConverter.ToDomain(message.WorkItemUpdated.WorkItem);
                 var changes = message.WorkItemUpdated.Changes
                     .Select(c => new FieldChange(c.FieldName, c.OldValue, c.NewValue))
@@ -514,7 +554,7 @@ public sealed class WebSocketClient : IWebSocketClient
                 OnWorkItemUpdated?.Invoke(updated, changes);
                 break;
 
-            case WebSocketMessage.PayloadOneofCase.WorkItemDeleted:
+            case Pm.WebSocketMessage.PayloadOneofCase.WorkItemDeleted:
                 if (Guid.TryParse(message.WorkItemDeleted.WorkItemId, out var deletedId))
                 {
                     OnWorkItemDeleted?.Invoke(deletedId);
@@ -540,7 +580,7 @@ public sealed class WebSocketClient : IWebSocketClient
                     continue;
 
                 var messageId = Guid.NewGuid().ToString();
-                var ping = new WebSocketMessage
+                var ping = new Pm.WebSocketMessage
                 {
                     MessageId = messageId,
                     Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
@@ -814,25 +854,26 @@ internal sealed class ConnectionHealthTracker : IConnectionHealth
 
 | File | Purpose |
 |------|---------|
-| `WebSocketOptions.cs` | Configuration with sensible defaults |
-| `ConnectionState.cs` | Connection state enum |
+| `WebSocketOptions.cs` | Configuration with constants |
+| `_Imports.cs` | Global using statements |
 | `PendingRequest.cs` | Request/response tracking with timeout |
-| `IWebSocketConnection.cs` | Abstraction for testability |
+| `IWebSocketConnection.cs` | Abstraction for testability (modern .NET types) |
 | `BrowserWebSocketConnection.cs` | Real WebSocket implementation |
 | `WebSocketClient.cs` | Main client implementation |
 | `ConnectionHealthTracker.cs` | Health metrics tracking |
-| `CreateWorkItemRequest.cs` | Typed request DTO |
-| `UpdateWorkItemRequest.cs` | Typed request DTO |
-| **Total** | **9 files** |
+| **Total** | **7 files created** |
+
+**Note:** `CreateWorkItemRequest.cs` and `UpdateWorkItemRequest.cs` already existed from Session 20.1. `ConnectionState.cs` was moved from Exceptions to Models namespace.
 
 ### Success Criteria for 20.2
 
-- [ ] WebSocket connects to backend
-- [ ] Binary protobuf messages sent/received
-- [ ] Request/response correlation via message_id
-- [ ] Heartbeat ping/pong every 30 seconds
-- [ ] Proper disposal of resources
-- [ ] Thread-safe operations
+- [x] WebSocket connects to backend
+- [x] Binary protobuf messages sent/received
+- [x] Request/response correlation via message_id
+- [x] Heartbeat ping/pong every 30 seconds
+- [x] Proper disposal of resources
+- [x] Thread-safe operations
+- [x] Build succeeds with 0 warnings, 0 errors
 
 ---
 
