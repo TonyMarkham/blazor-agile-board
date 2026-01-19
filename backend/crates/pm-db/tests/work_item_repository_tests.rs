@@ -1,6 +1,9 @@
 mod common;
 
-use common::{create_test_pool, create_test_project, create_test_user, create_test_work_item};
+use common::{
+    create_test_pool, create_test_project, create_test_sprint, create_test_user,
+    create_test_work_item,
+};
 
 use pm_db::WorkItemRepository;
 
@@ -191,4 +194,133 @@ async fn given_empty_project_when_finding_by_project_then_returns_empty_vec() {
     // Then: Returns only the project itself (1 item)
     assert_that!(items, len(eq(1)));
     assert_that!(items[0].id, eq(project.id));
+}
+
+#[tokio::test]
+async fn given_work_item_with_sprint_when_sprint_deleted_then_sprint_id_set_to_null() {
+    // Given: A work item assigned to a sprint
+    let pool = create_test_pool().await;
+    let user_id = Uuid::new_v4();
+    create_test_user(&pool, user_id).await;
+
+    let project = create_test_project(user_id);
+    WorkItemRepository::create(&pool, &project).await.unwrap();
+
+    let sprint = create_test_sprint(project.id, user_id);
+    pm_db::SprintRepository::new(pool.clone())
+        .create(&sprint)
+        .await
+        .unwrap();
+
+    let mut work_item = create_test_work_item(project.id, user_id);
+    work_item.sprint_id = Some(sprint.id);
+    WorkItemRepository::create(&pool, &work_item).await.unwrap();
+
+    // When: Hard deleting the sprint (soft delete won't trigger FK constraints)
+    sqlx::query("DELETE FROM pm_sprints WHERE id = ?")
+        .bind(sprint.id.to_string())
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // Then: Work item's sprint_id is NULL (ON DELETE SET NULL)
+    let result = WorkItemRepository::find_by_id(&pool, work_item.id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_that!(result.sprint_id, none());
+}
+
+#[tokio::test]
+async fn given_work_item_with_assignee_when_user_deleted_then_assignee_id_set_to_null() {
+    // Given: A work item assigned to a user
+    let pool = create_test_pool().await;
+    let user_id = Uuid::new_v4();
+    create_test_user(&pool, user_id).await;
+
+    let project = create_test_project(user_id);
+    WorkItemRepository::create(&pool, &project).await.unwrap();
+
+    let mut work_item = create_test_work_item(project.id, user_id);
+    work_item.assignee_id = Some(user_id);
+    WorkItemRepository::create(&pool, &work_item).await.unwrap();
+
+    // When: Hard deleting the user (users table doesn't have soft delete)
+    sqlx::query("DELETE FROM users WHERE id = ?")
+        .bind(user_id.to_string())
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // Then: Work item's assignee_id is NULL (ON DELETE SET NULL)
+    let result = WorkItemRepository::find_by_id(&pool, work_item.id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_that!(result.assignee_id, none());
+}
+
+#[tokio::test]
+async fn given_parent_work_item_when_deleted_then_children_cascade_deleted() {
+    // Given: A parent work item with children
+    let pool = create_test_pool().await;
+    let user_id = Uuid::new_v4();
+    create_test_user(&pool, user_id).await;
+
+    let project = create_test_project(user_id);
+    WorkItemRepository::create(&pool, &project).await.unwrap();
+
+    let mut parent = create_test_work_item(project.id, user_id);
+    parent.item_type = pm_core::WorkItemType::Epic;
+    WorkItemRepository::create(&pool, &parent).await.unwrap();
+
+    let mut child = create_test_work_item(project.id, user_id);
+    child.parent_id = Some(parent.id);
+    WorkItemRepository::create(&pool, &child).await.unwrap();
+
+    // When: Hard deleting the parent (to test CASCADE - soft delete won't trigger it)
+    sqlx::query("DELETE FROM pm_work_items WHERE id = ?")
+        .bind(parent.id.to_string())
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // Then: Child is cascade deleted (ON DELETE CASCADE)
+    let result = WorkItemRepository::find_by_id(&pool, child.id)
+        .await
+        .unwrap();
+    assert_that!(result, none());
+}
+
+#[tokio::test]
+async fn given_project_with_work_items_when_deleted_then_all_work_items_cascade_deleted() {
+    // Given: A project with multiple work items
+    let pool = create_test_pool().await;
+    let user_id = Uuid::new_v4();
+    create_test_user(&pool, user_id).await;
+
+    let project = create_test_project(user_id);
+    WorkItemRepository::create(&pool, &project).await.unwrap();
+
+    let item1 = create_test_work_item(project.id, user_id);
+    let item2 = create_test_work_item(project.id, user_id);
+    WorkItemRepository::create(&pool, &item1).await.unwrap();
+    WorkItemRepository::create(&pool, &item2).await.unwrap();
+
+    // When: Hard deleting the project
+    sqlx::query("DELETE FROM pm_work_items WHERE id = ?")
+        .bind(project.id.to_string())
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // Then: All work items in project are cascade deleted
+    let result1 = WorkItemRepository::find_by_id(&pool, item1.id)
+        .await
+        .unwrap();
+    let result2 = WorkItemRepository::find_by_id(&pool, item2.id)
+        .await
+        .unwrap();
+    assert_that!(result1, none());
+    assert_that!(result2, none());
 }

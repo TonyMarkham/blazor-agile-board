@@ -41,7 +41,7 @@ This plan has been split into sub-sessions to fit within token budgets:
 
 | Session | Scope | Est. Tokens | Files | Status |
 |---------|-------|-------------|-------|--------|
-| **[20.01](session-20.01-plan.md)** | Database FK constraint fixes (structural debt) | ~10k | ~3 | ⏸️ Deferred |
+| **[20.01](session-20.01-plan.md)** | Database FK constraint fixes (structural debt) | ~10k | 4 | ✅ Complete |
 | **[20.1](session-20.1-plan.md)** | Project structure, Protobuf, Domain models | ~30k | ~55 | ✅ Complete |
 | **[20.2](session-20.2-plan.md)** | WebSocket client foundation | ~35k | ~9 | 🔜 Next |
 | **[20.3](session-20.3-plan.md)** | Resilience patterns (circuit breaker, retry, health) | ~30k | ~7 | Planned |
@@ -51,20 +51,30 @@ This plan has been split into sub-sessions to fit within token budgets:
 
 ---
 
-## Session 20.01: Database FK Constraint Fixes ⏸️
+## Session 20.01: Database FK Constraint Fixes ✅
 
-**Status**: Deferred (will be implemented in separate session)
+**Status**: Complete (2026-01-19) - Out of sequence, before Session 20.2
 
-**Reason**: Not blocking for frontend development. FK constraints are nice-to-have but frontend can treat sprint_id/assignee_id as optional references without DB-level enforcement.
+**Reason for Out-of-Sequence Completion**: Originally deferred as non-blocking for frontend development, but completed early to resolve structural database debt.
 
-**Files to Create:**
-- `backend/crates/pm-db/migrations/20260119000001_add_work_item_fks.sql` - FK constraints
+**What Was Accomplished**:
+- ✅ Added FK constraints: `pm_work_items.sprint_id` → `pm_sprints.id` (ON DELETE SET NULL)
+- ✅ Added FK constraints: `pm_work_items.assignee_id` → `users.id` (ON DELETE SET NULL)
+- ✅ Handled circular dependency between `pm_work_items` ↔ `pm_sprints`
+- ✅ 4 new FK constraint tests (SET NULL and CASCADE behaviors)
+- ✅ Complete FK documentation in `database-relationships.md`
 
-**Files to Modify:**
-- `backend/crates/pm-db/tests/work_item_repository_tests.rs` - FK tests
-- `docs/database-relationships.md` - Documentation
+**Key Lesson**: SQLite auto-updates FK references during table renames. Original migration plan (rename approach) failed catastrophically. Solution: Drop and recreate tables with FKs pointing to final names.
 
-**Verification:** `cargo test --workspace`
+**Files Modified/Created**:
+- `backend/crates/pm-db/migrations/20260119194912_add_work_item_fks.sql` - Migration (drop/recreate approach)
+- `backend/crates/pm-db/tests/work_item_repository_tests.rs` - 4 FK tests
+- `backend/crates/pm-db/README.md` - Workflow documentation rewrite
+- `docs/database-relationships.md` - Complete FK documentation
+
+**Test Results**: ✅ 157 tests passing (4 new FK tests)
+
+**Time**: ~2 hours (including debugging migration failures)
 
 ---
 
@@ -144,13 +154,13 @@ This plan has been split into sub-sessions to fit within token budgets:
 
 | Sub-Session | Files | Cumulative |
 |-------------|-------|------------|
-| 20.01 DB Fix | 3 | 3 |
-| 20.1 Foundation | 55 | 58 |
-| 20.2 WebSocket | 9 | 67 |
-| 20.3 Resilience | 7 | 74 |
-| 20.4 State | 4 | 78 |
-| 20.5 WASM Host | 8 | 86 |
-| 20.6 Tests | 15 | **101** |
+| 20.01 DB Fix | 4 | 4 |
+| 20.1 Foundation | 55 | 59 |
+| 20.2 WebSocket | 9 | 68 |
+| 20.3 Resilience | 7 | 75 |
+| 20.4 State | 4 | 79 |
+| 20.5 WASM Host | 8 | 87 |
+| 20.6 Tests | 15 | **102** |
 
 ---
 
