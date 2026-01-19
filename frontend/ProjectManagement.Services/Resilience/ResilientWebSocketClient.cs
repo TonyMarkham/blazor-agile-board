@@ -1,0 +1,133 @@
+using Microsoft.Extensions.Logging;
+using ProjectManagement.Core.Interfaces;
+using ProjectManagement.Core.Models;
+using ProjectManagement.Services.WebSocket;
+
+namespace ProjectManagement.Services.Resilience;
+
+/// <summary>
+/// WebSocket client wrapper with circuit breaker and retry protection.
+/// </summary>
+public sealed class ResilientWebSocketClient : IWebSocketClient
+{
+    private readonly WebSocketClient _inner;
+    private readonly CircuitBreaker _circuitBreaker;
+    private readonly RetryPolicy _retryPolicy;
+    private readonly ILogger<ResilientWebSocketClient> _logger;
+
+    public ConnectionState State => _inner.State;
+    public IConnectionHealth Health => _inner.Health;
+
+    public event Action<ConnectionState>? OnStateChanged
+    {
+        add => _inner.OnStateChanged += value;
+        remove => _inner.OnStateChanged -= value;
+    }
+
+    public event Action<WorkItem>? OnWorkItemCreated
+    {
+        add => _inner.OnWorkItemCreated += value;
+        remove => _inner.OnWorkItemCreated -= value;
+    }
+
+    public event Action<WorkItem, IReadOnlyList<FieldChange>>? OnWorkItemUpdated
+    {
+        add => _inner.OnWorkItemUpdated += value;
+        remove => _inner.OnWorkItemUpdated -= value;
+    }
+
+    public event Action<Guid>? OnWorkItemDeleted
+    {
+        add => _inner.OnWorkItemDeleted += value;
+        remove => _inner.OnWorkItemDeleted -= value;
+    }
+
+    public ResilientWebSocketClient(
+        WebSocketClient inner,
+        CircuitBreaker circuitBreaker,
+        RetryPolicy retryPolicy,
+        ILogger<ResilientWebSocketClient> logger)
+    {
+        _inner = inner;
+        _circuitBreaker = circuitBreaker;
+        _retryPolicy = retryPolicy;
+        _logger = logger;
+    }
+
+    public Task ConnectAsync(CancellationToken ct = default)
+        => _inner.ConnectAsync(ct);
+
+    public Task DisconnectAsync(CancellationToken ct = default)
+        => _inner.DisconnectAsync(ct);
+
+    public Task SubscribeAsync(IEnumerable<Guid> projectIds, CancellationToken ct = default)
+        => ExecuteWithResilienceAsync(
+            token => _inner.SubscribeAsync(projectIds, token),
+            ct);
+
+    public Task UnsubscribeAsync(IEnumerable<Guid> projectIds, CancellationToken ct = default)
+        => ExecuteWithResilienceAsync(
+            token => _inner.UnsubscribeAsync(projectIds, token),
+            ct);
+
+    public Task<WorkItem> CreateWorkItemAsync(
+        CreateWorkItemRequest request,
+        CancellationToken ct = default)
+        => ExecuteWithResilienceAsync(
+            token => _inner.CreateWorkItemAsync(request, token),
+            ct);
+
+    public Task<WorkItem> UpdateWorkItemAsync(
+        UpdateWorkItemRequest request,
+        CancellationToken ct = default)
+        => ExecuteWithResilienceAsync(
+            token => _inner.UpdateWorkItemAsync(request, token),
+            ct);
+
+    public Task DeleteWorkItemAsync(Guid workItemId, CancellationToken ct = default)
+        => ExecuteWithResilienceAsync(
+            async token =>
+            {
+                await _inner.DeleteWorkItemAsync(workItemId, token);
+                return true;
+            },
+            ct);
+
+    public Task<IReadOnlyList<WorkItem>> GetWorkItemsAsync(
+        Guid projectId,
+        DateTime? since = null,
+        CancellationToken ct = default)
+        => ExecuteWithResilienceAsync(
+            token => _inner.GetWorkItemsAsync(projectId, since, token),
+            ct);
+
+    private async Task<T> ExecuteWithResilienceAsync<T>(
+        Func<CancellationToken, Task<T>> operation,
+        CancellationToken ct)
+    {
+        return await _circuitBreaker.ExecuteAsync(
+            token => _retryPolicy.ExecuteAsync(operation, token),
+            ct);
+    }
+
+    private async Task ExecuteWithResilienceAsync(
+        Func<CancellationToken, Task> operation,
+        CancellationToken ct)
+    {
+        await _circuitBreaker.ExecuteAsync(
+            async token =>
+            {
+                await _retryPolicy.ExecuteAsync(
+                    async t =>
+                    {
+                        await operation(t);
+                        return true;
+                    },
+                    token);
+                return true;
+            },
+            ct);
+    }
+
+    public ValueTask DisposeAsync() => _inner.DisposeAsync();
+}

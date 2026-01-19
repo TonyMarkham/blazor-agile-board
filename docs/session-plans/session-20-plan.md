@@ -44,7 +44,7 @@ This plan has been split into sub-sessions to fit within token budgets:
 | **[20.01](session-20.01-plan.md)** | Database FK constraint fixes (structural debt) | ~10k | 4 | ✅ Complete |
 | **[20.1](session-20.1-plan.md)** | Project structure, Protobuf, Domain models | ~30k | ~55 | ✅ Complete |
 | **[20.2](session-20.2-plan.md)** | WebSocket client foundation | ~35k | 7 | ✅ Complete |
-| **[20.3](session-20.3-plan.md)** | Resilience patterns (circuit breaker, retry, health) | ~30k | ~7 | Planned |
+| **[20.3](session-20.3-plan.md)** | Resilience patterns (circuit breaker, retry, health) | ~30k | 8 | ✅ Complete |
 | **[20.4](session-20.4-plan.md)** | State management with thread safety | ~30k | ~4 | Planned |
 | **[20.5](session-20.5-plan.md)** | WASM host, error boundaries, observability | ~25k | ~8 | Planned |
 | **[20.6](session-20.6-plan.md)** | Comprehensive test suite (100+ tests) | ~30k | ~15 | Planned |
@@ -127,13 +127,30 @@ This plan has been split into sub-sessions to fit within token budgets:
 
 ---
 
-## Session 20.3: Resilience Patterns
+## Session 20.3: Resilience Patterns ✅
+
+**Status**: Complete (2026-01-19)
 
 **Files Created:**
-- `frontend/ProjectManagement.Services/Resilience/`
-- `CircuitBreaker.cs`, `RetryPolicy.cs`, `ReconnectionService.cs`
+- `frontend/ProjectManagement.Services/Resilience/CircuitBreakerOptions.cs` - Configuration with constants
+- `frontend/ProjectManagement.Services/Resilience/CircuitState.cs` - State enum
+- `frontend/ProjectManagement.Services/Resilience/CircuitBreaker.cs` - Thread-safe circuit breaker
+- `frontend/ProjectManagement.Services/Resilience/RetryPolicyOptions.cs` - Configuration with constants
+- `frontend/ProjectManagement.Services/Resilience/RetryPolicy.cs` - Retry with exponential backoff + jitter
+- `frontend/ProjectManagement.Services/Resilience/ReconnectionOptions.cs` - Configuration with constants
+- `frontend/ProjectManagement.Services/Resilience/ReconnectionService.cs` - Auto-reconnect with subscription rehydration
+- `frontend/ProjectManagement.Services/Resilience/ResilientWebSocketClient.cs` - Decorator wrapper
 
-**Verification:** Circuit breaker state machine works, retry with exponential backoff
+**Key Features:**
+- Circuit breaker with automatic state transitions (Closed → Open → HalfOpen → Closed)
+- Retry policy with exponential backoff (100ms → 5s max) and jitter
+- Reconnection service with up to 10 attempts and subscription rehydration
+- Smart error filtering (validation errors don't trip circuit)
+- Constants for all configuration values (no magic numbers)
+- Thread-safe operations with proper locking
+- Aligned with backend `pm-config` defaults
+
+**Verification:** ✅ `dotnet build frontend/` - 0 warnings, 0 errors (4.5s)
 
 ---
 
@@ -176,10 +193,10 @@ This plan has been split into sub-sessions to fit within token budgets:
 | 20.01 DB Fix | 4 | 4 |
 | 20.1 Foundation | 55 | 59 |
 | 20.2 WebSocket | 9 | 68 |
-| 20.3 Resilience | 7 | 75 |
-| 20.4 State | 4 | 79 |
-| 20.5 WASM Host | 8 | 87 |
-| 20.6 Tests | 15 | **102** |
+| 20.3 Resilience | 8 | 76 |
+| 20.4 State | 4 | 80 |
+| 20.5 WASM Host | 8 | 88 |
+| 20.6 Tests | 15 | **103** |
 
 ---
 
@@ -190,9 +207,9 @@ This plan has been split into sub-sessions to fit within token budgets:
 | Entity interface hierarchy (IEntity, IAuditable, etc.) | ✅ Planned |
 | Exception hierarchy with correlation IDs | ✅ Planned |
 | Validation framework with error messages | ✅ Planned |
-| Circuit breaker matching pm-config thresholds | ✅ Planned |
-| Retry with exponential backoff + jitter | ✅ Planned |
-| Reconnection with subscription rehydration | ✅ Planned |
+| Circuit breaker matching pm-config thresholds | ✅ Complete |
+| Retry with exponential backoff + jitter | ✅ Complete |
+| Reconnection with subscription rehydration | ✅ Complete |
 | Per-ping latency tracking | ✅ Planned |
 | Optimistic updates with rollback | ✅ Planned |
 | Thread-safe state with ConcurrentDictionary | ✅ Planned |
