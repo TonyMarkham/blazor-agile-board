@@ -34,7 +34,7 @@ before continuing, can I get you to perform a fresh-eyes review of the session 2
 
 ### Other
 ```text
-Read `CRITICAL_OPERATING_CONSTRAINTS.md`, `docs/session-plans/session-20.3-plan.md`, `docs/session-plans/session-20-plan.md` and `docs/implementation-plan-v2.md`
+Read `CRITICAL_OPERATING_CONSTRAINTS.md`, `docs/session-plans/session-20.4-plan.md`, `docs/session-plans/session-20-plan.md` and `docs/implementation-plan-v2.md`
 
 I want you to teach me by presenting me with bite-sized chunks for me to write/edit keeping the commentary separate from the code snippets to make the code snippets easier for me to follow
 ```

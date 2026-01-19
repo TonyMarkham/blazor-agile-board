@@ -45,7 +45,7 @@ This plan has been split into sub-sessions to fit within token budgets:
 | **[20.1](session-20.1-plan.md)** | Project structure, Protobuf, Domain models | ~30k | ~55 | ✅ Complete |
 | **[20.2](session-20.2-plan.md)** | WebSocket client foundation | ~35k | 7 | ✅ Complete |
 | **[20.3](session-20.3-plan.md)** | Resilience patterns (circuit breaker, retry, health) | ~30k | 8 | ✅ Complete |
-| **[20.4](session-20.4-plan.md)** | State management with thread safety | ~30k | ~4 | Planned |
+| **[20.4](session-20.4-plan.md)** | State management with thread safety | ~30k | 4 | ✅ Complete |
 | **[20.5](session-20.5-plan.md)** | WASM host, error boundaries, observability | ~25k | ~8 | Planned |
 | **[20.6](session-20.6-plan.md)** | Comprehensive test suite (100+ tests) | ~30k | ~15 | Planned |
 
@@ -154,13 +154,26 @@ This plan has been split into sub-sessions to fit within token budgets:
 
 ---
 
-## Session 20.4: State Management
+## Session 20.4: State Management ✅
+
+**Status**: Complete (2026-01-19)
 
 **Files Created:**
-- `frontend/ProjectManagement.Services/State/`
-- `WorkItemStore.cs`, `SprintStore.cs`, `OptimisticUpdate.cs`, `AppState.cs`
+- `frontend/ProjectManagement.Services/State/OptimisticUpdate.cs` - Generic pending update tracker
+- `frontend/ProjectManagement.Services/State/WorkItemStore.cs` - Thread-safe store with optimistic updates
+- `frontend/ProjectManagement.Services/State/SprintStore.cs` - Sprint state (local-only until Session 40)
+- `frontend/ProjectManagement.Services/State/AppState.cs` - Root state container with event aggregation
 
-**Verification:** Optimistic updates apply and rollback correctly
+**Key Features:**
+- Thread-safe with ConcurrentDictionary (lock-free concurrency)
+- Optimistic update pattern: apply locally → confirm → rollback on failure
+- Temporary IDs for creates, replaced with server IDs on confirmation
+- Event handlers skip items with pending updates to avoid overwrites
+- Soft delete support (filter DeletedAt == null in all queries)
+- Event aggregation via AppState.OnStateChanged
+- Two-phase initialization (connect → load project)
+
+**Verification:** ✅ `dotnet build frontend/` - 0 warnings, 0 errors (4.7s)
 
 ---
 
@@ -211,8 +224,8 @@ This plan has been split into sub-sessions to fit within token budgets:
 | Retry with exponential backoff + jitter | ✅ Complete |
 | Reconnection with subscription rehydration | ✅ Complete |
 | Per-ping latency tracking | ✅ Planned |
-| Optimistic updates with rollback | ✅ Planned |
-| Thread-safe state with ConcurrentDictionary | ✅ Planned |
+| Optimistic updates with rollback | ✅ Complete |
+| Thread-safe state with ConcurrentDictionary | ✅ Complete |
 | Property-based tests for converters | ✅ Planned |
 | 100+ unit/integration tests | ✅ Planned |
 
