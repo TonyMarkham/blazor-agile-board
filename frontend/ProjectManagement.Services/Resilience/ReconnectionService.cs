@@ -2,32 +2,27 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ProjectManagement.Core.Exceptions;
 using ProjectManagement.Core.Interfaces;
-using ProjectManagement.Core.Models;
 
 namespace ProjectManagement.Services.Resilience;
 
 /// <summary>
-/// Handles automatic reconnection with exponential backoff.
-/// Rehydrates subscriptions after successful reconnect.
+///     Handles automatic reconnection with exponential backoff.
+///     Rehydrates subscriptions after successful reconnect.
 /// </summary>
 public sealed class ReconnectionService : IDisposable
 {
     private readonly IWebSocketClient _client;
+    private readonly SemaphoreSlim _lock = new(1, 1);
     private readonly ILogger<ReconnectionService> _logger;
     private readonly ReconnectionOptions _options;
 
     // Track subscribed project IDs for rehydration after reconnect
     private readonly HashSet<Guid> _subscribedProjects = new();
     private readonly object _subscriptionLock = new();
+    private bool _disposed;
 
     private CancellationTokenSource? _reconnectCts;
     private Task? _reconnectTask;
-    private readonly SemaphoreSlim _lock = new(1, 1);
-    private bool _disposed;
-
-    public event Action<int>? OnReconnecting;
-    public event Action? OnReconnected;
-    public event Action<Exception>? OnReconnectFailed;
 
     public ReconnectionService(
         IWebSocketClient client,
@@ -42,31 +37,7 @@ public sealed class ReconnectionService : IDisposable
     }
 
     /// <summary>
-    /// Register a project subscription for rehydration after reconnect.
-    /// Call this whenever the client subscribes to a project.
-    /// </summary>
-    public void TrackSubscription(Guid projectId)
-    {
-        lock (_subscriptionLock)
-        {
-            _subscribedProjects.Add(projectId);
-        }
-    }
-
-    /// <summary>
-    /// Remove a project subscription from rehydration tracking.
-    /// Call this when the client unsubscribes from a project.
-    /// </summary>
-    public void UntrackSubscription(Guid projectId)
-    {
-        lock (_subscriptionLock)
-        {
-            _subscribedProjects.Remove(projectId);
-        }
-    }
-
-    /// <summary>
-    /// Get currently tracked subscriptions.
+    ///     Get currently tracked subscriptions.
     /// </summary>
     public IReadOnlyList<Guid> TrackedSubscriptions
     {
@@ -79,12 +50,48 @@ public sealed class ReconnectionService : IDisposable
         }
     }
 
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+
+        _client.OnStateChanged -= HandleStateChanged;
+        _reconnectCts?.Cancel();
+        _reconnectCts?.Dispose();
+        _lock.Dispose();
+    }
+
+    public event Action<int>? OnReconnecting;
+    public event Action? OnReconnected;
+    public event Action<Exception>? OnReconnectFailed;
+
+    /// <summary>
+    ///     Register a project subscription for rehydration after reconnect.
+    ///     Call this whenever the client subscribes to a project.
+    /// </summary>
+    public void TrackSubscription(Guid projectId)
+    {
+        lock (_subscriptionLock)
+        {
+            _subscribedProjects.Add(projectId);
+        }
+    }
+
+    /// <summary>
+    ///     Remove a project subscription from rehydration tracking.
+    ///     Call this when the client unsubscribes from a project.
+    /// </summary>
+    public void UntrackSubscription(Guid projectId)
+    {
+        lock (_subscriptionLock)
+        {
+            _subscribedProjects.Remove(projectId);
+        }
+    }
+
     private void HandleStateChanged(ConnectionState state)
     {
-        if (state == ConnectionState.Reconnecting && _reconnectTask == null)
-        {
-            _ = StartReconnectionAsync();
-        }
+        if (state == ConnectionState.Reconnecting && _reconnectTask == null) _ = StartReconnectionAsync();
     }
 
     private async Task StartReconnectionAsync()
@@ -189,16 +196,5 @@ public sealed class ReconnectionService : IDisposable
     {
         var jitter = Random.Shared.NextDouble() * 0.25;
         return TimeSpan.FromMilliseconds(delay.TotalMilliseconds * (1 + jitter));
-    }
-
-    public void Dispose()
-    {
-        if (_disposed) return;
-        _disposed = true;
-
-        _client.OnStateChanged -= HandleStateChanged;
-        _reconnectCts?.Cancel();
-        _reconnectCts?.Dispose();
-        _lock.Dispose();
     }
 }

@@ -1,7 +1,7 @@
 namespace ProjectManagement.Core.Interfaces;
 
 /// <summary>
-/// Entity that supports soft deletion for audit trail preservation.
+///     Entity that supports soft deletion for audit trail preservation.
 /// </summary>
 public interface ISoftDeletable
 {

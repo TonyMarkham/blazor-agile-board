@@ -1,16 +1,17 @@
+using ProjectManagement.Core.Models;
+
 namespace ProjectManagement.Core.Converters;
 
-using DomainWorkItem = ProjectManagement.Core.Models.WorkItem;
-using DomainWorkItemType = ProjectManagement.Core.Models.WorkItemType;
-using ProtoWorkItem = ProjectManagement.Core.Proto.WorkItem;
-using ProtoWorkItemType = ProjectManagement.Core.Proto.WorkItemType;
+using DomainWorkItem = WorkItem;
+using DomainWorkItemType = WorkItemType;
+using ProtoWorkItem = Proto.WorkItem;
+using ProtoWorkItemType = Proto.WorkItemType;
 
 /// <summary>
-/// Converts between Protocol Buffer messages and domain models.
-/// All conversions are null-safe and validated.
-///
-/// NOTE: Timestamps use Unix epoch seconds, losing sub-second precision.
-/// Round-trip conversions may differ by up to 1 second.
+///     Converts between Protocol Buffer messages and domain models.
+///     All conversions are null-safe and validated.
+///     NOTE: Timestamps use Unix epoch seconds, losing sub-second precision.
+///     Round-trip conversions may differ by up to 1 second.
 /// </summary>
 public static class ProtoConverter
 {
@@ -87,23 +88,29 @@ public static class ProtoConverter
 
     #region Enum Conversions
 
-    public static DomainWorkItemType ToDomain(ProtoWorkItemType proto) => proto switch
+    public static DomainWorkItemType ToDomain(ProtoWorkItemType proto)
     {
-        ProtoWorkItemType.Project => DomainWorkItemType.Project,
-        ProtoWorkItemType.Epic => DomainWorkItemType.Epic,
-        ProtoWorkItemType.Story => DomainWorkItemType.Story,
-        ProtoWorkItemType.Task => DomainWorkItemType.Task,
-        _ => throw new ArgumentOutOfRangeException(nameof(proto), $"Unknown WorkItemType: {proto}")
-    };
+        return proto switch
+        {
+            ProtoWorkItemType.Project => DomainWorkItemType.Project,
+            ProtoWorkItemType.Epic => DomainWorkItemType.Epic,
+            ProtoWorkItemType.Story => DomainWorkItemType.Story,
+            ProtoWorkItemType.Task => DomainWorkItemType.Task,
+            _ => throw new ArgumentOutOfRangeException(nameof(proto), $"Unknown WorkItemType: {proto}")
+        };
+    }
 
-    public static ProtoWorkItemType ToProto(DomainWorkItemType domain) => domain switch
+    public static ProtoWorkItemType ToProto(DomainWorkItemType domain)
     {
-        DomainWorkItemType.Project => ProtoWorkItemType.Project,
-        DomainWorkItemType.Epic => ProtoWorkItemType.Epic,
-        DomainWorkItemType.Story => ProtoWorkItemType.Story,
-        DomainWorkItemType.Task => ProtoWorkItemType.Task,
-        _ => throw new ArgumentOutOfRangeException(nameof(domain), $"Unknown WorkItemType: {domain}")
-    };
+        return domain switch
+        {
+            DomainWorkItemType.Project => ProtoWorkItemType.Project,
+            DomainWorkItemType.Epic => ProtoWorkItemType.Epic,
+            DomainWorkItemType.Story => ProtoWorkItemType.Story,
+            DomainWorkItemType.Task => ProtoWorkItemType.Task,
+            _ => throw new ArgumentOutOfRangeException(nameof(domain), $"Unknown WorkItemType: {domain}")
+        };
+    }
 
     #endregion
 

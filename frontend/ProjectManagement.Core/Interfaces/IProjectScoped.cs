@@ -1,8 +1,8 @@
 namespace ProjectManagement.Core.Interfaces;
 
 /// <summary>
-/// Entity that belongs to a specific project.
-/// Enables project-level filtering and authorization.
+///     Entity that belongs to a specific project.
+///     Enables project-level filtering and authorization.
 /// </summary>
 public interface IProjectScoped
 {

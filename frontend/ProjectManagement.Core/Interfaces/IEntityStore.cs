@@ -1,7 +1,7 @@
 namespace ProjectManagement.Core.Interfaces;
 
 /// <summary>
-/// Generic store interface for entities with common operations.
+///     Generic store interface for entities with common operations.
 /// </summary>
 public interface IEntityStore<T> : IDisposable where T : IEntity, ISoftDeletable
 {

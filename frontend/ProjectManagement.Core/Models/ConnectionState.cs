@@ -1,7 +1,7 @@
 namespace ProjectManagement.Core.Models;
 
 /// <summary>
-/// WebSocket connection lifecycle state.
+///     WebSocket connection lifecycle state.
 /// </summary>
 public enum ConnectionState
 {

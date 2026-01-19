@@ -1,7 +1,7 @@
 namespace ProjectManagement.Core.Interfaces;
 
 /// <summary>
-/// Entity with full audit trail (who created/modified and when).
+///     Entity with full audit trail (who created/modified and when).
 /// </summary>
 public interface IAuditable : IEntity, ISoftDeletable
 {

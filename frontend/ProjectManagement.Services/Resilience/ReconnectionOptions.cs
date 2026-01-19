@@ -1,9 +1,9 @@
 namespace ProjectManagement.Services.Resilience;
 
 /// <summary>
-/// Configuration for automatic reconnection behavior.
-/// Note: Reconnection is a client-only concern (not present in pm-config).
-/// These values are tuned for desktop/WebSocket UX, not server-side retry policy.
+///     Configuration for automatic reconnection behavior.
+///     Note: Reconnection is a client-only concern (not present in pm-config).
+///     These values are tuned for desktop/WebSocket UX, not server-side retry policy.
 /// </summary>
 public sealed class ReconnectionOptions
 {

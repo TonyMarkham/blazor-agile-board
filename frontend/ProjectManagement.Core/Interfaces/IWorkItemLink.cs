@@ -1,7 +1,7 @@
 namespace ProjectManagement.Core.Interfaces;
 
 /// <summary>
-/// Entity that links two work items together (e.g., dependencies).
+///     Entity that links two work items together (e.g., dependencies).
 /// </summary>
 public interface IWorkItemLink
 {

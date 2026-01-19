@@ -1,7 +1,7 @@
 namespace ProjectManagement.Core.Interfaces;
 
 /// <summary>
-/// Store for project-scoped entities.
+///     Store for project-scoped entities.
 /// </summary>
 public interface IProjectScopedStore<T> : IEntityStore<T>
     where T : IEntity, ISoftDeletable, IProjectScoped

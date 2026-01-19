@@ -1,9 +1,9 @@
-namespace ProjectManagement.Services.WebSocket;
-
 using System.Net.WebSockets;
 
+namespace ProjectManagement.Services.WebSocket;
+
 /// <summary>
-/// Abstraction over raw WebSocket for testability.
+///     Abstraction over raw WebSocket for testability.
 /// </summary>
 internal interface IWebSocketConnection : IAsyncDisposable
 {

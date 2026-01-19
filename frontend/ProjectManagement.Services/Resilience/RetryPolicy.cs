@@ -1,4 +1,3 @@
-using System.IO;
 using System.Net.WebSockets;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -7,12 +6,13 @@ using ProjectManagement.Core.Exceptions;
 namespace ProjectManagement.Services.Resilience;
 
 /// <summary>
-/// Retry policy with exponential backoff and jitter.
+///     Retry policy with exponential backoff and jitter.
 /// </summary>
 public sealed class RetryPolicy
 {
-    private readonly RetryPolicyOptions _options;
     private readonly ILogger<RetryPolicy> _logger;
+
+    private readonly RetryPolicyOptions _options;
     // Note: Random.Shared is thread-safe on .NET 6+ (our target)
 
     public RetryPolicy(
@@ -24,7 +24,7 @@ public sealed class RetryPolicy
     }
 
     /// <summary>
-    /// Execute an operation with retry logic.
+    ///     Execute an operation with retry logic.
     /// </summary>
     public async Task<T> ExecuteAsync<T>(
         Func<CancellationToken, Task<T>> operation,
@@ -77,7 +77,7 @@ public sealed class RetryPolicy
     private static TimeSpan AddJitter(TimeSpan delay)
     {
         // Add up to 25% jitter to prevent thundering herd
-        var jitterFactor = 1.0 + (Random.Shared.NextDouble() * 0.25);
+        var jitterFactor = 1.0 + Random.Shared.NextDouble() * 0.25;
         return TimeSpan.FromMilliseconds(delay.TotalMilliseconds * jitterFactor);
     }
 }

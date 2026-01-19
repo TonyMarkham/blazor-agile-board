@@ -1,5 +1,3 @@
-using System.IO;
-using System.Net.WebSockets;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ProjectManagement.Core.Exceptions;
@@ -7,26 +5,37 @@ using ProjectManagement.Core.Exceptions;
 namespace ProjectManagement.Services.Resilience;
 
 /// <summary>
-/// Circuit breaker to prevent cascading failures.
-/// Matches backend pm-ws circuit breaker behavior.
+///     Circuit breaker to prevent cascading failures.
+///     Matches backend pm-ws circuit breaker behavior.
 /// </summary>
 public sealed class CircuitBreaker
 {
-    private readonly CircuitBreakerOptions _options;
-    private readonly ILogger<CircuitBreaker> _logger;
     private readonly object _lock = new();
-
-    private CircuitState _state = CircuitState.Closed;
+    private readonly ILogger<CircuitBreaker> _logger;
+    private readonly CircuitBreakerOptions _options;
     private int _failureCount;
-    private int _successCount;
     private DateTime _lastFailureTime = DateTime.MinValue;
     private DateTime _openedAt = DateTime.MinValue;
+
+    private CircuitState _state = CircuitState.Closed;
+    private int _successCount;
+
+    public CircuitBreaker(
+        IOptions<CircuitBreakerOptions> options,
+        ILogger<CircuitBreaker> logger)
+    {
+        _options = options.Value;
+        _logger = logger;
+    }
 
     public CircuitState State
     {
         get
         {
-            lock (_lock) return _state;
+            lock (_lock)
+            {
+                return _state;
+            }
         }
     }
 
@@ -46,16 +55,8 @@ public sealed class CircuitBreaker
         }
     }
 
-    public CircuitBreaker(
-        IOptions<CircuitBreakerOptions> options,
-        ILogger<CircuitBreaker> logger)
-    {
-        _options = options.Value;
-        _logger = logger;
-    }
-
     /// <summary>
-    /// Check if a request should be allowed through.
+    ///     Check if a request should be allowed through.
     /// </summary>
     public bool AllowRequest()
     {
@@ -88,7 +89,7 @@ public sealed class CircuitBreaker
     }
 
     /// <summary>
-    /// Record a successful operation.
+    ///     Record a successful operation.
     /// </summary>
     public void RecordSuccess()
     {
@@ -117,7 +118,7 @@ public sealed class CircuitBreaker
     }
 
     /// <summary>
-    /// Record a failed operation.
+    ///     Record a failed operation.
     /// </summary>
     public void RecordFailure()
     {
@@ -126,10 +127,7 @@ public sealed class CircuitBreaker
             var now = DateTime.UtcNow;
 
             // Reset count if outside failure window
-            if (now - _lastFailureTime > _options.FailureWindow)
-            {
-                _failureCount = 0;
-            }
+            if (now - _lastFailureTime > _options.FailureWindow) _failureCount = 0;
 
             _lastFailureTime = now;
             _failureCount++;
@@ -159,16 +157,13 @@ public sealed class CircuitBreaker
     }
 
     /// <summary>
-    /// Execute an operation with circuit breaker protection.
+    ///     Execute an operation with circuit breaker protection.
     /// </summary>
     public async Task<T> ExecuteAsync<T>(
         Func<CancellationToken, Task<T>> operation,
         CancellationToken ct = default)
     {
-        if (!AllowRequest())
-        {
-            throw new CircuitOpenException(RetryAfter ?? _options.OpenDuration);
-        }
+        if (!AllowRequest()) throw new CircuitOpenException(RetryAfter ?? _options.OpenDuration);
 
         try
         {
@@ -179,10 +174,7 @@ public sealed class CircuitBreaker
         catch (Exception ex)
         {
             // Record failure for transient errors, but always re-throw
-            if (ShouldRecordAsFailure(ex))
-            {
-                RecordFailure();
-            }
+            if (ShouldRecordAsFailure(ex)) RecordFailure();
 
             throw;
         }

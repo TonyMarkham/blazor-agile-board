@@ -1,7 +1,7 @@
 namespace ProjectManagement.Core.Interfaces;
 
 /// <summary>
-/// Entity that has a position for ordering (drag-and-drop support).
+///     Entity that has a position for ordering (drag-and-drop support).
 /// </summary>
 public interface IPositioned
 {

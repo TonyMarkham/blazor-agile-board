@@ -1,8 +1,8 @@
 namespace ProjectManagement.Core.Models;
 
 /// <summary>
-/// Represents a single field change in a work item update.
-/// Used for tracking changes and displaying in activity feeds.
+///     Represents a single field change in a work item update.
+///     Used for tracking changes and displaying in activity feeds.
 /// </summary>
 public sealed record FieldChange(
     string FieldName,
@@ -10,7 +10,7 @@ public sealed record FieldChange(
     string? NewValue)
 {
     /// <summary>
-    /// Human-readable description of the change.
+    ///     Human-readable description of the change.
     /// </summary>
     public string Description => (OldValue, NewValue) switch
     {

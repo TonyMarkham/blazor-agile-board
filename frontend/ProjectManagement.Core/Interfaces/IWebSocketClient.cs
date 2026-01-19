@@ -1,6 +1,6 @@
-namespace ProjectManagement.Core.Interfaces;
-
 using ProjectManagement.Core.Models;
+
+namespace ProjectManagement.Core.Interfaces;
 
 public interface IWebSocketClient : IAsyncDisposable
 {

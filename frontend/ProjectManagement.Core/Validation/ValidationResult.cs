@@ -1,17 +1,31 @@
-namespace ProjectManagement.Core.Validation;
-
 using ProjectManagement.Core.Exceptions;
+
+namespace ProjectManagement.Core.Validation;
 
 public sealed class ValidationResult
 {
+    private ValidationResult(IReadOnlyList<ValidationError> errors)
+    {
+        Errors = errors;
+    }
+
     public bool IsValid => Errors.Count == 0;
     public IReadOnlyList<ValidationError> Errors { get; }
 
-    private ValidationResult(IReadOnlyList<ValidationError> errors) => Errors = errors;
+    public static ValidationResult Success()
+    {
+        return new ValidationResult([]);
+    }
 
-    public static ValidationResult Success() => new([]);
-    public static ValidationResult Failure(params ValidationError[] errors) => new(errors);
-    public static ValidationResult Failure(IEnumerable<ValidationError> errors) => new(errors.ToList());
+    public static ValidationResult Failure(params ValidationError[] errors)
+    {
+        return new ValidationResult(errors);
+    }
+
+    public static ValidationResult Failure(IEnumerable<ValidationError> errors)
+    {
+        return new ValidationResult(errors.ToList());
+    }
 
     public void ThrowIfInvalid()
     {

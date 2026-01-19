@@ -1,7 +1,7 @@
 namespace ProjectManagement.Services.Resilience;
 
 /// <summary>
-/// States for the circuit breaker pattern.
+///     States for the circuit breaker pattern.
 /// </summary>
 public enum CircuitState
 {

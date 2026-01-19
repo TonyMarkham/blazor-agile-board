@@ -1,7 +1,7 @@
 namespace ProjectManagement.Core.Interfaces;
 
 /// <summary>
-/// Entity that can be assigned to a user.
+///     Entity that can be assigned to a user.
 /// </summary>
 public interface IUserAssignable
 {

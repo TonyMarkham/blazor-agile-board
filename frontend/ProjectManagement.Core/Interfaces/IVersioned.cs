@@ -1,7 +1,7 @@
 namespace ProjectManagement.Core.Interfaces;
 
 /// <summary>
-/// Entity that supports optimistic concurrency control.
+///     Entity that supports optimistic concurrency control.
 /// </summary>
 public interface IVersioned
 {

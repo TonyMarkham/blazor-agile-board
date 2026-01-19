@@ -1,9 +1,9 @@
-namespace ProjectManagement.Core.Interfaces;
-
 using ProjectManagement.Core.Models;
 
+namespace ProjectManagement.Core.Interfaces;
+
 /// <summary>
-/// Store for sprints with specialized operations.
+///     Store for sprints with specialized operations.
 /// </summary>
 public interface ISprintStore : IDisposable
 {

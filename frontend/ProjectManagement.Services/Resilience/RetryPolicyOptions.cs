@@ -1,7 +1,7 @@
 namespace ProjectManagement.Services.Resilience;
 
 /// <summary>
-/// Configuration for retry policy behavior.
+///     Configuration for retry policy behavior.
 /// </summary>
 public sealed class RetryPolicyOptions
 {

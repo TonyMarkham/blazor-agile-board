@@ -1,8 +1,8 @@
 namespace ProjectManagement.Core.Interfaces;
 
 /// <summary>
-/// Entity that has a workflow status.
-/// Status values map to SwimLanes for Kanban board display.
+///     Entity that has a workflow status.
+///     Status values map to SwimLanes for Kanban board display.
 /// </summary>
 public interface IStatusTracked
 {

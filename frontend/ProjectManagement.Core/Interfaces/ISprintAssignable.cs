@@ -1,7 +1,7 @@
 namespace ProjectManagement.Core.Interfaces;
 
 /// <summary>
-/// Entity that can be assigned to a sprint.
+///     Entity that can be assigned to a sprint.
 /// </summary>
 public interface ISprintAssignable
 {

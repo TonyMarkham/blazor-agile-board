@@ -1,8 +1,8 @@
 namespace ProjectManagement.Core.Interfaces;
 
 /// <summary>
-/// Base interface for all domain entities.
-/// Every entity has a unique identifier and creation timestamp.
+///     Base interface for all domain entities.
+///     Every entity has a unique identifier and creation timestamp.
 /// </summary>
 public interface IEntity
 {

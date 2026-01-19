@@ -1,20 +1,20 @@
-namespace ProjectManagement.Services.WebSocket;
-
 using System.Net.WebSockets;
 using Microsoft.Extensions.Logging;
 
+namespace ProjectManagement.Services.WebSocket;
+
 internal sealed class BrowserWebSocketConnection : IWebSocketConnection
 {
-    private readonly ClientWebSocket _socket;
     private readonly ILogger<BrowserWebSocketConnection> _logger;
-
-    public WebSocketState State => _socket.State;
+    private readonly ClientWebSocket _socket;
 
     public BrowserWebSocketConnection(ILogger<BrowserWebSocketConnection> logger)
     {
         _socket = new ClientWebSocket();
         _logger = logger;
     }
+
+    public WebSocketState State => _socket.State;
 
     public async Task ConnectAsync(Uri uri, CancellationToken ct)
     {
@@ -36,9 +36,7 @@ internal sealed class BrowserWebSocketConnection : IWebSocketConnection
     public Task CloseAsync(WebSocketCloseStatus status, string? description, CancellationToken ct)
     {
         if (_socket.State == WebSocketState.Open || _socket.State == WebSocketState.CloseReceived)
-        {
             return _socket.CloseAsync(status, description, ct);
-        }
 
         return Task.CompletedTask;
     }

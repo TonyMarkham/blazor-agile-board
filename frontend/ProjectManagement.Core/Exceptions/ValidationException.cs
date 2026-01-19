@@ -1,15 +1,10 @@
 namespace ProjectManagement.Core.Exceptions;
 
 /// <summary>
-/// Client-side validation failure.
+///     Client-side validation failure.
 /// </summary>
 public sealed class ValidationException : ProjectManagementException
 {
-    public override string ErrorCode => "VALIDATION_ERROR";
-    public override string UserMessage => Errors.FirstOrDefault()?.Message ?? "Invalid input.";
-
-    public IReadOnlyList<ValidationError> Errors { get; }
-
     public ValidationException(IEnumerable<ValidationError> errors)
         : base($"Validation failed: {string.Join(", ", errors.Select(e => e.Message))}")
     {
@@ -20,9 +15,14 @@ public sealed class ValidationException : ProjectManagementException
         : this(new[] { new ValidationError(field, message) })
     {
     }
+
+    public override string ErrorCode => "VALIDATION_ERROR";
+    public override string UserMessage => Errors.FirstOrDefault()?.Message ?? "Invalid input.";
+
+    public IReadOnlyList<ValidationError> Errors { get; }
 }
 
 /// <summary>
-/// Single validation error (field + message).
+///     Single validation error (field + message).
 /// </summary>
 public sealed record ValidationError(string Field, string Message);

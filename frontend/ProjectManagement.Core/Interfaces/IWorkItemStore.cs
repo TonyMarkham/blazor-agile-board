@@ -1,9 +1,9 @@
-namespace ProjectManagement.Core.Interfaces;
-
 using ProjectManagement.Core.Models;
 
+namespace ProjectManagement.Core.Interfaces;
+
 /// <summary>
-/// Store for work items with specialized queries.
+///     Store for work items with specialized queries.
 /// </summary>
 public interface IWorkItemStore : IDisposable
 {

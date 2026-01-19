@@ -1,8 +1,8 @@
 namespace ProjectManagement.Core.Interfaces;
 
 /// <summary>
-/// Entity that belongs to a specific work item.
-/// Enables work-item-level filtering and cascade operations.
+///     Entity that belongs to a specific work item.
+///     Enables work-item-level filtering and cascade operations.
 /// </summary>
 public interface IWorkItemScoped
 {
