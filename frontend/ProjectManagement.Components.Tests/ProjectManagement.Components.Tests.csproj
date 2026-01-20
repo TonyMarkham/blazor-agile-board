@@ -32,6 +32,7 @@
         <ProjectReference Include="..\ProjectManagement.Core\ProjectManagement.Core.csproj" />
         <ProjectReference Include="..\ProjectManagement.Services\ProjectManagement.Services.csproj" />
         <ProjectReference Include="..\ProjectManagement.Components\ProjectManagement.Components.csproj" />
+        <ProjectReference Include="..\ProjectManagement.Wasm\ProjectManagement.Wasm.csproj" />
     </ItemGroup>
 
 </Project>
