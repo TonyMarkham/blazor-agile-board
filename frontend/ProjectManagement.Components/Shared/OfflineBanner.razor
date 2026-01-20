@@ -1,0 +1,46 @@
+@using ProjectManagement.Core.Models
+@inject AppState AppState
+@implements IDisposable
+
+@if (_showBanner)
+{
+    <div class="offline-banner" role="alert" aria-live="polite">
+        <RadzenIcon Icon="cloud_off" />
+        <span>You're offline. Changes will sync when reconnected.</span>
+        @if (_isReconnecting)
+        {
+            <RadzenProgressBarCircular ShowValue="false"
+                                       Mode="ProgressBarMode.Indeterminate"
+                                       Size="ProgressBarCircularSize.Small"
+                                       Style="margin-left: auto;" />
+        }
+    </div>
+}
+
+@code {
+    private bool _showBanner;
+    private bool _isReconnecting;
+
+    protected override void OnInitialized()
+    {
+        UpdateState(AppState.ConnectionState);
+        AppState.OnConnectionStateChanged += HandleConnectionStateChanged;
+    }
+
+    private void HandleConnectionStateChanged(ConnectionState state)
+    {
+        UpdateState(state);
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void UpdateState(ConnectionState state)
+    {
+        _showBanner = state != ConnectionState.Connected;
+        _isReconnecting = state == ConnectionState.Reconnecting;
+    }
+
+    public void Dispose()
+    {
+        AppState.OnConnectionStateChanged -= HandleConnectionStateChanged;
+    }
+}

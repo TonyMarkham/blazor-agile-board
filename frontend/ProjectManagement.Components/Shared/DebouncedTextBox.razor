@@ -1,0 +1,99 @@
+@implements IDisposable
+
+<RadzenTextBox Value="@_currentValue"
+               Placeholder="@Placeholder"
+               Style="@Style"
+               Disabled="@Disabled"
+               MaxLength="@MaxLength"
+               Change="@HandleChange"
+               @attributes="AdditionalAttributes" />
+
+@code {
+    /// <summary>The current value of the text box.</summary>
+    [Parameter]
+    public string Value { get; set; } = "";
+
+    /// <summary>Callback when the value changes (after debounce).</summary>
+    [Parameter]
+    public EventCallback<string> ValueChanged { get; set; }
+
+    /// <summary>Placeholder text.</summary>
+    [Parameter]
+    public string Placeholder { get; set; } = "";
+
+    /// <summary>Inline styles.</summary>
+    [Parameter]
+    public string Style { get; set; } = "";
+
+    /// <summary>Whether the input is disabled.</summary>
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    /// <summary>Maximum length of input.</summary>
+    [Parameter]
+    public int? MaxLength { get; set; }
+
+    /// <summary>Debounce delay in milliseconds.</summary>
+    [Parameter]
+    public int DebounceMs { get; set; } = 300;
+
+    /// <summary>Additional HTML attributes.</summary>
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string _currentValue = "";
+    private CancellationTokenSource? _debounceCts;
+    private bool _isDebouncing;
+
+    protected override void OnParametersSet()
+    {
+        // Only update from external value if we're not in the middle of debouncing
+        if (!_isDebouncing && _currentValue != Value)
+        {
+            _currentValue = Value;
+        }
+    }
+
+    private async Task HandleChange(string newValue)
+    {
+        _currentValue = newValue;
+        _isDebouncing = true;
+
+        // Cancel any pending debounce
+        _debounceCts?.Cancel();
+        _debounceCts?.Dispose();
+        _debounceCts = new CancellationTokenSource();
+
+        var token = _debounceCts.Token;
+
+        try
+        {
+            await Task.Delay(DebounceMs, token);
+
+            // Debounce completed successfully
+            if (ValueChanged.HasDelegate)
+            {
+                await ValueChanged.InvokeAsync(newValue);
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            // Debounce was cancelled by new input - this is expected
+        }
+        finally
+        {
+            if (!token.IsCancellationRequested)
+            {
+                _isDebouncing = false;
+                _debounceCts?.Dispose();
+                _debounceCts = null;
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        _debounceCts?.Cancel();
+        _debounceCts?.Dispose();
+    }
+}

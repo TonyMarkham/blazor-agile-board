@@ -1,0 +1,34 @@
+<RadzenBadge BadgeStyle="@BadgeStyle"
+             Text="@DisplayText"
+             title="@($"Status: {DisplayText}")"
+             IsPill="@IsPill" />
+
+@code {
+    /// <summary>The status value (e.g., "backlog", "in_progress", "done").</summary>
+    [Parameter, EditorRequired]
+    public string Status { get; set; } = "backlog";
+
+    /// <summary>Whether to render as a pill shape.</summary>
+    [Parameter]
+    public bool IsPill { get; set; } = true;
+
+    private BadgeStyle BadgeStyle => Status switch
+    {
+        "backlog" => BadgeStyle.Secondary,
+        "todo" => BadgeStyle.Info,
+        "in_progress" => BadgeStyle.Warning,
+        "review" => BadgeStyle.Primary,
+        "done" => BadgeStyle.Success,
+        _ => BadgeStyle.Light
+    };
+
+    private string DisplayText => Status switch
+    {
+        "backlog" => "Backlog",
+        "todo" => "To Do",
+        "in_progress" => "In Progress",
+        "review" => "Review",
+        "done" => "Done",
+        _ => Status
+    };
+}

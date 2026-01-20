@@ -1,0 +1,53 @@
+<div class="empty-state" role="status">
+    <RadzenIcon Icon="@Icon" class="empty-state-icon" />
+    <h3 class="empty-state-title">@Title</h3>
+    @if (!string.IsNullOrWhiteSpace(Description))
+    {
+        <p class="empty-state-description">@Description</p>
+    }
+    @if (ShowAction && OnAction.HasDelegate)
+    {
+        <RadzenButton Text="@ActionText"
+                      Icon="@ActionIcon"
+                      Click="@HandleAction"
+                      ButtonStyle="ButtonStyle.Primary" />
+    }
+</div>
+
+@code {
+    /// <summary>Material icon name for the empty state illustration.</summary>
+    [Parameter]
+    public string Icon { get; set; } = "inbox";
+
+    /// <summary>Main title text.</summary>
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = "No items";
+
+    /// <summary>Optional description text below the title.</summary>
+    [Parameter]
+    public string? Description { get; set; }
+
+    /// <summary>Text for the action button.</summary>
+    [Parameter]
+    public string ActionText { get; set; } = "Create";
+
+    /// <summary>Icon for the action button.</summary>
+    [Parameter]
+    public string ActionIcon { get; set; } = "add";
+
+    /// <summary>Whether to show the action button.</summary>
+    [Parameter]
+    public bool ShowAction { get; set; } = true;
+
+    /// <summary>Callback when the action button is clicked.</summary>
+    [Parameter]
+    public EventCallback OnAction { get; set; }
+
+    private async Task HandleAction()
+    {
+        if (OnAction.HasDelegate)
+        {
+            await OnAction.InvokeAsync();
+        }
+    }
+}

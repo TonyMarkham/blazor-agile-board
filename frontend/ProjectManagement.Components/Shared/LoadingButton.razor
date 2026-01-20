@@ -1,0 +1,86 @@
+@using ProjectManagement.Core.Models
+
+<RadzenButton Text="@DisplayText"
+              Icon="@DisplayIcon"
+              IsBusy="@IsBusy"
+              Disabled="@IsDisabled"
+              ButtonStyle="@ButtonStyle"
+              Size="@Size"
+              Variant="@Variant"
+              Click="@HandleClick"
+              title="@Tooltip"
+              Style="@Style"
+              @attributes="AdditionalAttributes" />
+
+@code {
+    /// <summary>Button text when not loading.</summary>
+    [Parameter, EditorRequired]
+    public string Text { get; set; } = "";
+
+    /// <summary>Button text when loading.</summary>
+    [Parameter]
+    public string LoadingText { get; set; } = "Loading...";
+
+    /// <summary>Button icon when not loading.</summary>
+    [Parameter]
+    public string Icon { get; set; } = "";
+
+    /// <summary>Whether the button is in a loading state.</summary>
+    [Parameter]
+    public bool IsBusy { get; set; }
+
+    /// <summary>Whether the button is disabled (independent of loading state).</summary>
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    /// <summary>Current connection state - button is disabled when disconnected.</summary>
+    [Parameter]
+    public ConnectionState ConnectionState { get; set; } = ConnectionState.Connected;
+
+    /// <summary>Visual style of the button.</summary>
+    [Parameter]
+    public ButtonStyle ButtonStyle { get; set; } = ButtonStyle.Primary;
+
+    /// <summary>Size of the button.</summary>
+    [Parameter]
+    public ButtonSize Size { get; set; } = ButtonSize.Medium;
+
+    /// <summary>Variant of the button (filled, outlined, text, etc.).</summary>
+    [Parameter]
+    public Variant Variant { get; set; } = Variant.Filled;
+
+    /// <summary>Additional inline styles.</summary>
+    [Parameter]
+    public string? Style { get; set; }
+
+    /// <summary>Click event callback.</summary>
+    [Parameter]
+    public EventCallback<MouseEventArgs> OnClick { get; set; }
+
+    /// <summary>Additional HTML attributes to pass through.</summary>
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool IsConnected => ConnectionState == ConnectionState.Connected;
+    private bool IsDisabled => IsBusy || Disabled || !IsConnected;
+    private string DisplayText => IsBusy ? LoadingText : Text;
+    private string DisplayIcon => IsBusy ? "" : Icon;
+
+    private string Tooltip
+    {
+        get
+        {
+            if (!IsConnected) return "Offline - action unavailable";
+            if (IsBusy) return "Please wait...";
+            return Text;
+        }
+    }
+
+    private async Task HandleClick(MouseEventArgs args)
+    {
+        if (!IsDisabled && OnClick.HasDelegate)
+        {
+            await OnClick.InvokeAsync(args);
+        }
+    }
+}

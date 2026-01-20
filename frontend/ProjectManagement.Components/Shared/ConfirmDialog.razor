@@ -1,0 +1,95 @@
+@inject DialogService DialogService
+
+<RadzenStack Gap="1rem">
+    <RadzenText TextStyle="TextStyle.Body1">@Message</RadzenText>
+
+    @if (!string.IsNullOrWhiteSpace(WarningMessage))
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Warning"
+                     Shade="Shade.Light"
+                     Size="AlertSize.Small"
+                     AllowClose="false">
+            @WarningMessage
+        </RadzenAlert>
+    }
+
+    @if (ChildContent is not null)
+    {
+        @ChildContent
+    }
+
+    <RadzenStack Orientation="Orientation.Horizontal"
+                 Gap="0.5rem"
+                 JustifyContent="JustifyContent.End">
+        <RadzenButton Text="@CancelText"
+                      ButtonStyle="ButtonStyle.Light"
+                      Click="@HandleCancel"
+                      Disabled="@IsBusy" />
+        <RadzenButton Text="@ConfirmText"
+                      ButtonStyle="@ConfirmButtonStyle"
+                      Click="@HandleConfirm"
+                      IsBusy="@IsBusy" />
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    /// <summary>The main confirmation message.</summary>
+    [Parameter, EditorRequired]
+    public string Message { get; set; } = "";
+
+    /// <summary>Optional warning message shown in an alert.</summary>
+    [Parameter]
+    public string? WarningMessage { get; set; }
+
+    /// <summary>Text for the confirm button.</summary>
+    [Parameter]
+    public string ConfirmText { get; set; } = "Confirm";
+
+    /// <summary>Text for the cancel button.</summary>
+    [Parameter]
+    public string CancelText { get; set; } = "Cancel";
+
+    /// <summary>Style for the confirm button.</summary>
+    [Parameter]
+    public ButtonStyle ConfirmButtonStyle { get; set; } = ButtonStyle.Primary;
+
+    /// <summary>Whether the dialog is in a busy/loading state.</summary>
+    [Parameter]
+    public bool IsBusy { get; set; }
+
+    /// <summary>Optional additional content to display.</summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Callback when confirm is clicked.</summary>
+    [Parameter]
+    public EventCallback OnConfirm { get; set; }
+
+    /// <summary>Callback when cancel is clicked.</summary>
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    private async Task HandleConfirm()
+    {
+        if (OnConfirm.HasDelegate)
+        {
+            await OnConfirm.InvokeAsync();
+        }
+        else
+        {
+            DialogService.Close(true);
+        }
+    }
+
+    private async Task HandleCancel()
+    {
+        if (OnCancel.HasDelegate)
+        {
+            await OnCancel.InvokeAsync();
+        }
+        else
+        {
+            DialogService.Close(false);
+        }
+    }
+}

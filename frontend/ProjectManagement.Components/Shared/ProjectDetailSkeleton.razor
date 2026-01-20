@@ -1,0 +1,57 @@
+<div role="status" aria-label="Loading project details" aria-busy="true">
+    <RadzenStack Gap="1rem">
+        @* Header skeleton *@
+        <RadzenRow AlignItems="AlignItems.Center">
+            <RadzenColumn Size="12" SizeMD="8">
+                <RadzenStack Orientation="Orientation.Horizontal"
+                             AlignItems="AlignItems.Center"
+                             Gap="0.5rem">
+                    <RadzenSkeleton Shape="SkeletonShape.Circle" Width="32px" Height="32px" />
+                    <RadzenSkeleton Width="250px" Height="32px" />
+                </RadzenStack>
+                <div class="mt-2">
+                    <RadzenSkeleton Width="180px" Height="16px" />
+                </div>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="4" class="text-end">
+                <RadzenStack Orientation="Orientation.Horizontal"
+                             Gap="0.5rem"
+                             JustifyContent="JustifyContent.End">
+                    <RadzenSkeleton Width="100px" Height="36px" />
+                    <RadzenSkeleton Width="120px" Height="36px" />
+                </RadzenStack>
+            </RadzenColumn>
+        </RadzenRow>
+
+        @* Tabs skeleton *@
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" class="mt-2">
+            <RadzenSkeleton Width="80px" Height="32px" />
+            <RadzenSkeleton Width="80px" Height="32px" />
+            <RadzenSkeleton Width="80px" Height="32px" />
+        </RadzenStack>
+
+        @* Content skeleton *@
+        <RadzenRow class="mt-3">
+            <RadzenColumn Size="12">
+                <RadzenStack Gap="0.5rem">
+                    @for (var i = 0; i < RowCount; i++)
+                    {
+                        <RadzenSkeleton Width="100%" Height="@($"{RowHeight}px")" />
+                    }
+                </RadzenStack>
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenStack>
+
+    <span class="visually-hidden">Loading project details...</span>
+</div>
+
+@code {
+    /// <summary>Number of placeholder rows to display.</summary>
+    [Parameter]
+    public int RowCount { get; set; } = 5;
+
+    /// <summary>Height of each placeholder row in pixels.</summary>
+    [Parameter]
+    public int RowHeight { get; set; } = 52;
+}

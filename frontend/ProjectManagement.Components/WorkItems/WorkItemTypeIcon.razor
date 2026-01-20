@@ -1,0 +1,56 @@
+@using ProjectManagement.Core.Models
+
+<span class="work-item-type-icon" title="@TypeName">
+    <RadzenIcon Icon="@IconName" Style="@IconStyle" />
+    <span class="visually-hidden">@TypeName</span>
+</span>
+
+@code {
+    /// <summary>The work item type to display.</summary>
+    [Parameter, EditorRequired]
+    public WorkItemType Type { get; set; }
+
+    /// <summary>Optional size override (e.g., "1.5rem", "24px").</summary>
+    [Parameter]
+    public string? Size { get; set; }
+
+    private string TypeName => Type switch
+    {
+        WorkItemType.Project => "Project",
+        WorkItemType.Epic => "Epic",
+        WorkItemType.Story => "Story",
+        WorkItemType.Task => "Task",
+        _ => "Unknown"
+    };
+
+    private string IconName => Type switch
+    {
+        WorkItemType.Project => "folder",
+        WorkItemType.Epic => "rocket_launch",
+        WorkItemType.Story => "description",
+        WorkItemType.Task => "task_alt",
+        _ => "help_outline"
+    };
+
+    private string IconColor => Type switch
+    {
+        WorkItemType.Project => "var(--rz-primary)",
+        WorkItemType.Epic => "#9c27b0",      // Purple
+        WorkItemType.Story => "#2196f3",     // Blue
+        WorkItemType.Task => "#4caf50",      // Green
+        _ => "var(--rz-text-secondary-color)"
+    };
+
+    private string IconStyle
+    {
+        get
+        {
+            var style = $"color: {IconColor};";
+            if (!string.IsNullOrEmpty(Size))
+            {
+                style += $" font-size: {Size};";
+            }
+            return style;
+        }
+    }
+}

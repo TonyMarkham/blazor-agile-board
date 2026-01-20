@@ -1,0 +1,67 @@
+<span class="priority-badge" title="@($"Priority: {DisplayText}")">
+    <RadzenStack Orientation="Orientation.Horizontal"
+                 AlignItems="AlignItems.Center"
+                 Gap="0.25rem">
+        <RadzenIcon Icon="@IconName" Style="@IconStyle" />
+        @if (ShowLabel)
+        {
+            <span style="@LabelStyle">@DisplayText</span>
+        }
+    </RadzenStack>
+</span>
+
+@code {
+    /// <summary>The priority value (e.g., "critical", "high", "medium", "low").</summary>
+    [Parameter, EditorRequired]
+    public string Priority { get; set; } = "medium";
+
+    /// <summary>Whether to show the text label alongside the icon.</summary>
+    [Parameter]
+    public bool ShowLabel { get; set; } = true;
+
+    /// <summary>Optional size for the icon.</summary>
+    [Parameter]
+    public string? Size { get; set; }
+
+    private string IconName => Priority switch
+    {
+        "critical" => "priority_high",
+        "high" => "keyboard_arrow_up",
+        "medium" => "remove",
+        "low" => "keyboard_arrow_down",
+        _ => "remove"
+    };
+
+    private string IconColor => Priority switch
+    {
+        "critical" => "#d32f2f",  // Red
+        "high" => "#f57c00",      // Orange
+        "medium" => "#1976d2",    // Blue
+        "low" => "#388e3c",       // Green
+        _ => "var(--rz-text-secondary-color)"
+    };
+
+    private string IconStyle
+    {
+        get
+        {
+            var style = $"color: {IconColor};";
+            if (!string.IsNullOrEmpty(Size))
+            {
+                style += $" font-size: {Size};";
+            }
+            return style;
+        }
+    }
+
+    private string LabelStyle => $"color: {IconColor}; font-size: 0.875rem;";
+
+    private string DisplayText => Priority switch
+    {
+        "critical" => "Critical",
+        "high" => "High",
+        "medium" => "Medium",
+        "low" => "Low",
+        _ => Priority
+    };
+}
