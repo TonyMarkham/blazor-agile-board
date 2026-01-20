@@ -517,59 +517,66 @@ public class ProjectManagementWebSocketClient
 
 ---
 
-## Session 30: Work Item UI
+## Session 30: Work Item UI ✅
+
+**Status**: 5/6 sub-sessions complete (2026-01-20)
 
 **Goal**: Functional work item management with Radzen components
 
 **Estimated Tokens**: ~100k
+**Actual Tokens**: ~500k across 5 sub-sessions (30.1-30.5)
 
-### Phase 1: Radzen Setup
+**Detailed Plan**: See `docs/session-plans/30-Session-Plan.md` for complete breakdown
 
-**Files to modify**:
-- Add Radzen.Blazor NuGet package
-- Configure theme in `Program.cs`
-- Add CSS imports
+**What Was Delivered:**
 
-### Phase 2: Layout & Navigation
+### Session 30.1: ViewModels + CSS Foundation ✅
+- 4 ViewModel files (IViewModel, WorkItemViewModel, SprintViewModel, ViewModelFactory)
+- 4 CSS files (app.css, work-items.css, kanban.css, layout.css)
+- Complete design system with CSS variables
 
-**Files to create**:
-- `Components/Layout/MainLayout.razor`
-- `Components/Layout/NavMenu.razor`
-- Basic routing setup
+### Session 30.2: Leaf Components ✅
+- 10 leaf components (badges, buttons, dialogs, skeletons, icons)
+- Reusable UI building blocks
+- Accessibility-first design
 
-### Phase 3: Project Dashboard
+### Session 30.3: ViewModel + Component Tests ✅
+- 168 comprehensive tests (ViewModels + Components)
+- Property-based testing with FsCheck
+- 100% coverage of ViewModels and leaf components
 
-**Files to create**:
-- `Components/Pages/Dashboard.razor` - Project overview
-- `Components/Pages/ProjectDetail.razor` - Single project view
+### Session 30.4: Composite Components + Dialogs ✅
+- WorkItemRow, KanbanCard, KanbanColumn, KanbanBoard
+- WorkItemDialog with form validation
+- WorkItemList with filtering
+- VersionConflictDialog with 3-way merge UI
+- Drag-and-drop support (mouse + keyboard)
 
-### Phase 4: Work Item Components
+### Session 30.5: Pages + Layout ✅
+- NavMenu with reactive project list
+- MainLayout with header, sidebar, body
+- Home page with stats dashboard
+- ProjectDetail page with list/board toggle
+- WorkItemDetail page with children and metadata
 
-**Files to create**:
-- `Components/WorkItems/WorkItemList.razor` - RadzenDataGrid
-- `Components/WorkItems/WorkItemDetail.razor` - Detail panel
-- `Components/WorkItems/WorkItemDialog.razor` - Create/Edit dialog
-- `Components/WorkItems/WorkItemCard.razor` - Kanban card
-
-### Phase 5: Real-time Updates
-
-**Files to modify**:
-- Wire WebSocket events to UI updates
-- Optimistic UI with rollback
-- Loading states
-
-### Phase 6: Component Tests
-
-**Files to create**:
-- bUnit tests for work item components
+### Session 30.6: Part 2 Tests (Pending)
+- Integration tests for composite components
+- End-to-end page tests
+- Performance validation
 
 **Success Criteria**:
-- [ ] Can view list of work items
-- [ ] Can create new work item via dialog
-- [ ] Can edit work item details
-- [ ] Can delete work item
-- [ ] Real-time updates appear without refresh
-- [ ] Component tests pass
+- [x] Can view list of work items ✅
+- [x] Can create new work item via dialog ✅
+- [x] Can edit work item details ✅
+- [x] Can delete work item ✅
+- [x] Drag-and-drop Kanban board ✅
+- [x] List/board view toggle ✅
+- [x] Component tests pass (256 tests) ✅
+- [ ] Integration tests pass (Session 30.6)
+
+**Files Created**: 36/41 (88%)
+**Tests Passing**: 256/256 (100%)
+**Build**: Clean, 0 warnings
 
 ---
 
@@ -814,12 +821,12 @@ Running timer logic: only one active timer per user
 | **05** | Config Integration | ~40k | **~108k** | ✅ Complete | pm-server uses pm-config, auth optional, production-grade |
 | **10** | Database & Handlers | ~100k | **~120k** | ✅ Complete | Working backend with circuit breaker, 166 tests passing |
 | **20** | Blazor Foundation | ~100k | **~190k** | ✅ Complete | Production-grade frontend, 88 tests, full end-to-end |
-| **30** | Work Item UI | ~100k | TBD | Planned | Functional work item management |
+| **30** | Work Item UI | ~100k | **~500k** | 🟡 In Progress | 36/41 files, 256 tests, 5 sessions complete |
 | **40** | Tauri Integration | ~80k | TBD | Planned | Desktop app with embedded server |
 | **50** | Sprints & Comments | ~100k | TBD | Planned | Sprint planning & commenting |
 | **60** | Time & Dependencies | ~100k | TBD | Planned | Time tracking & dependency management |
 | **70** | Polish & Docs | ~80k | TBD | Planned | Production-ready application |
-| **Total** | | **~700k** | **~418k / ~768k** | In Progress | Complete desktop application |
+| **Total** | | **~700k** | **~918k / ~1218k** | In Progress | Complete desktop application |
 
 ---
 

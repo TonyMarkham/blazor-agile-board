@@ -1,0 +1,171 @@
+@page "/project/{ProjectId:guid}"
+@using ProjectManagement.Core.Models
+@using ProjectManagement.Core.ViewModels
+@inject AppState AppState
+@inject ViewModelFactory ViewModelFactory
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject NavigationManager NavigationManager
+@implements IDisposable
+
+<PageTitle>@(_project?.Title ?? "Project") - Agile Board</PageTitle>
+
+@if (_loading)
+{
+    <ProjectDetailSkeleton />
+}
+else if (_project is null)
+{
+    <EmptyState Icon="error"
+                Title="Project Not Found"
+                Description="The project you're looking for doesn't exist or has been deleted."
+                ActionText="Go Home"
+                OnAction="@(() => NavigationManager.NavigateTo("/"))" />
+}
+else
+{
+    @* Breadcrumbs *@
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="/">Home</a>
+        <span class="separator">/</span>
+        <span class="current">@_project.Title</span>
+    </nav>
+
+    @* Header *@
+    <div class="page-header">
+        <RadzenStack Orientation="Orientation.Horizontal"
+                     AlignItems="AlignItems.Center"
+                     Gap="0.75rem">
+            <WorkItemTypeIcon Type="WorkItemType.Project" Size="1.75rem" />
+            <div>
+                <h1 class="page-title">@_project.Title</h1>
+                @if (!string.IsNullOrEmpty(_project.Description))
+                {
+                    <p class="page-subtitle">@_project.Description</p>
+                }
+            </div>
+        </RadzenStack>
+        <div class="page-actions">
+            <LoadingButton Text="New Work Item"
+                           Icon="add"
+                           ConnectionState="@_connectionState"
+                           OnClick="@ShowCreateDialog" />
+        </div>
+    </div>
+
+    @* View Tabs *@
+    <div class="view-tabs">
+        <button class="view-tab @(_activeView == "list" ? "active" : "")"
+                @onclick="@(() => _activeView = "list")">
+            <RadzenIcon Icon="list" />
+            List
+        </button>
+        <button class="view-tab @(_activeView == "board" ? "active" : "")"
+                @onclick="@(() => _activeView = "board")">
+            <RadzenIcon Icon="view_kanban" />
+            Board
+        </button>
+    </div>
+
+    @* Content *@
+    @if (_activeView == "list")
+    {
+        <WorkItemList ProjectId="@ProjectId"
+                      OnWorkItemSelected="@HandleWorkItemSelected" />
+    }
+    else
+    {
+        <KanbanBoard ProjectId="@ProjectId"
+                     OnWorkItemSelected="@HandleWorkItemSelected" />
+    }
+}
+
+@code {
+    [Parameter]
+    public Guid ProjectId { get; set; }
+
+    private WorkItemViewModel? _project;
+    private bool _loading = true;
+    private string _activeView = "board"; // Default to Kanban board
+    private ConnectionState _connectionState = ConnectionState.Connected;
+
+    protected override void OnInitialized()
+    {
+        _connectionState = AppState.ConnectionState;
+        AppState.OnStateChanged += HandleStateChanged;
+        AppState.OnConnectionStateChanged += HandleConnectionChanged;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadProjectAsync();
+    }
+
+    private async Task LoadProjectAsync()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            // Load project data
+            await AppState.LoadProjectAsync(ProjectId);
+
+            // Get the project work item
+            var project = AppState.WorkItems.GetById(ProjectId);
+            _project = project is not null ? ViewModelFactory.Create(project) : null;
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(
+                NotificationSeverity.Error,
+                "Error",
+                $"Failed to load project: {ex.Message}");
+            _project = null;
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void HandleWorkItemSelected(WorkItemViewModel item)
+    {
+        NavigationManager.NavigateTo($"/workitem/{item.Id}");
+    }
+
+    private async Task ShowCreateDialog()
+    {
+        await DialogService.OpenAsync<WorkItemDialog>(
+            "Create Work Item",
+            new Dictionary<string, object>
+            {
+                { "ProjectId", ProjectId }
+            },
+            new DialogOptions { Width = "600px" });
+    }
+
+    private void HandleStateChanged()
+    {
+        // Refresh project data
+        var project = AppState.WorkItems.GetById(ProjectId);
+        if (project is not null)
+        {
+            _project = ViewModelFactory.Create(project);
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void HandleConnectionChanged(ConnectionState state)
+    {
+        _connectionState = state;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        AppState.OnStateChanged -= HandleStateChanged;
+        AppState.OnConnectionStateChanged -= HandleConnectionChanged;
+    }
+}

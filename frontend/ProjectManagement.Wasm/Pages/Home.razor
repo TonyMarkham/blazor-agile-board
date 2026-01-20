@@ -1,7 +1,191 @@
 ﻿@page "/"
+@using ProjectManagement.Core.Models
+@using ProjectManagement.Core.ViewModels
+@inject AppState AppState
+@inject ViewModelFactory ViewModelFactory
+@inject DialogService DialogService
+@inject NavigationManager NavigationManager
+@implements IDisposable
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Home - Agile Board</PageTitle>
 
-<h1>Hello, world!</h1>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Welcome to Agile Board</h1>
+        <p class="page-subtitle">Manage your projects and track work items</p>
+    </div>
+</div>
 
-Welcome to your new app.
+@if (_loading)
+{
+    <ProjectDetailSkeleton RowCount="3" />
+}
+else if (!_projects.Any())
+{
+    <EmptyState Icon="rocket_launch"
+                Title="Get Started"
+                Description="Create your first project to begin organizing your work."
+                ActionText="Create Project"
+                OnAction="@ShowCreateProjectDialog" />
+}
+else
+{
+    <RadzenStack Gap="1.5rem">
+        @* Quick Stats *@
+        <RadzenRow Gap="1rem">
+            <RadzenColumn Size="12" SizeSM="6" SizeMD="3">
+                <div class="stat-card">
+                    <div class="stat-card-value">@_projects.Count</div>
+                    <div class="stat-card-label">Projects</div>
+                </div>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeSM="6" SizeMD="3">
+                <div class="stat-card">
+                    <div class="stat-card-value">@_activeItems</div>
+                    <div class="stat-card-label">Active Items</div>
+                </div>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeSM="6" SizeMD="3">
+                <div class="stat-card">
+                    <div class="stat-card-value">@_completedToday</div>
+                    <div class="stat-card-label">Completed Today</div>
+                </div>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeSM="6" SizeMD="3">
+                <div class="stat-card">
+                    <div class="stat-card-value">@_activeSprints</div>
+                    <div class="stat-card-label">Active Sprints</div>
+                </div>
+            </RadzenColumn>
+        </RadzenRow>
+
+        @* Recent Projects *@
+        <div class="content-card">
+            <div class="content-card-header">
+                <h2 class="content-card-title">Recent Projects</h2>
+                <LoadingButton Text="New Project"
+                               Icon="add"
+                               ConnectionState="@_connectionState"
+                               OnClick="@ShowCreateProjectDialog" />
+            </div>
+
+            <RadzenDataList Data="@_projects" TItem="WorkItemViewModel">
+                <Template Context="project">
+                    <RadzenStack Orientation="Orientation.Horizontal"
+                                 AlignItems="AlignItems.Center"
+                                 JustifyContent="JustifyContent.SpaceBetween"
+                                 class="p-3"
+                                 Style="border-bottom: 1px solid var(--rz-border-color); cursor: pointer;"
+                                 @onclick="@(() => NavigateToProject(project))">
+                        <RadzenStack Orientation="Orientation.Horizontal"
+                                     AlignItems="AlignItems.Center"
+                                     Gap="0.75rem">
+                            <WorkItemTypeIcon Type="WorkItemType.Project" Size="1.25rem" />
+                            <div>
+                                <RadzenText TextStyle="TextStyle.Body1" class="m-0">
+                                    @project.Title
+                                </RadzenText>
+                                @if (!string.IsNullOrEmpty(project.Description))
+                                {
+                                    <RadzenText TextStyle="TextStyle.Caption" class="text-muted m-0 text-truncate" Style="max-width: 400px;">
+                                        @project.Description
+                                    </RadzenText>
+                                }
+                            </div>
+                        </RadzenStack>
+                        <RadzenIcon Icon="chevron_right" class="text-muted" />
+                    </RadzenStack>
+                </Template>
+            </RadzenDataList>
+        </div>
+    </RadzenStack>
+}
+
+@code {
+    private List<WorkItemViewModel> _projects = new();
+    private bool _loading = true;
+    private ConnectionState _connectionState = ConnectionState.Connected;
+
+    // Stats
+    private int _activeItems;
+    private int _completedToday;
+    private int _activeSprints;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _connectionState = AppState.ConnectionState;
+        AppState.OnStateChanged += HandleStateChanged;
+        AppState.OnConnectionStateChanged += HandleConnectionChanged;
+
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            await Task.Yield();
+
+            // In a real app, we'd load projects from a dedicated API
+            // For now, we look for work items with ItemType.Project
+            // This would typically be handled by a ProjectStore
+            _projects = new List<WorkItemViewModel>();
+
+            // Calculate stats from loaded data
+            // _activeItems = work items in progress
+            // _completedToday = work items completed today
+            // _activeSprints = sprints with Active status
+
+            _activeItems = 0;
+            _completedToday = 0;
+            _activeSprints = 0;
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void NavigateToProject(WorkItemViewModel project)
+    {
+        NavigationManager.NavigateTo($"/project/{project.Id}");
+    }
+
+    private async Task ShowCreateProjectDialog()
+    {
+        var result = await DialogService.OpenAsync<WorkItemDialog>(
+            "Create Project",
+            new Dictionary<string, object>
+            {
+                { "DefaultItemType", WorkItemType.Project },
+                { "ProjectId", Guid.Empty } // Projects don't have a parent project
+            },
+            new DialogOptions { Width = "600px" });
+
+        if (result is true)
+        {
+            await LoadDataAsync();
+        }
+    }
+
+    private void HandleStateChanged()
+    {
+        _ = LoadDataAsync();
+    }
+
+    private void HandleConnectionChanged(ConnectionState state)
+    {
+        _connectionState = state;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        AppState.OnStateChanged -= HandleStateChanged;
+        AppState.OnConnectionStateChanged -= HandleConnectionChanged;
+    }
+}

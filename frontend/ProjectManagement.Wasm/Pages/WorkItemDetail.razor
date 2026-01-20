@@ -1,0 +1,359 @@
+@page "/workitem/{WorkItemId:guid}"
+@using ProjectManagement.Core.Models
+@using ProjectManagement.Core.ViewModels
+@inject AppState AppState
+@inject ViewModelFactory ViewModelFactory
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject NavigationManager NavigationManager
+@implements IDisposable
+
+<PageTitle>@(_workItem?.Title ?? "Work Item") - Agile Board</PageTitle>
+
+@if (_loading)
+{
+    <ProjectDetailSkeleton RowCount="3" />
+}
+else if (_workItem is null)
+{
+    <EmptyState Icon="error"
+                Title="Work Item Not Found"
+                Description="The work item you're looking for doesn't exist or has been deleted."
+                ActionText="Go Back"
+                OnAction="@(() => NavigationManager.NavigateTo("/"))" />
+}
+else
+{
+    @* Breadcrumbs *@
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="/">Home</a>
+        <span class="separator">/</span>
+        @if (_project is not null)
+        {
+            <a href="@($"/project/{_project.Id}")">@_project.Title</a>
+            <span class="separator">/</span>
+        }
+        <span class="current">@_workItem.Title</span>
+    </nav>
+
+    @* Header *@
+    <div class="page-header">
+        <RadzenStack Orientation="Orientation.Horizontal"
+                     AlignItems="AlignItems.Center"
+                     Gap="0.75rem">
+            <WorkItemTypeIcon Type="@_workItem.ItemType" Size="1.75rem" />
+            <div>
+                <h1 class="page-title">@_workItem.Title</h1>
+                <RadzenStack Orientation="Orientation.Horizontal"
+                             Gap="0.5rem"
+                             class="mt-1">
+                    <WorkItemStatusBadge Status="@_workItem.Status" />
+                    <PriorityBadge Priority="@_workItem.Priority" />
+                    @if (_workItem.StoryPoints.HasValue)
+                    {
+                        <RadzenBadge BadgeStyle="BadgeStyle.Info"
+                                     Text="@($"{_workItem.StoryPoints} pts")" />
+                    }
+                </RadzenStack>
+            </div>
+        </RadzenStack>
+        <div class="page-actions">
+            <RadzenButton Text="Edit"
+                          Icon="edit"
+                          ButtonStyle="ButtonStyle.Secondary"
+                          Click="@ShowEditDialog"
+                          Disabled="@(!_isConnected || _workItem.IsPendingSync)" />
+            <RadzenButton Text="Delete"
+                          Icon="delete"
+                          ButtonStyle="ButtonStyle.Danger"
+                          Variant="Variant.Outlined"
+                          Click="@HandleDelete"
+                          Disabled="@(!_isConnected || _workItem.IsPendingSync)" />
+        </div>
+    </div>
+
+    @* Content *@
+    <RadzenRow Gap="1.5rem">
+        @* Main Content *@
+        <RadzenColumn Size="12" SizeMD="8">
+            <div class="content-card">
+                <h2 class="content-card-title">Description</h2>
+                @if (string.IsNullOrWhiteSpace(_workItem.Description))
+                {
+                    <RadzenText class="text-muted">No description provided.</RadzenText>
+                }
+                else
+                {
+                    <RadzenText Style="white-space: pre-wrap;">@_workItem.Description</RadzenText>
+                }
+            </div>
+
+            @* Child Items *@
+            @if (_children.Any())
+            {
+                <div class="content-card mt-4">
+                    <div class="content-card-header">
+                        <h2 class="content-card-title">Child Items (@_children.Count)</h2>
+                    </div>
+                    @foreach (var child in _children)
+                    {
+                        <WorkItemRow Item="@child"
+                                     IsConnected="@_isConnected"
+                                     OnSelect="@(item => NavigationManager.NavigateTo($"/workitem/{item.Id}"))"
+                                     OnEdit="@HandleEditChild"
+                                     OnDelete="@HandleDeleteChild" />
+                    }
+                </div>
+            }
+        </RadzenColumn>
+
+        @* Sidebar *@
+        <RadzenColumn Size="12" SizeMD="4">
+            <div class="content-card">
+                <h3 class="content-card-title">Details</h3>
+                <RadzenStack Gap="1rem">
+                    <div>
+                        <RadzenText TextStyle="TextStyle.Caption" class="text-muted">Type</RadzenText>
+                        <RadzenText>@_workItem.ItemTypeDisplayName</RadzenText>
+                    </div>
+                    <div>
+                        <RadzenText TextStyle="TextStyle.Caption" class="text-muted">Status</RadzenText>
+                        <RadzenText>@_workItem.StatusDisplayName</RadzenText>
+                    </div>
+                    <div>
+                        <RadzenText TextStyle="TextStyle.Caption" class="text-muted">Priority</RadzenText>
+                        <RadzenText>@_workItem.PriorityDisplayName</RadzenText>
+                    </div>
+                    @if (_workItem.StoryPoints.HasValue)
+                    {
+                        <div>
+                            <RadzenText TextStyle="TextStyle.Caption" class="text-muted">Story Points</RadzenText>
+                            <RadzenText>@_workItem.StoryPoints</RadzenText>
+                        </div>
+                    }
+                    @if (_sprint is not null)
+                    {
+                        <div>
+                            <RadzenText TextStyle="TextStyle.Caption" class="text-muted">Sprint</RadzenText>
+                            <RadzenText>@_sprint.Name</RadzenText>
+                        </div>
+                    }
+                    <div class="divider"></div>
+                    <div>
+                        <RadzenText TextStyle="TextStyle.Caption" class="text-muted">Created</RadzenText>
+                        <RadzenText>@_workItem.CreatedAt.ToString("MMM d, yyyy h:mm tt")</RadzenText>
+                    </div>
+                    <div>
+                        <RadzenText TextStyle="TextStyle.Caption" class="text-muted">Updated</RadzenText>
+                        <RadzenText>@_workItem.UpdatedAt.ToString("MMM d, yyyy h:mm tt")</RadzenText>
+                    </div>
+                    <div>
+                        <RadzenText TextStyle="TextStyle.Caption" class="text-muted">Version</RadzenText>
+                        <RadzenText>@_workItem.Version</RadzenText>
+                    </div>
+                </RadzenStack>
+            </div>
+        </RadzenColumn>
+    </RadzenRow>
+}
+
+@code {
+    [Parameter]
+    public Guid WorkItemId { get; set; }
+
+    private WorkItemViewModel? _workItem;
+    private WorkItemViewModel? _project;
+    private SprintViewModel? _sprint;
+    private List<WorkItemViewModel> _children = new();
+    private bool _loading = true;
+    private bool _isConnected = true;
+
+    protected override void OnInitialized()
+    {
+        _isConnected = AppState.ConnectionState == ConnectionState.Connected;
+        AppState.OnStateChanged += HandleStateChanged;
+        AppState.OnConnectionStateChanged += HandleConnectionChanged;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadWorkItemAsync();
+    }
+
+    private async Task LoadWorkItemAsync()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            await Task.Yield();
+
+            var workItem = AppState.WorkItems.GetById(WorkItemId);
+            if (workItem is null)
+            {
+                _workItem = null;
+                return;
+            }
+
+            _workItem = ViewModelFactory.Create(workItem);
+
+            // Load project
+            var project = AppState.WorkItems.GetById(_workItem.ProjectId);
+            _project = project is not null ? ViewModelFactory.Create(project) : null;
+
+            // Load sprint if assigned
+            if (_workItem.SprintId.HasValue)
+            {
+                var sprint = AppState.Sprints.GetById(_workItem.SprintId.Value);
+                _sprint = sprint is not null ? ViewModelFactory.Create(sprint) : null;
+            }
+            else
+            {
+                _sprint = null;
+            }
+
+            // Load children
+            var children = AppState.WorkItems.GetChildren(WorkItemId);
+            _children = ViewModelFactory.CreateMany(children).ToList();
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ShowEditDialog()
+    {
+        if (_workItem is null) return;
+
+        var result = await DialogService.OpenAsync<WorkItemDialog>(
+            "Edit Work Item",
+            new Dictionary<string, object>
+            {
+                { "WorkItem", _workItem },
+                { "ProjectId", _workItem.ProjectId }
+            },
+            new DialogOptions { Width = "600px" });
+
+        if (result is true)
+        {
+            await LoadWorkItemAsync();
+        }
+    }
+
+    private async Task HandleDelete()
+    {
+        if (_workItem is null) return;
+
+        var hasChildren = _children.Any();
+        var message = hasChildren
+            ? $"Are you sure you want to delete \"{_workItem.Title}\"? This will also delete {_children.Count} child item(s)."
+            : $"Are you sure you want to delete \"{_workItem.Title}\"?";
+
+        var confirmed = await DialogService.Confirm(
+            message,
+            "Delete Work Item",
+            new ConfirmOptions
+            {
+                OkButtonText = "Delete",
+                CancelButtonText = "Cancel"
+            });
+
+        if (confirmed == true)
+        {
+            try
+            {
+                await AppState.WorkItems.DeleteAsync(_workItem.Id);
+                NotificationService.Notify(
+                    NotificationSeverity.Success,
+                    "Deleted",
+                    $"\"{_workItem.Title}\" has been deleted");
+
+                // Navigate back to project or home
+                if (_project is not null)
+                {
+                    NavigationManager.NavigateTo($"/project/{_project.Id}");
+                }
+                else
+                {
+                    NavigationManager.NavigateTo("/");
+                }
+            }
+            catch (Exception ex)
+            {
+                NotificationService.Notify(
+                    NotificationSeverity.Error,
+                    "Error",
+                    ex.Message);
+            }
+        }
+    }
+
+    private async Task HandleEditChild(WorkItemViewModel child)
+    {
+        var result = await DialogService.OpenAsync<WorkItemDialog>(
+            "Edit Work Item",
+            new Dictionary<string, object>
+            {
+                { "WorkItem", child },
+                { "ProjectId", child.ProjectId }
+            },
+            new DialogOptions { Width = "600px" });
+
+        if (result is true)
+        {
+            await LoadWorkItemAsync();
+        }
+    }
+
+    private async Task HandleDeleteChild(WorkItemViewModel child)
+    {
+        var confirmed = await DialogService.Confirm(
+            $"Are you sure you want to delete \"{child.Title}\"?",
+            "Delete Work Item",
+            new ConfirmOptions
+            {
+                OkButtonText = "Delete",
+                CancelButtonText = "Cancel"
+            });
+
+        if (confirmed == true)
+        {
+            try
+            {
+                await AppState.WorkItems.DeleteAsync(child.Id);
+                NotificationService.Notify(
+                    NotificationSeverity.Success,
+                    "Deleted",
+                    $"\"{child.Title}\" has been deleted");
+                await LoadWorkItemAsync();
+            }
+            catch (Exception ex)
+            {
+                NotificationService.Notify(
+                    NotificationSeverity.Error,
+                    "Error",
+                    ex.Message);
+            }
+        }
+    }
+
+    private void HandleStateChanged()
+    {
+        _ = LoadWorkItemAsync();
+    }
+
+    private void HandleConnectionChanged(ConnectionState state)
+    {
+        _isConnected = state == ConnectionState.Connected;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        AppState.OnStateChanged -= HandleStateChanged;
+        AppState.OnConnectionStateChanged -= HandleConnectionChanged;
+    }
+}

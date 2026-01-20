@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using ProjectManagement.Core.Interfaces;
 using ProjectManagement.Core.Models;
 using ProjectManagement.Core.Validation;
+using ProjectManagement.Core.ViewModels;
 using ProjectManagement.Services.Logging;
 using ProjectManagement.Services.Resilience;
 using ProjectManagement.Services.State;
@@ -55,6 +56,9 @@ builder.Services.AddSingleton<IWebSocketClient>(sp =>
 builder.Services.AddSingleton<IWorkItemStore, WorkItemStore>();
 builder.Services.AddSingleton<ISprintStore, SprintStore>();
 builder.Services.AddSingleton<AppState>();
+
+// ViewModels
+builder.Services.AddScoped<ViewModelFactory>();
 
 // Radzen
 builder.Services.AddRadzenComponents();
