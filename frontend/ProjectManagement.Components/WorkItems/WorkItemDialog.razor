@@ -1,0 +1,487 @@
+@using ProjectManagement.Core.Models
+@using ProjectManagement.Core.ViewModels
+@using ProjectManagement.Core.Exceptions
+@inject AppState AppState
+@inject ViewModelFactory ViewModelFactory
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@implements IDisposable
+
+<RadzenStack Gap="1rem" class="p-2">
+    @* Type *@
+    <RadzenFormField Text="Type" Style="width: 100%;">
+        <RadzenDropDown @bind-Value="_itemType"
+                        TValue="WorkItemType"
+                        Data="@TypeOptions"
+                        TextProperty="Text"
+                        ValueProperty="Value"
+                        Disabled="@_isEdit"
+                        Style="width: 100%;" />
+    </RadzenFormField>
+
+    @* Title *@
+    <div>
+        <RadzenFormField Text="Title" Style="width: 100%;">
+            <RadzenTextBox @bind-Value="_title"
+                           MaxLength="200"
+                           Placeholder="Enter a title..."
+                           Style="width: 100%;"
+                           Change="@HandleTitleChange"
+                           aria-describedby="title-validation" />
+        </RadzenFormField>
+        <RadzenStack Orientation="Orientation.Horizontal"
+                     JustifyContent="JustifyContent.SpaceBetween"
+                     class="mt-1">
+            @if (_errors.TryGetValue("Title", out var titleError))
+            {
+                <RadzenText id="title-validation"
+                            TextStyle="TextStyle.Caption"
+                            Style="color: var(--rz-danger);">
+                    @titleError
+                </RadzenText>
+            }
+            else
+            {
+                <span></span>
+            }
+            <RadzenText TextStyle="TextStyle.Caption" class="text-muted">
+                @(_title?.Length ?? 0)/200
+            </RadzenText>
+        </RadzenStack>
+    </div>
+
+    @* Description *@
+    <div>
+        <RadzenFormField Text="Description" Style="width: 100%;">
+            <RadzenTextArea @bind-Value="_description"
+                            MaxLength="5000"
+                            Placeholder="Add a description..."
+                            Rows="4"
+                            Style="width: 100%;"
+                            Change="@HandleDescriptionChange" />
+        </RadzenFormField>
+        <div class="text-end mt-1">
+            <RadzenText TextStyle="TextStyle.Caption" class="text-muted">
+                @(_description?.Length ?? 0)/5000
+            </RadzenText>
+        </div>
+    </div>
+
+    @* Status + Priority *@
+    <RadzenRow Gap="1rem">
+        <RadzenColumn Size="6">
+            <RadzenFormField Text="Status" Style="width: 100%;">
+                <RadzenDropDown @bind-Value="_status"
+                                TValue="string"
+                                Data="@StatusOptions"
+                                TextProperty="Text"
+                                ValueProperty="Value"
+                                Style="width: 100%;"
+                                Change="@(_ => MarkDirty())" />
+            </RadzenFormField>
+        </RadzenColumn>
+        <RadzenColumn Size="6">
+            <RadzenFormField Text="Priority" Style="width: 100%;">
+                <RadzenDropDown @bind-Value="_priority"
+                                TValue="string"
+                                Data="@PriorityOptions"
+                                TextProperty="Text"
+                                ValueProperty="Value"
+                                Style="width: 100%;"
+                                Change="@(_ => MarkDirty())" />
+            </RadzenFormField>
+        </RadzenColumn>
+    </RadzenRow>
+
+    @* Story Points + Sprint *@
+    <RadzenRow Gap="1rem">
+        <RadzenColumn Size="6">
+            <RadzenFormField Text="Story Points" Style="width: 100%;">
+                <RadzenNumeric @bind-Value="_storyPoints"
+                               TValue="int?"
+                               Min="0"
+                               Max="100"
+                               Placeholder="Optional"
+                               Style="width: 100%;"
+                               Change="@(_ => MarkDirty())" />
+            </RadzenFormField>
+        </RadzenColumn>
+        <RadzenColumn Size="6">
+            <RadzenFormField Text="Sprint" Style="width: 100%;">
+                <RadzenDropDown @bind-Value="_sprintId"
+                                TValue="Guid?"
+                                Data="@_sprints"
+                                TextProperty="Name"
+                                ValueProperty="Id"
+                                AllowClear="true"
+                                Placeholder="No sprint"
+                                Style="width: 100%;"
+                                Change="@(_ => MarkDirty())" />
+            </RadzenFormField>
+        </RadzenColumn>
+    </RadzenRow>
+
+    @* Actions *@
+    <RadzenStack Orientation="Orientation.Horizontal"
+                 Gap="0.5rem"
+                 JustifyContent="JustifyContent.End"
+                 class="mt-2">
+        <RadzenButton Text="Cancel"
+                      ButtonStyle="ButtonStyle.Light"
+                      Click="@HandleCancel"
+                      Disabled="@_saving" />
+        <LoadingButton Text="@(_isEdit ? "Save Changes" : "Create")"
+                       LoadingText="@(_isEdit ? "Saving..." : "Creating...")"
+                       IsBusy="@_saving"
+                       ConnectionState="@_connectionState"
+                       OnClick="@HandleSubmit" />
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    [Parameter]
+    public WorkItemViewModel? WorkItem { get; set; }
+
+    [Parameter]
+    public Guid ProjectId { get; set; }
+
+    [Parameter]
+    public Guid? ParentId { get; set; }
+
+    [Parameter]
+    public WorkItemType DefaultItemType { get; set; } = WorkItemType.Story;
+
+    // State
+    private bool _isEdit => WorkItem is not null;
+    private bool _saving;
+    private bool _isDirty;
+    private ConnectionState _connectionState = ConnectionState.Connected;
+    private Dictionary<string, string> _errors = new();
+
+    // Form fields
+    private WorkItemType _itemType;
+    private string _title = "";
+    private string? _description;
+    private string _status = "backlog";
+    private string _priority = "medium";
+    private int? _storyPoints;
+    private Guid? _sprintId;
+
+    // Original values for dirty tracking
+    private string _originalTitle = "";
+    private string? _originalDescription;
+    private string _originalStatus = "backlog";
+    private string _originalPriority = "medium";
+    private int? _originalStoryPoints;
+    private Guid? _originalSprintId;
+
+    // Data
+    private IReadOnlyList<Sprint> _sprints = Array.Empty<Sprint>();
+
+    // Options
+    private static readonly List<object> TypeOptions = new()
+    {
+        new { Text = "Epic", Value = WorkItemType.Epic },
+        new { Text = "Story", Value = WorkItemType.Story },
+        new { Text = "Task", Value = WorkItemType.Task }
+    };
+
+    private static readonly List<object> StatusOptions = new()
+    {
+        new { Text = "Backlog", Value = "backlog" },
+        new { Text = "To Do", Value = "todo" },
+        new { Text = "In Progress", Value = "in_progress" },
+        new { Text = "Review", Value = "review" },
+        new { Text = "Done", Value = "done" }
+    };
+
+    private static readonly List<object> PriorityOptions = new()
+    {
+        new { Text = "Critical", Value = "critical" },
+        new { Text = "High", Value = "high" },
+        new { Text = "Medium", Value = "medium" },
+        new { Text = "Low", Value = "low" }
+    };
+
+    protected override void OnInitialized()
+    {
+        _connectionState = AppState.ConnectionState;
+        AppState.OnConnectionStateChanged += HandleConnectionChanged;
+
+        if (_isEdit && WorkItem is not null)
+        {
+            _itemType = WorkItem.ItemType;
+            _title = _originalTitle = WorkItem.Title;
+            _description = _originalDescription = WorkItem.Description;
+            _status = _originalStatus = WorkItem.Status;
+            _priority = _originalPriority = WorkItem.Priority;
+            _storyPoints = _originalStoryPoints = WorkItem.StoryPoints;
+            _sprintId = _originalSprintId = WorkItem.SprintId;
+            ProjectId = WorkItem.ProjectId;
+        }
+        else
+        {
+            _itemType = DefaultItemType;
+        }
+
+        _sprints = AppState.Sprints.GetByProject(ProjectId);
+    }
+
+    private void HandleConnectionChanged(ConnectionState state)
+    {
+        _connectionState = state;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleTitleChange(string value)
+    {
+        _title = value;
+        _errors.Remove("Title");
+        MarkDirty();
+    }
+
+    private void HandleDescriptionChange(string value)
+    {
+        _description = value;
+        MarkDirty();
+    }
+
+    private void MarkDirty()
+    {
+        _isDirty = _title != _originalTitle ||
+                   _description != _originalDescription ||
+                   _status != _originalStatus ||
+                   _priority != _originalPriority ||
+                   _storyPoints != _originalStoryPoints ||
+                   _sprintId != _originalSprintId;
+    }
+
+    private bool Validate()
+    {
+        _errors.Clear();
+
+        var trimmed = _title?.Trim() ?? "";
+        if (string.IsNullOrWhiteSpace(trimmed))
+        {
+            _errors["Title"] = "Title is required";
+        }
+        else if (trimmed.Length > 200)
+        {
+            _errors["Title"] = "Title must be 200 characters or less";
+        }
+
+        return _errors.Count == 0;
+    }
+
+    private async Task HandleSubmit()
+    {
+        _title = _title?.Trim() ?? "";
+
+        if (!Validate())
+        {
+            await InvokeAsync(StateHasChanged);  // Line 282
+            return;
+        }
+
+        _saving = true;
+        await InvokeAsync(StateHasChanged);  // Line 287
+
+        try
+        {
+            if (_isEdit)
+            {
+                await UpdateWorkItemAsync();
+            }
+            else
+            {
+                await CreateWorkItemAsync();
+            }
+
+            DialogService.Close(true);
+        }
+        catch (VersionConflictException)
+        {
+            await HandleVersionConflictAsync();
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(
+                NotificationSeverity.Error,
+                "Error",
+                ex.Message,
+                duration: 5000);
+        }
+        finally
+        {
+            _saving = false;
+            await InvokeAsync(StateHasChanged);  // Line 317
+        }
+    }
+
+    private async Task CreateWorkItemAsync()
+    {
+        var request = new CreateWorkItemRequest
+        {
+            ProjectId = ProjectId,
+            ItemType = _itemType,
+            Title = _title,
+            Description = _description,
+            ParentId = ParentId,
+            Status = _status,
+            StoryPoints = _storyPoints,
+            SprintId = _sprintId
+        };
+
+        await AppState.WorkItems.CreateAsync(request);
+
+        NotificationService.Notify(
+            NotificationSeverity.Success,
+            "Created",
+            $"{_itemType} '{_title}' created successfully");
+    }
+
+    private async Task UpdateWorkItemAsync()
+    {
+        var request = new UpdateWorkItemRequest
+        {
+            WorkItemId = WorkItem!.Id,
+            ExpectedVersion = WorkItem.Version,
+            Title = _title,
+            Description = _description,
+            Status = _status,
+            Priority = _priority,
+            StoryPoints = _storyPoints,
+            SprintId = _sprintId
+        };
+
+        await AppState.WorkItems.UpdateAsync(request);
+
+        NotificationService.Notify(
+            NotificationSeverity.Success,
+            "Saved",
+            "Changes saved successfully");
+    }
+
+    private async Task HandleVersionConflictAsync()
+    {
+        var result = await DialogService.OpenAsync<VersionConflictDialog>(
+            "Version Conflict",
+            new Dictionary<string, object> { { "ItemTitle", WorkItem!.Title } },
+            new DialogOptions
+            {
+                Width = "450px",
+                CloseDialogOnOverlayClick = false,
+                CloseDialogOnEsc = false
+            });
+
+        if (result is VersionConflictDialog.ConflictResolution resolution)
+        {
+            switch (resolution)
+            {
+                case VersionConflictDialog.ConflictResolution.Reload:
+                    await ReloadWorkItemAsync();
+                    break;
+
+                case VersionConflictDialog.ConflictResolution.Overwrite:
+                    await OverwriteWorkItemAsync();
+                    break;
+
+                case VersionConflictDialog.ConflictResolution.Cancel:
+                    // Stay in dialog
+                    break;
+            }
+        }
+    }
+
+    private async Task ReloadWorkItemAsync()
+    {
+        var reloaded = AppState.WorkItems.GetById(WorkItem!.Id);
+        if (reloaded is null)
+        {
+            NotificationService.Notify(
+                NotificationSeverity.Warning,
+                "Not Found",
+                "The work item was deleted by another user");
+            DialogService.Close(false);
+            return;
+        }
+
+        // Re-populate form with latest values
+        WorkItem = ViewModelFactory.Create(reloaded);
+        _title = _originalTitle = reloaded.Title;
+        _description = _originalDescription = reloaded.Description;
+        _status = _originalStatus = reloaded.Status;
+        _priority = _originalPriority = reloaded.Priority;
+        _storyPoints = _originalStoryPoints = reloaded.StoryPoints;
+        _sprintId = _originalSprintId = reloaded.SprintId;
+        _isDirty = false;
+        _errors.Clear();
+
+        NotificationService.Notify(
+            NotificationSeverity.Info,
+            "Reloaded",
+            "Latest version loaded. Your changes were discarded.");
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+
+    private async Task OverwriteWorkItemAsync()
+    {
+        var current = AppState.WorkItems.GetById(WorkItem!.Id);
+        if (current is null)
+        {
+            NotificationService.Notify(
+                NotificationSeverity.Warning,
+                "Not Found",
+                "The work item was deleted by another user");
+            DialogService.Close(false);
+            return;
+        }
+
+        var request = new UpdateWorkItemRequest
+        {
+            WorkItemId = WorkItem.Id,
+            ExpectedVersion = current.Version, // Use current version to overwrite
+            Title = _title,
+            Description = _description,
+            Status = _status,
+            Priority = _priority,
+            StoryPoints = _storyPoints,
+            SprintId = _sprintId
+        };
+
+        await AppState.WorkItems.UpdateAsync(request);
+
+        NotificationService.Notify(
+            NotificationSeverity.Success,
+            "Saved",
+            "Your changes have been saved");
+
+        DialogService.Close(true);
+    }
+
+    private async Task HandleCancel()
+    {
+        if (_isDirty)
+        {
+            var discard = await DialogService.Confirm(
+                "You have unsaved changes. Discard them?",
+                "Unsaved Changes",
+                new ConfirmOptions
+                {
+                    OkButtonText = "Discard",
+                    CancelButtonText = "Keep Editing"
+                });
+
+            if (discard != true) return;
+        }
+
+        DialogService.Close(false);
+    }
+
+    public void Dispose()
+    {
+        AppState.OnConnectionStateChanged -= HandleConnectionChanged;
+    }
+}

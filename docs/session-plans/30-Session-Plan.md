@@ -19,16 +19,16 @@ This session implements the complete work item UI with Blazor WebAssembly:
 
 This plan has been split into sub-sessions to fit within ~50k token budgets:
 
-| Session | Scope | Files | Est. Tokens | Status |
-|---------|-------|-------|-------------|--------|
-| **[30.1](30.1-Session-Plan.md)** | ViewModels + CSS Foundation | 8 files | ~40k | ✅ Complete |
-| **[30.2](30.2-Session-Plan.md)** | Leaf Components | 10 files | ~35k | ✅ Complete |
-| **[30.3](30.3-Session-Plan.md)** | ViewModel + Component Tests | 5 files | ~45k | ✅ Complete |
-| **[30.4](30.4-Session-Plan.md)** | Composite Components + Dialogs | 7 files | ~45k | Pending |
-| **[30.5](30.5-Session-Plan.md)** | Pages + Layout | 5 files | ~40k | Pending |
-| **[30.6](30.6-Session-Plan.md)** | Part 2 Tests | 6 files | ~50k | Pending |
+| Session | Scope | Files | Est. Tokens | Actual | Status |
+|---------|-------|-------|-------------|--------|--------|
+| **[30.1](30.1-Session-Plan.md)** | ViewModels + CSS Foundation | 8 files | ~40k | ~40k | ✅ Complete |
+| **[30.2](30.2-Session-Plan.md)** | Leaf Components | 10 files | ~35k | ~35k | ✅ Complete |
+| **[30.3](30.3-Session-Plan.md)** | ViewModel + Component Tests | 5 files | ~45k | ~45k | ✅ Complete |
+| **[30.4](30.4-Session-Plan.md)** | Composite Components + Dialogs | 7 files | ~45k | ~120k | ✅ Complete |
+| **[30.5](30.5-Session-Plan.md)** | Pages + Layout | 5 files | ~40k | TBD | Pending |
+| **[30.6](30.6-Session-Plan.md)** | Part 2 Tests | 6 files | ~50k | TBD | Pending |
 
-**Total: 41 files, 168+ tests**
+**Total: 41 files, 256 tests (27 Core + 168 Components + 61 Services)**
 
 ---
 
@@ -79,18 +79,30 @@ This plan has been split into sub-sessions to fit within ~50k token budgets:
 
 ---
 
-## Session 30.4: Composite Components + Dialogs
+## Session 30.4: Composite Components + Dialogs ✅
+
+**Status:** Complete (2026-01-20)
 
 **Files Created:**
-- `ProjectManagement.Components/WorkItems/WorkItemRow.razor` - List row component
-- `ProjectManagement.Components/WorkItems/KanbanCard.razor` - Kanban card component
-- `ProjectManagement.Components/WorkItems/VersionConflictDialog.razor` - Conflict resolution
-- `ProjectManagement.Components/WorkItems/WorkItemDialog.razor` - Create/Edit dialog
-- `ProjectManagement.Components/WorkItems/WorkItemList.razor` - List view with filtering
-- `ProjectManagement.Components/WorkItems/KanbanColumn.razor` - Single Kanban column
-- `ProjectManagement.Components/WorkItems/KanbanBoard.razor` - Full Kanban board
+- `ProjectManagement.Components/WorkItems/WorkItemRow.razor` - List row component (5.9 KB)
+- `ProjectManagement.Components/WorkItems/KanbanCard.razor` - Kanban card component (6.3 KB)
+- `ProjectManagement.Components/WorkItems/VersionConflictDialog.razor` - Conflict resolution (2.6 KB)
+- `ProjectManagement.Components/WorkItems/WorkItemDialog.razor` - Create/Edit dialog (15.8 KB)
+- `ProjectManagement.Components/WorkItems/WorkItemList.razor` - List view with filtering (10.8 KB)
+- `ProjectManagement.Components/WorkItems/KanbanColumn.razor` - Single Kanban column (2.8 KB)
+- `ProjectManagement.Components/WorkItems/KanbanBoard.razor` - Full Kanban board (10.3 KB)
 
-**Verification:** `dotnet build ProjectManagement.Components`
+**Key Features Delivered:**
+- Drag-and-drop support (mouse + keyboard with Space/Arrow keys/Escape)
+- Version conflict resolution with 3-way merge UI
+- Form validation with character limits and live counters
+- Virtualized lists for performance
+- Comprehensive accessibility (ARIA labels, keyboard nav, screen reader support)
+- Connection state awareness (actions disabled when offline)
+
+**Critical Fix:** 9 instances of `StateHasChanged()` in async methods corrected to `await InvokeAsync(StateHasChanged)`
+
+**Verification:** `dotnet build ProjectManagement.Components` - Clean, 0 warnings | 256 tests passing
 
 ---
 

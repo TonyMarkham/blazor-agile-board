@@ -1,0 +1,321 @@
+@using ProjectManagement.Core.Models
+@using ProjectManagement.Core.ViewModels
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+@inject AppState AppState
+@inject ViewModelFactory ViewModelFactory
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@implements IDisposable
+
+<RadzenStack Gap="1rem">
+    @* Filters *@
+    <RadzenRow AlignItems="AlignItems.Center" Gap="0.5rem">
+        <RadzenColumn Size="12" SizeMD="6">
+            <DebouncedTextBox Value="@_searchText"
+                              Placeholder="Search work items..."
+                              Style="width: 100%;"
+                              DebounceMs="300"
+                              ValueChanged="@HandleSearchChanged" />
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenStack Orientation="Orientation.Horizontal"
+                         Gap="0.5rem"
+                         JustifyContent="JustifyContent.End">
+                <RadzenDropDown @bind-Value="_typeFilter"
+                                TValue="WorkItemType?"
+                                Data="@TypeOptions"
+                                TextProperty="Text"
+                                ValueProperty="Value"
+                                Placeholder="All Types"
+                                AllowClear="true"
+                                Style="width: 140px;"
+                                Change="@(_ => ApplyFilters())" />
+                <RadzenDropDown @bind-Value="_statusFilter"
+                                TValue="string"
+                                Data="@StatusOptions"
+                                TextProperty="Text"
+                                ValueProperty="Value"
+                                Placeholder="All Statuses"
+                                AllowClear="true"
+                                Style="width: 140px;"
+                                Change="@(_ => ApplyFilters())" />
+            </RadzenStack>
+        </RadzenColumn>
+    </RadzenRow>
+
+    @* Announce filter results to screen readers *@
+    <div class="visually-hidden" role="status" aria-live="polite" aria-atomic="true">
+        @_filteredItems.Count work items found
+    </div>
+
+    @* Content *@
+    @if (_loading)
+    {
+        <ProjectDetailSkeleton RowCount="5" />
+    }
+    else if (_filteredItems.Count == 0)
+    {
+        <EmptyState Icon="@(_allItems.Count == 0 ? "assignment" : "search_off")"
+                    Title="@(_allItems.Count == 0 ? "No work items yet" : "No matches found")"
+                    Description="@(_allItems.Count == 0 ? "Create your first work item to get started." : "Try adjusting your search or filters.")"
+                    ActionText="Create Work Item"
+                    ShowAction="@(_allItems.Count == 0)"
+                    OnAction="@ShowCreateDialog" />
+    }
+    else
+    {
+        <div class="work-item-list" role="table" aria-label="Work items">
+            @* Header *@
+            <div class="work-item-header" role="row">
+                <div class="work-item-cell type-cell" role="columnheader">Type</div>
+                <div class="work-item-cell title-cell" role="columnheader">Title</div>
+                <div class="work-item-cell status-cell" role="columnheader">Status</div>
+                <div class="work-item-cell priority-cell" role="columnheader">Priority</div>
+                <div class="work-item-cell points-cell" role="columnheader">Points</div>
+                <div class="work-item-cell actions-cell" role="columnheader">
+                    <span class="visually-hidden">Actions</span>
+                </div>
+            </div>
+
+            @* Virtualized rows *@
+            <Virtualize Items="@_filteredItems" Context="item" ItemSize="52">
+                <ItemContent>
+                    <WorkItemRow Item="@item"
+                                 IndentLevel="@GetIndentLevel(item)"
+                                 IsConnected="@_isConnected"
+                                 OnEdit="@HandleEdit"
+                                 OnDelete="@HandleDelete"
+                                 OnSelect="@HandleSelect" />
+                </ItemContent>
+                <Placeholder>
+                    <div class="work-item-row">
+                        <RadzenSkeleton Width="100%" Height="48px" />
+                    </div>
+                </Placeholder>
+            </Virtualize>
+        </div>
+    }
+</RadzenStack>
+
+@code {
+    [Parameter, EditorRequired]
+    public Guid ProjectId { get; set; }
+
+    [Parameter]
+    public EventCallback<WorkItemViewModel> OnWorkItemSelected { get; set; }
+
+    // State
+    private List<WorkItemViewModel> _allItems = new();
+    private List<WorkItemViewModel> _filteredItems = new();
+    private bool _isConnected = true;
+    private bool _loading = true;
+
+    // Filters
+    private string _searchText = "";
+    private WorkItemType? _typeFilter;
+    private string? _statusFilter;
+
+    // Parent lookup cache for indent levels
+    private Dictionary<Guid, int> _indentCache = new();
+
+    private static readonly List<object> TypeOptions = new()
+    {
+        new { Text = "Epic", Value = WorkItemType.Epic },
+        new { Text = "Story", Value = WorkItemType.Story },
+        new { Text = "Task", Value = WorkItemType.Task }
+    };
+
+    private static readonly List<object> StatusOptions = new()
+    {
+        new { Text = "Backlog", Value = "backlog" },
+        new { Text = "To Do", Value = "todo" },
+        new { Text = "In Progress", Value = "in_progress" },
+        new { Text = "Review", Value = "review" },
+        new { Text = "Done", Value = "done" }
+    };
+
+    protected override void OnInitialized()
+    {
+        _isConnected = AppState.ConnectionState == ConnectionState.Connected;
+        AppState.OnStateChanged += HandleStateChanged;
+        AppState.OnConnectionStateChanged += HandleConnectionChanged;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await RefreshDataAsync();
+    }
+
+    private async Task RefreshDataAsync()
+    {
+        _loading = true;
+        await InvokeAsync(StateHasChanged);  // Line 152
+
+        try
+        {
+            // Small delay to show loading state (prevents flash)
+            await Task.Yield();
+
+            var items = AppState.WorkItems.GetByProject(ProjectId)
+                .Where(w => w.ItemType != WorkItemType.Project && w.DeletedAt is null);
+
+            _allItems = ViewModelFactory.CreateMany(items).ToList();
+            _indentCache.Clear();
+            ApplyFilters();
+        }
+        finally
+        {
+            _loading = false;
+            await InvokeAsync(StateHasChanged);  // Line 169
+        }
+    }
+
+    private void HandleSearchChanged(string value)
+    {
+        _searchText = value;
+        ApplyFilters();
+    }
+
+    private void ApplyFilters()
+    {
+        var query = _allItems.AsEnumerable();
+
+        // Text search
+        if (!string.IsNullOrWhiteSpace(_searchText))
+        {
+            var search = _searchText.Trim();
+            query = query.Where(w =>
+                w.Title.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                (w.Description?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false));
+        }
+
+        // Type filter
+        if (_typeFilter.HasValue)
+        {
+            query = query.Where(w => w.ItemType == _typeFilter.Value);
+        }
+
+        // Status filter
+        if (!string.IsNullOrWhiteSpace(_statusFilter))
+        {
+            query = query.Where(w => w.Status == _statusFilter);
+        }
+
+        // Sort by position
+        _filteredItems = query.OrderBy(w => w.Position).ToList();
+        StateHasChanged();
+    }
+
+    private int GetIndentLevel(WorkItemViewModel item)
+    {
+        if (_indentCache.TryGetValue(item.Id, out var cached))
+        {
+            return cached;
+        }
+
+        var level = 0;
+        var currentParentId = item.ParentId;
+        const int maxDepth = 5;
+
+        while (currentParentId.HasValue && level < maxDepth)
+        {
+            var parent = AppState.WorkItems.GetById(currentParentId.Value);
+            if (parent is null || parent.ItemType == WorkItemType.Project) break;
+            currentParentId = parent.ParentId;
+            level++;
+        }
+
+        _indentCache[item.Id] = level;
+        return level;
+    }
+
+    private async Task HandleEdit(WorkItemViewModel item)
+    {
+        var result = await DialogService.OpenAsync<WorkItemDialog>(
+            "Edit Work Item",
+            new Dictionary<string, object>
+            {
+                { "WorkItem", item },
+                { "ProjectId", item.ProjectId }
+            },
+            new DialogOptions { Width = "600px" });
+
+        if (result is true)
+        {
+            await RefreshDataAsync();
+        }
+    }
+
+    private async Task HandleDelete(WorkItemViewModel item)
+    {
+        var confirmed = await DialogService.Confirm(
+            $"Are you sure you want to delete \"{item.Title}\"?",
+            "Delete Work Item",
+            new ConfirmOptions
+            {
+                OkButtonText = "Delete",
+                CancelButtonText = "Cancel"
+            });
+
+        if (confirmed == true)
+        {
+            try
+            {
+                await AppState.WorkItems.DeleteAsync(item.Id);
+                NotificationService.Notify(
+                    NotificationSeverity.Success,
+                    "Deleted",
+                    $"\"{item.Title}\" has been deleted");
+            }
+            catch (Exception ex)
+            {
+                NotificationService.Notify(
+                    NotificationSeverity.Error,
+                    "Error",
+                    ex.Message);
+            }
+        }
+    }
+
+    private async Task HandleSelect(WorkItemViewModel item)
+    {
+        if (OnWorkItemSelected.HasDelegate)
+        {
+            await OnWorkItemSelected.InvokeAsync(item);
+        }
+    }
+
+    private async Task ShowCreateDialog()
+    {
+        var result = await DialogService.OpenAsync<WorkItemDialog>(
+            "Create Work Item",
+            new Dictionary<string, object> { { "ProjectId", ProjectId } },
+            new DialogOptions { Width = "600px" });
+
+        if (result is true)
+        {
+            await RefreshDataAsync();
+        }
+    }
+
+    private void HandleStateChanged()
+    {
+        // Don't refresh during loading to avoid race condition
+        if (!_loading)
+        {
+            _ = RefreshDataAsync();
+        }
+    }
+
+    private void HandleConnectionChanged(ConnectionState state)
+    {
+        _isConnected = state == ConnectionState.Connected;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        AppState.OnStateChanged -= HandleStateChanged;
+        AppState.OnConnectionStateChanged -= HandleConnectionChanged;
+    }
+}

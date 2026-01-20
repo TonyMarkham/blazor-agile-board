@@ -1,0 +1,196 @@
+@using ProjectManagement.Core.ViewModels
+@using ProjectManagement.Core.Models
+
+<div class="work-item-row @RowCssClass"
+     role="row"
+     tabindex="0"
+     @onclick="HandleClick"
+     @onkeydown="HandleKeyDown"
+     aria-label="@AriaLabel"
+     aria-busy="@Item.IsPendingSync.ToString().ToLowerInvariant()">
+
+    @* Type Cell *@
+    <div class="work-item-cell type-cell" role="cell">
+        <WorkItemTypeIcon Type="@Item.ItemType" />
+    </div>
+
+    @* Title Cell *@
+    <div class="work-item-cell title-cell" role="cell">
+        <RadzenStack Orientation="Orientation.Horizontal"
+                     AlignItems="AlignItems.Center"
+                     Gap="0.25rem"
+                     Style="overflow: hidden; width: 100%;">
+            @if (IndentLevel > 0)
+            {
+                <span class="hierarchy-indent"
+                      style="width: @(IndentLevel * 20)px;"
+                      aria-hidden="true"></span>
+            }
+            <span class="work-item-title">@Item.Title</span>
+            @if (Item.IsPendingSync)
+            {
+                <RadzenProgressBarCircular ShowValue="false"
+                                           Mode="ProgressBarMode.Indeterminate"
+                                           Size="ProgressBarCircularSize.ExtraSmall"
+                                           Style="flex-shrink: 0;"
+                                           title="Saving..." />
+            }
+        </RadzenStack>
+    </div>
+
+    @* Status Cell *@
+    <div class="work-item-cell status-cell" role="cell">
+        <WorkItemStatusBadge Status="@Item.Status" />
+    </div>
+
+    @* Priority Cell *@
+    <div class="work-item-cell priority-cell" role="cell">
+        <PriorityBadge Priority="@Item.Priority" />
+    </div>
+
+    @* Points Cell *@
+    <div class="work-item-cell points-cell" role="cell">
+        @if (Item.StoryPoints.HasValue)
+        {
+            <RadzenBadge BadgeStyle="BadgeStyle.Info"
+                         Text="@Item.StoryPoints.Value.ToString()"
+                         title="Story Points" />
+        }
+    </div>
+
+    @* Actions Cell *@
+    <div class="work-item-cell actions-cell" role="cell">
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.25rem">
+            <RadzenButton Icon="edit"
+                          ButtonStyle="ButtonStyle.Light"
+                          Size="ButtonSize.Small"
+                          Click="@HandleEditClick"
+                          Click:stopPropagation="true"
+                          Disabled="@IsActionDisabled"
+                          title="Edit"
+                          aria-label="@($"Edit {Item.Title}")" />
+            <RadzenButton Icon="delete"
+                          ButtonStyle="ButtonStyle.Danger"
+                          Variant="Variant.Text"
+                          Size="ButtonSize.Small"
+                          Click="@HandleDeleteClick"
+                          Click:stopPropagation="true"
+                          Disabled="@IsActionDisabled"
+                          title="Delete"
+                          aria-label="@($"Delete {Item.Title}")" />
+        </RadzenStack>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public WorkItemViewModel Item { get; set; } = null!;
+
+    [Parameter]
+    public int IndentLevel { get; set; }
+
+    [Parameter]
+    public bool IsConnected { get; set; } = true;
+
+    [Parameter]
+    public EventCallback<WorkItemViewModel> OnEdit { get; set; }
+
+    [Parameter]
+    public EventCallback<WorkItemViewModel> OnDelete { get; set; }
+
+    [Parameter]
+    public EventCallback<WorkItemViewModel> OnSelect { get; set; }
+
+    private bool IsActionDisabled => !IsConnected || Item.IsPendingSync;
+
+    private string RowCssClass
+    {
+        get
+        {
+            var classes = new List<string>();
+            if (Item.IsCompleted) classes.Add("status-done");
+            if (Item.IsPendingSync) classes.Add("pending-sync");
+            return string.Join(" ", classes);
+        }
+    }
+
+    private string AriaLabel
+    {
+        get
+        {
+            var parts = new List<string>
+            {
+                Item.ItemTypeDisplayName,
+                Item.Title,
+                $"Status: {Item.StatusDisplayName}",
+                $"Priority: {Item.PriorityDisplayName}"
+            };
+
+            if (Item.StoryPoints.HasValue)
+            {
+                parts.Add($"{Item.StoryPoints} story points");
+            }
+
+            if (Item.IsPendingSync)
+            {
+                parts.Add("(saving changes)");
+            }
+
+            return string.Join(", ", parts);
+        }
+    }
+
+    private async Task HandleClick()
+    {
+        if (OnSelect.HasDelegate)
+        {
+            await OnSelect.InvokeAsync(Item);
+        }
+    }
+
+    private async Task HandleEditClick(MouseEventArgs e)
+    {
+        if (!IsActionDisabled && OnEdit.HasDelegate)
+        {
+            await OnEdit.InvokeAsync(Item);
+        }
+    }
+
+    private async Task HandleDeleteClick(MouseEventArgs e)
+    {
+        if (!IsActionDisabled && OnDelete.HasDelegate)
+        {
+            await OnDelete.InvokeAsync(Item);
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (Item.IsPendingSync) return;
+
+        switch (e.Key)
+        {
+            case "Enter":
+            case " ":
+                if (OnSelect.HasDelegate)
+                {
+                    await OnSelect.InvokeAsync(Item);
+                }
+                break;
+
+            case "e" when e.CtrlKey && IsConnected:
+                if (OnEdit.HasDelegate)
+                {
+                    await OnEdit.InvokeAsync(Item);
+                }
+                break;
+
+            case "Delete" when IsConnected:
+                if (OnDelete.HasDelegate)
+                {
+                    await OnDelete.InvokeAsync(Item);
+                }
+                break;
+        }
+    }
+}

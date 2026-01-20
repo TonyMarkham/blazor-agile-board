@@ -1,0 +1,71 @@
+@inject DialogService DialogService
+
+<RadzenStack Gap="1rem" class="p-3">
+    @* Header *@
+    <RadzenStack Orientation="Orientation.Horizontal"
+                 AlignItems="AlignItems.Center"
+                 Gap="0.75rem">
+        <RadzenIcon Icon="warning"
+                    Style="font-size: 2.5rem; color: var(--rz-warning);" />
+        <div>
+            <RadzenText TextStyle="TextStyle.H6" class="m-0">Conflict Detected</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2" class="text-muted m-0">
+                Version mismatch
+            </RadzenText>
+        </div>
+    </RadzenStack>
+
+    @* Message *@
+    <RadzenText>
+        Someone else has edited <strong>"@ItemTitle"</strong> since you started editing.
+        Your changes cannot be saved because they would overwrite their changes.
+    </RadzenText>
+
+    @* Options explanation *@
+    <RadzenAlert AlertStyle="AlertStyle.Info"
+                 Shade="Shade.Light"
+                 Size="AlertSize.Small"
+                 AllowClose="false">
+        <strong>Choose how to resolve this conflict:</strong>
+        <ul class="m-0 mt-2" style="padding-left: 1.25rem;">
+            <li><strong>Reload</strong> - Discard your changes and load the latest version</li>
+            <li><strong>Overwrite</strong> - Save your changes and discard their changes</li>
+            <li><strong>Cancel</strong> - Go back and copy your changes before deciding</li>
+        </ul>
+    </RadzenAlert>
+
+    @* Actions *@
+    <RadzenStack Gap="0.5rem">
+        <RadzenButton Text="Reload (discard my changes)"
+                      ButtonStyle="ButtonStyle.Secondary"
+                      Style="width: 100%;"
+                      Icon="refresh"
+                      Click="@(() => Close(ConflictResolution.Reload))" />
+        <RadzenButton Text="Overwrite (keep my changes)"
+                      ButtonStyle="ButtonStyle.Warning"
+                      Style="width: 100%;"
+                      Icon="save"
+                      Click="@(() => Close(ConflictResolution.Overwrite))" />
+        <RadzenButton Text="Cancel"
+                      ButtonStyle="ButtonStyle.Light"
+                      Style="width: 100%;"
+                      Click="@(() => Close(ConflictResolution.Cancel))" />
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    [Parameter, EditorRequired]
+    public string ItemTitle { get; set; } = "";
+
+    public enum ConflictResolution
+    {
+        Cancel,
+        Reload,
+        Overwrite
+    }
+
+    private void Close(ConflictResolution resolution)
+    {
+        DialogService.Close(resolution);
+    }
+}

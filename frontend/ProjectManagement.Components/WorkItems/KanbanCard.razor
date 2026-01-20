@@ -1,0 +1,212 @@
+@using ProjectManagement.Core.ViewModels
+@using ProjectManagement.Core.Models
+
+<div class="kanban-card @CardCssClass"
+     role="listitem"
+     tabindex="0"
+     draggable="@IsDraggable.ToString().ToLowerInvariant()"
+     aria-label="@AriaLabel"
+     aria-grabbed="@_isDragging.ToString().ToLowerInvariant()"
+     @onclick="HandleClick"
+     @onclick:stopPropagation="true"
+     @onkeydown="HandleKeyDown"
+     @ondragstart="HandleDragStart"
+     @ondragend="HandleDragEnd">
+
+    <RadzenStack Gap="0.5rem">
+        @* Header: Type + Title *@
+        <RadzenStack Orientation="Orientation.Horizontal"
+                     AlignItems="AlignItems.Start"
+                     Gap="0.5rem">
+            <WorkItemTypeIcon Type="@Item.ItemType" Size="1rem" />
+            <span class="kanban-card-title">@Item.Title</span>
+        </RadzenStack>
+
+        @* Footer: Priority, Points, Edit *@
+        <RadzenStack Orientation="Orientation.Horizontal"
+                     Gap="0.5rem"
+                     AlignItems="AlignItems.Center"
+                     JustifyContent="JustifyContent.SpaceBetween">
+            <RadzenStack Orientation="Orientation.Horizontal"
+                         Gap="0.25rem"
+                         AlignItems="AlignItems.Center">
+                <PriorityBadge Priority="@Item.Priority" ShowLabel="false" />
+                @if (Item.StoryPoints.HasValue)
+                {
+                    <RadzenBadge BadgeStyle="BadgeStyle.Info"
+                                 Text="@Item.StoryPoints.Value.ToString()"
+                                 title="Story Points" />
+                }
+            </RadzenStack>
+
+            @if (Item.IsPendingSync)
+            {
+                <RadzenProgressBarCircular ShowValue="false"
+                                           Mode="ProgressBarMode.Indeterminate"
+                                           Size="ProgressBarCircularSize.ExtraSmall"
+                                           title="Saving..." />
+            }
+            else
+            {
+                <RadzenButton Icon="edit"
+                              ButtonStyle="ButtonStyle.Light"
+                              Variant="Variant.Text"
+                              Size="ButtonSize.ExtraSmall"
+                              Click="@HandleEditClick"
+                              Click:stopPropagation="true"
+                              Disabled="@(!IsConnected)"
+                              title="Edit"
+                              aria-label="@($"Edit {Item.Title}")" />
+            }
+        </RadzenStack>
+    </RadzenStack>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public WorkItemViewModel Item { get; set; } = null!;
+
+    [Parameter]
+    public bool IsConnected { get; set; } = true;
+
+    [Parameter]
+    public EventCallback<WorkItemViewModel> OnClick { get; set; }
+
+    [Parameter]
+    public EventCallback<WorkItemViewModel> OnEdit { get; set; }
+
+    [Parameter]
+    public EventCallback<WorkItemViewModel> OnDragStart { get; set; }
+
+    [Parameter]
+    public EventCallback OnDragEnd { get; set; }
+
+    private bool _isDragging;
+
+    private bool IsDraggable => IsConnected && !Item.IsPendingSync;
+
+    private string CardCssClass
+    {
+        get
+        {
+            var classes = new List<string>();
+            if (Item.IsPendingSync) classes.Add("pending-sync");
+            if (_isDragging) classes.Add("dragging");
+            return string.Join(" ", classes);
+        }
+    }
+
+    private string AriaLabel
+    {
+        get
+        {
+            var label = $"{Item.ItemTypeDisplayName}: {Item.Title}, Priority: {Item.PriorityDisplayName}";
+
+            if (Item.StoryPoints.HasValue)
+            {
+                label += $", {Item.StoryPoints} points";
+            }
+
+            if (Item.IsPendingSync)
+            {
+                label += " (saving)";
+            }
+
+            if (IsDraggable)
+            {
+                label += ". Drag to move to another column.";
+            }
+
+            return label;
+        }
+    }
+
+    private async Task HandleClick()
+    {
+        if (OnClick.HasDelegate)
+        {
+            await OnClick.InvokeAsync(Item);
+        }
+    }
+
+    private async Task HandleEditClick(MouseEventArgs e)
+    {
+        if (IsConnected && !Item.IsPendingSync && OnEdit.HasDelegate)
+        {
+            await OnEdit.InvokeAsync(Item);
+        }
+    }
+
+    private async Task HandleDragStart(DragEventArgs e)
+    {
+        if (!IsDraggable) return;
+
+        _isDragging = true;
+
+        // Set drag data for native HTML5 drag and drop
+        // Note: In Blazor, we handle this through events rather than dataTransfer
+        if (OnDragStart.HasDelegate)
+        {
+            await OnDragStart.InvokeAsync(Item);
+        }
+    }
+
+    private async Task HandleDragEnd(DragEventArgs e)
+    {
+        _isDragging = false;
+
+        if (OnDragEnd.HasDelegate)
+        {
+            await OnDragEnd.InvokeAsync();
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (Item.IsPendingSync) return;
+
+        switch (e.Key)
+        {
+            case "Enter":
+                if (OnClick.HasDelegate)
+                {
+                    await OnClick.InvokeAsync(Item);
+                }
+                break;
+
+            case " " when IsDraggable && !_isDragging:
+                // Space to pick up (keyboard drag)
+                _isDragging = true;
+                if (OnDragStart.HasDelegate)
+                {
+                    await OnDragStart.InvokeAsync(Item);
+                }
+                break;
+
+            case " " when _isDragging:
+                // Space to drop
+                _isDragging = false;
+                if (OnDragEnd.HasDelegate)
+                {
+                    await OnDragEnd.InvokeAsync();
+                }
+                break;
+
+            case "Escape" when _isDragging:
+                // Cancel drag
+                _isDragging = false;
+                if (OnDragEnd.HasDelegate)
+                {
+                    await OnDragEnd.InvokeAsync();
+                }
+                break;
+
+            case "e" when e.CtrlKey && IsConnected:
+                if (OnEdit.HasDelegate)
+                {
+                    await OnEdit.InvokeAsync(Item);
+                }
+                break;
+        }
+    }
+}
