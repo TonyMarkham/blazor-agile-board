@@ -1,0 +1,205 @@
+/* =============================================================================
+   LAYOUT.CSS - Page layout, headers, and structural styles
+   ============================================================================= */
+
+/* === CSS Custom Properties === */
+:root {
+    --header-height: 50px;
+    --sidebar-width: 250px;
+    --sidebar-collapsed-width: 60px;
+    --content-padding: 1.5rem;
+    --transition-speed: 0.2s;
+}
+
+/* === Page Header === */
+.page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.page-title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--rz-text-color);
+}
+
+.page-subtitle {
+    margin: 0.25rem 0 0 0;
+    font-size: 0.875rem;
+    color: var(--rz-text-secondary-color);
+}
+
+.page-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+/* === Breadcrumbs === */
+.breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+    color: var(--rz-text-secondary-color);
+    flex-wrap: wrap;
+}
+
+.breadcrumbs a {
+    color: var(--rz-primary);
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+
+.breadcrumbs a:hover {
+    text-decoration: underline;
+}
+
+.breadcrumbs a:focus-visible {
+    outline: 2px solid var(--rz-primary);
+    outline-offset: 2px;
+}
+
+.breadcrumbs .separator {
+    color: var(--rz-text-tertiary-color);
+}
+
+.breadcrumbs .current {
+    color: var(--rz-text-color);
+    font-weight: 500;
+}
+
+/* === Content Cards === */
+.content-card {
+    background: var(--rz-surface);
+    border: 1px solid var(--rz-border-color);
+    border-radius: 8px;
+    padding: 1.5rem;
+}
+
+.content-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--rz-border-color);
+}
+
+.content-card-title {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+}
+
+.content-card-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* === View Tabs === */
+.view-tabs {
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--rz-border-color);
+}
+
+.view-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border: none;
+    background: transparent;
+    color: var(--rz-text-secondary-color);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.view-tab:hover {
+    color: var(--rz-text-color);
+}
+
+.view-tab:focus-visible {
+    outline: 2px solid var(--rz-primary);
+    outline-offset: -2px;
+}
+
+.view-tab.active {
+    color: var(--rz-primary);
+    border-bottom-color: var(--rz-primary);
+}
+
+/* === Stat Cards === */
+.stat-card {
+    background: var(--rz-surface);
+    border: 1px solid var(--rz-border-color);
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.stat-card-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--rz-text-color);
+    line-height: 1;
+}
+
+.stat-card-label {
+    font-size: 0.875rem;
+    color: var(--rz-text-secondary-color);
+    margin-top: 0.25rem;
+}
+
+/* === Dividers === */
+.divider {
+    height: 1px;
+    background: var(--rz-border-color);
+    margin: 1rem 0;
+}
+
+.divider-vertical {
+    width: 1px;
+    height: 100%;
+    background: var(--rz-border-color);
+    margin: 0 1rem;
+}
+
+/* === Responsive === */
+@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .page-actions {
+        width: 100%;
+    }
+
+    .content-card {
+        padding: 1rem;
+    }
+
+    .content-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+}
+
+/* === Reduced Motion === */
+@media (prefers-reduced-motion: reduce) {
+    .view-tab,
+    .breadcrumbs a {
+        transition: none;
+    }
+}

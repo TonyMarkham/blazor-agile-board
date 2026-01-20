@@ -18,4 +18,7 @@ public interface IWorkItemStore : IDisposable
     Task<WorkItem> UpdateAsync(UpdateWorkItemRequest request, CancellationToken ct = default);
     Task DeleteAsync(Guid id, CancellationToken ct = default);
     Task RefreshAsync(Guid projectId, CancellationToken ct = default);
+    
+    /// <summary>Check if a work item has a pending optimistic update.</summary>
+    bool IsPending(Guid id);
 }

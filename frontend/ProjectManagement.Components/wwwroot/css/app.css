@@ -1,0 +1,176 @@
+/* =============================================================================
+   APP.CSS - Global application styles
+   ============================================================================= */
+
+/* === Skip Link (Accessibility) === */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: var(--rz-primary);
+    color: white;
+    padding: 8px 16px;
+    z-index: 10000;
+    text-decoration: none;
+    border-radius: 0 0 4px 0;
+    font-weight: 500;
+}
+
+.skip-link:focus {
+    top: 0;
+}
+
+/* === Visually Hidden (Screen Reader Only) === */
+.visually-hidden {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+/* === Offline Banner === */
+.offline-banner {
+    background: var(--rz-warning-lighter);
+    border-bottom: 1px solid var(--rz-warning);
+    padding: 0.5rem 1rem;
+    color: var(--rz-warning-darker);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.offline-banner .rzi {
+    flex-shrink: 0;
+}
+
+/* === Empty State === */
+.empty-state {
+    padding: 3rem 1rem;
+    text-align: center;
+}
+
+.empty-state-icon {
+    font-size: 3rem;
+    color: var(--rz-text-tertiary-color);
+    margin-bottom: 1rem;
+}
+
+.empty-state-title {
+    margin: 0 0 0.5rem 0;
+    color: var(--rz-text-color);
+}
+
+.empty-state-description {
+    color: var(--rz-text-secondary-color);
+    max-width: 300px;
+    margin: 0 auto 1rem auto;
+}
+
+/* === Pending Sync Animation === */
+.pending-sync {
+    opacity: 0.7;
+    background: linear-gradient(
+            90deg,
+            var(--rz-base-200) 0%,
+            var(--rz-base-100) 50%,
+            var(--rz-base-200) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* === Focus Visible (Keyboard Navigation) === */
+.focus-visible:focus-visible,
+*:focus-visible {
+    outline: 2px solid var(--rz-primary);
+    outline-offset: 2px;
+}
+
+/* === Utility Classes === */
+.flex-grow-1 { flex-grow: 1; }
+.flex-shrink-0 { flex-shrink: 0; }
+
+.text-start { text-align: start; }
+.text-center { text-align: center; }
+.text-end { text-align: end; }
+
+.text-muted { color: var(--rz-text-secondary-color); }
+.text-tertiary { color: var(--rz-text-tertiary-color); }
+
+.w-100 { width: 100%; }
+.h-100 { height: 100%; }
+
+.gap-0 { gap: 0; }
+.gap-1 { gap: 0.25rem; }
+.gap-2 { gap: 0.5rem; }
+.gap-3 { gap: 0.75rem; }
+.gap-4 { gap: 1rem; }
+.gap-5 { gap: 1.5rem; }
+
+.m-0 { margin: 0; }
+.mt-1 { margin-top: 0.25rem; }
+.mt-2 { margin-top: 0.5rem; }
+.mt-3 { margin-top: 0.75rem; }
+.mt-4 { margin-top: 1rem; }
+.mb-1 { margin-bottom: 0.25rem; }
+.mb-2 { margin-bottom: 0.5rem; }
+.mb-3 { margin-bottom: 0.75rem; }
+.mb-4 { margin-bottom: 1rem; }
+
+.p-0 { padding: 0; }
+.p-1 { padding: 0.25rem; }
+.p-2 { padding: 0.5rem; }
+.p-3 { padding: 0.75rem; }
+.p-4 { padding: 1rem; }
+
+/* === Truncate Text === */
+.text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.text-truncate-2 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+/* === Reduced Motion === */
+@media (prefers-reduced-motion: reduce) {
+    .pending-sync {
+        animation: none;
+        opacity: 0.6;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* === High Contrast Mode === */
+@media (prefers-contrast: high) {
+    .pending-sync {
+        border: 2px dashed currentColor;
+    }
+
+    .empty-state-icon {
+        color: currentColor;
+    }
+}

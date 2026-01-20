@@ -21,7 +21,7 @@ This plan has been split into sub-sessions to fit within ~50k token budgets:
 
 | Session | Scope | Files | Est. Tokens | Status |
 |---------|-------|-------|-------------|--------|
-| **[30.1](30.1-Session-Plan.md)** | ViewModels + CSS Foundation | 8 files | ~40k | Pending |
+| **[30.1](30.1-Session-Plan.md)** | ViewModels + CSS Foundation | 8 files | ~40k | ✅ Complete |
 | **[30.2](30.2-Session-Plan.md)** | Leaf Components | 10 files | ~35k | Pending |
 | **[30.3](30.3-Session-Plan.md)** | ViewModel + Component Tests | 5 files | ~45k | Pending |
 | **[30.4](30.4-Session-Plan.md)** | Composite Components + Dialogs | 7 files | ~45k | Pending |

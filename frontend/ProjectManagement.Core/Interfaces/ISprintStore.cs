@@ -19,4 +19,7 @@ public interface ISprintStore : IDisposable
     Task<Sprint> CompleteSprintAsync(Guid sprintId, CancellationToken ct = default);
     Task DeleteAsync(Guid id, CancellationToken ct = default);
     Task RefreshAsync(Guid projectId, CancellationToken ct = default);
+    
+    /// <summary>Check if a sprint has a pending optimistic update.</summary>
+    bool IsPending(Guid id);
 }

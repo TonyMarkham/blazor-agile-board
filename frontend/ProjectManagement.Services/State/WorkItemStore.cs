@@ -316,4 +316,6 @@ public sealed class WorkItemStore : IWorkItemStore
     }
 
     #endregion
+    
+    public bool IsPending(Guid id) => _pendingUpdates.ContainsKey(id);
 }

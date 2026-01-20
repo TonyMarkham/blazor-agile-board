@@ -15,6 +15,7 @@ public sealed class SprintStore : ISprintStore
     private readonly IWebSocketClient _client;
     private readonly ILogger<SprintStore> _logger;
     private readonly ConcurrentDictionary<Guid, Sprint> _sprints = new();
+    private readonly ConcurrentDictionary<Guid, bool> _pendingUpdates = new();
 
     private bool _disposed;
 
@@ -73,27 +74,35 @@ public sealed class SprintStore : ISprintStore
     {
         ThrowIfDisposed();
 
-        // Local-only creation until Session 40 implements WebSocket handlers
-        var sprint = new Sprint
+        var sprintId = Guid.NewGuid();
+        _pendingUpdates[sprintId] = true;
+        try
         {
-            Id = Guid.NewGuid(),
-            ProjectId = request.ProjectId,
-            Name = request.Name,
-            Goal = request.Goal,
-            StartDate = request.StartDate,
-            EndDate = request.EndDate,
-            Status = SprintStatus.Planned,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow,
-            CreatedBy = Guid.Empty, // Will be set by server in Session 40
-            UpdatedBy = Guid.Empty
-        };
+            var sprint = new Sprint
+            {
+                Id = sprintId,
+                ProjectId = request.ProjectId,
+                Name = request.Name,
+                Goal = request.Goal,
+                StartDate = request.StartDate,
+                EndDate = request.EndDate,
+                Status = SprintStatus.Planned,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                CreatedBy = Guid.Empty,
+                UpdatedBy = Guid.Empty
+            };
 
-        _sprints[sprint.Id] = sprint;
-        NotifyChanged();
+            _sprints[sprint.Id] = sprint;
+            NotifyChanged();
 
-        _logger.LogDebug("Sprint created locally: {Id}", sprint.Id);
-        return Task.FromResult(sprint);
+            _logger.LogDebug("Sprint created locally: {Id}", sprint.Id);
+            return Task.FromResult(sprint);
+        }
+        finally
+        {
+            _pendingUpdates.TryRemove(sprintId, out _);
+        }
     }
 
     public Task<Sprint> UpdateAsync(
@@ -105,19 +114,27 @@ public sealed class SprintStore : ISprintStore
         if (!_sprints.TryGetValue(request.SprintId, out var current))
             throw new KeyNotFoundException($"Sprint not found: {request.SprintId}");
 
-        var updated = current with
+        _pendingUpdates[request.SprintId] = true;
+        try
         {
-            Name = request.Name ?? current.Name,
-            Goal = request.Goal ?? current.Goal,
-            StartDate = request.StartDate ?? current.StartDate,
-            EndDate = request.EndDate ?? current.EndDate,
-            UpdatedAt = DateTime.UtcNow
-        };
+            var updated = current with
+            {
+                Name = request.Name ?? current.Name,
+                Goal = request.Goal ?? current.Goal,
+                StartDate = request.StartDate ?? current.StartDate,
+                EndDate = request.EndDate ?? current.EndDate,
+                UpdatedAt = DateTime.UtcNow
+            };
 
-        _sprints[request.SprintId] = updated;
-        NotifyChanged();
+            _sprints[request.SprintId] = updated;
+            NotifyChanged();
 
-        return Task.FromResult(updated);
+            return Task.FromResult(updated);
+        }
+        finally
+        {
+            _pendingUpdates.TryRemove(request.SprintId, out _);
+        }
     }
 
     public Task<Sprint> StartSprintAsync(Guid sprintId, CancellationToken ct = default)
@@ -136,16 +153,24 @@ public sealed class SprintStore : ISprintStore
             throw new InvalidOperationException(
                 $"Project already has an active sprint: {activeSprint.Name}");
 
-        var started = current with
+        _pendingUpdates[sprintId] = true;
+        try
         {
-            Status = SprintStatus.Active,
-            UpdatedAt = DateTime.UtcNow
-        };
+            var started = current with
+            {
+                Status = SprintStatus.Active,
+                UpdatedAt = DateTime.UtcNow
+            };
 
-        _sprints[sprintId] = started;
-        NotifyChanged();
+            _sprints[sprintId] = started;
+            NotifyChanged();
 
-        return Task.FromResult(started);
+            return Task.FromResult(started);
+        }
+        finally
+        {
+            _pendingUpdates.TryRemove(sprintId, out _);
+        }
     }
 
     public Task<Sprint> CompleteSprintAsync(Guid sprintId, CancellationToken ct = default)
@@ -158,16 +183,24 @@ public sealed class SprintStore : ISprintStore
         if (current.Status != SprintStatus.Active)
             throw new InvalidOperationException($"Cannot complete sprint in {current.Status} state");
 
-        var completed = current with
+        _pendingUpdates[sprintId] = true;
+        try
         {
-            Status = SprintStatus.Completed,
-            UpdatedAt = DateTime.UtcNow
-        };
+            var completed = current with
+            {
+                Status = SprintStatus.Completed,
+                UpdatedAt = DateTime.UtcNow
+            };
 
-        _sprints[sprintId] = completed;
-        NotifyChanged();
+            _sprints[sprintId] = completed;
+            NotifyChanged();
 
-        return Task.FromResult(completed);
+            return Task.FromResult(completed);
+        }
+        finally
+        {
+            _pendingUpdates.TryRemove(sprintId, out _);
+        }
     }
 
     public Task DeleteAsync(Guid id, CancellationToken ct = default)
@@ -177,11 +210,19 @@ public sealed class SprintStore : ISprintStore
         if (!_sprints.TryGetValue(id, out var current))
             return Task.CompletedTask; // Already deleted
 
-        var deleted = current with { DeletedAt = DateTime.UtcNow };
-        _sprints[id] = deleted;
-        NotifyChanged();
+        _pendingUpdates[id] = true;
+        try
+        {
+            var deleted = current with { DeletedAt = DateTime.UtcNow };
+            _sprints[id] = deleted;
+            NotifyChanged();
 
-        return Task.CompletedTask;
+            return Task.CompletedTask;
+        }
+        finally
+        {
+            _pendingUpdates.TryRemove(id, out _);
+        }
     }
 
     public Task RefreshAsync(Guid projectId, CancellationToken ct = default)
@@ -215,4 +256,6 @@ public sealed class SprintStore : ISprintStore
     }
 
     #endregion
+    
+    public bool IsPending(Guid id) => _pendingUpdates.ContainsKey(id);
 }
