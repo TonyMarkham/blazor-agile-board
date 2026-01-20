@@ -1,6 +1,8 @@
 <Solution>
-    <Project Path="ProjectManagement.Components/ProjectManagement.Components.csproj"/>
-    <Project Path="ProjectManagement.Core/ProjectManagement.Core.csproj"/>
-    <Project Path="ProjectManagement.Services/ProjectManagement.Services.csproj"/>
-    <Project Path="ProjectManagement.Wasm/ProjectManagement.Wasm.csproj"/>
+    <Project Path="ProjectManagement.Components/ProjectManagement.Components.csproj" />
+    <Project Path="ProjectManagement.Core.Tests/ProjectManagement.Core.Tests.csproj" />
+    <Project Path="ProjectManagement.Core/ProjectManagement.Core.csproj" />
+    <Project Path="ProjectManagement.Services.Tests/ProjectManagement.Services.Tests.csproj" />
+    <Project Path="ProjectManagement.Services/ProjectManagement.Services.csproj" />
+    <Project Path="ProjectManagement.Wasm/ProjectManagement.Wasm.csproj" />
 </Solution>
