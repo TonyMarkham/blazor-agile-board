@@ -46,7 +46,7 @@ This plan has been split into sub-sessions to fit within token budgets:
 | **[20.2](session-20.2-plan.md)** | WebSocket client foundation | ~35k | 7 | ✅ Complete |
 | **[20.3](session-20.3-plan.md)** | Resilience patterns (circuit breaker, retry, health) | ~30k | 8 | ✅ Complete |
 | **[20.4](session-20.4-plan.md)** | State management with thread safety | ~30k | 4 | ✅ Complete |
-| **[20.5](session-20.5-plan.md)** | WASM host, error boundaries, observability | ~25k | ~8 | Planned |
+| **[20.5](session-20.5-plan.md)** | WASM host, error boundaries, observability | ~25k | 11 | ✅ Complete |
 | **[20.6](session-20.6-plan.md)** | Comprehensive test suite (100+ tests) | ~30k | ~15 | Planned |
 
 ---
@@ -177,13 +177,35 @@ This plan has been split into sub-sessions to fit within token budgets:
 
 ---
 
-## Session 20.5: WASM Host & Observability
+## Session 20.5: WASM Host & Observability ✅
+
+**Status**: Complete (2026-01-19)
 
 **Files Created:**
-- `frontend/ProjectManagement.Wasm/Program.cs` - DI setup
-- `frontend/ProjectManagement.Components/` - Error boundaries, logging
+- `frontend/ProjectManagement.Services/Logging/CorrelationIdLoggerProvider.cs` - Logger provider factory
+- `frontend/ProjectManagement.Services/Logging/CorrelationIdLogger.cs` - Structured logging with correlation IDs
+- `frontend/ProjectManagement.Wasm/Program.cs` - Full DI setup with all services
+- `frontend/ProjectManagement.Wasm/App.razor` - Root component with router
+- `frontend/ProjectManagement.Wasm/Layout/MainLayout.razor` - Application layout with Radzen components
+- `frontend/ProjectManagement.Wasm/Shared/AppErrorBoundary.razor` - Error boundary component
+- `frontend/ProjectManagement.Wasm/Shared/ConnectionStatus.razor` - Real-time connection state indicator
+- `frontend/ProjectManagement.Wasm/_Imports.razor` - Global namespace imports
+- `frontend/ProjectManagement.Wasm/wwwroot/index.html` - Host page
+- `frontend/ProjectManagement.Wasm/wwwroot/css/app.css` - Base styles
+- `frontend/ProjectManagement.Wasm/wwwroot/appsettings.json` - Configuration
 
-**Verification:** WASM app loads and connects to backend
+**Key Features:**
+- Correlation ID logging with AsyncLocal storage for distributed tracing
+- Complete DI registration (validators, resilience, WebSocket, state, Radzen services)
+- Error boundary with user-friendly messages for all exception types
+- Real-time connection status indicator with color-coded states
+- Radzen Material Design theme with dialog, notification, context menu, tooltip services
+- Configuration-driven WebSocket, circuit breaker, retry, and reconnection settings
+
+**Verification:** ✅ `dotnet build frontend/ProjectManagement.slnx` - 0 warnings, 0 errors (2.49s)
+✅ WebSocket connection to ws://localhost:8000/ws successful
+✅ Connection status displays "Connected" in green
+✅ Full end-to-end connectivity verified
 
 ---
 
@@ -208,8 +230,8 @@ This plan has been split into sub-sessions to fit within token budgets:
 | 20.2 WebSocket | 9 | 68 |
 | 20.3 Resilience | 8 | 76 |
 | 20.4 State | 4 | 80 |
-| 20.5 WASM Host | 8 | 88 |
-| 20.6 Tests | 15 | **103** |
+| 20.5 WASM Host | 11 | 91 |
+| 20.6 Tests | 15 | **106** |
 
 ---
 
