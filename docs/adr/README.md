@@ -19,3 +19,4 @@ Each ADR follows this structure:
 - [ADR-0004](0004-rust-axum-backend.md) - Rust Axum Backend
 - [ADR-0005](0005-websocket-with-protobuf.md) - WebSocket Communication with Protobuf
 - [ADR-0006](0006-single-tenant-desktop-first.md) - Single-Tenant Desktop-First Architecture
+- [ADR-0007](0007-flux-inspired-client-architecture.md) - Flux-Inspired Client Architecture with Server-Authoritative State

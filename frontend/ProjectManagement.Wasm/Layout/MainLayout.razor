@@ -1,26 +1,23 @@
-﻿  @inherits LayoutComponentBase                                                                                         
-  @using Radzen                                                                                                         
-  @using Radzen.Blazor                                                                                                  
-  @using ProjectManagement.Wasm.Shared                                                                                  
-                                                                                                                        
-  <RadzenLayout>                                                                                                        
-      <RadzenHeader>                                                                                                    
-          <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem" class="px-4">     
-              <RadzenText TextStyle="TextStyle.H5" Text="Project Management" class="m-0" />                             
-              <ConnectionStatus />                                                                                      
-          </RadzenStack>                                                                                                
-      </RadzenHeader>                                                                                                   
-                                                                                                                        
+﻿  @inherits LayoutComponentBase
+  
+  <RadzenLayout>
+      <RadzenHeader>
+          <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem" class="px-4">
+              <RadzenText TextStyle="TextStyle.H5" Text="Project Management" class="m-0" />
+              <ConnectionStatus />
+          </RadzenStack>
+      </RadzenHeader>
+      
       <RadzenBody>                                                                                                      
-          <div class="rz-p-4">                                                                                          
-              <AppErrorBoundary>                                                                                        
-                  @Body                                                                                                 
-              </AppErrorBoundary>                                                                                       
-          </div>                                                                                                        
-      </RadzenBody>                                                                                                     
-  </RadzenLayout>                                                                                                       
-                                                                                                                        
-  <RadzenDialog />                                                                                                      
-  <RadzenNotification />                                                                                                
-  <RadzenContextMenu />                                                                                                 
-  <RadzenTooltip /> 
+          <div class="rz-p-4">
+              <AppErrorBoundary>
+                  @Body
+              </AppErrorBoundary>
+          </div>
+      </RadzenBody>
+  </RadzenLayout>
+  
+  <RadzenDialog />
+  <RadzenNotification />
+  <RadzenContextMenu />
+  <RadzenTooltip />

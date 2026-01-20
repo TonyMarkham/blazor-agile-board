@@ -2,12 +2,12 @@
 
 ### Init
 ```txt
-Read `docs/implementation-plan-v2.md.` We just finished impl'ing session 10
+Read `docs/implementation-plan-v2.md.` We just finished impl'ing session 20
 ```
 
 ### Plan
 ```txt
-Create a step-by-step plan for how to implement Session 20.
+Create a step-by-step plan for how to implement Session 30.
 ```
 
 ### Challenge
@@ -24,17 +24,17 @@ Iterating on your plan until you meet the target level.
 
 ### ordering
 ```text
-Verify that the `session-20-plan.md` has proper dependency ordering so that when implementing sequentially, nothing references code that hasn't been written yet.
+Verify that the `session-30-plan.md` has proper dependency ordering so that when implementing sequentially, nothing references code that hasn't been written yet.
 ```
 
 ### x
 ```text
-before continuing, can I get you to perform a fresh-eyes review of the session 20 plan. Identify strengths/weaknesses/issues and re-grade x.x/10 for production-grade
+before continuing, can I get you to perform a fresh-eyes review of `session-30-plan.md`. Identify strengths/weaknesses/issues and re-grade x.x/10 for production-grade
 ```
 
 ### Other
 ```text
-Read `CRITICAL_OPERATING_CONSTRAINTS.md`, `docs/session-plans/session-20.6-plan.md`, `docs/session-plans/session-20-plan.md` and `docs/implementation-plan-v2.md`
+Read `CRITICAL_OPERATING_CONSTRAINTS.md`, `docs/session-plans/30.1-Session-Plan.md`, `docs/session-plans/30-Session-Plan.md` and `docs/implementation-plan-v2.md`
 
 I want you to teach me by presenting me with bite-sized chunks for me to write/edit keeping the commentary separate from the code snippets to make the code snippets easier for me to follow
 ```
