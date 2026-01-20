@@ -1,4 +1,5 @@
 <Solution>
+    <Project Path="ProjectManagement.Components.Tests/ProjectManagement.Components.Tests.csproj" />
     <Project Path="ProjectManagement.Components/ProjectManagement.Components.csproj" />
     <Project Path="ProjectManagement.Core.Tests/ProjectManagement.Core.Tests.csproj" />
     <Project Path="ProjectManagement.Core/ProjectManagement.Core.csproj" />

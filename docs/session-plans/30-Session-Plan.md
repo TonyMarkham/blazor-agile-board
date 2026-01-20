@@ -11,7 +11,7 @@ This session implements the complete work item UI with Blazor WebAssembly:
 - Composite components (WorkItemRow, KanbanCard, dialogs)
 - List and Board views with virtualization
 - Full pages (Home, ProjectDetail, WorkItemDetail)
-- Comprehensive test coverage (70+ tests)
+- Comprehensive test coverage (168+ tests)
 
 ---
 
@@ -22,13 +22,13 @@ This plan has been split into sub-sessions to fit within ~50k token budgets:
 | Session | Scope | Files | Est. Tokens | Status |
 |---------|-------|-------|-------------|--------|
 | **[30.1](30.1-Session-Plan.md)** | ViewModels + CSS Foundation | 8 files | ~40k | ✅ Complete |
-| **[30.2](30.2-Session-Plan.md)** | Leaf Components | 10 files | ~35k | Pending |
-| **[30.3](30.3-Session-Plan.md)** | ViewModel + Component Tests | 5 files | ~45k | Pending |
+| **[30.2](30.2-Session-Plan.md)** | Leaf Components | 10 files | ~35k | ✅ Complete |
+| **[30.3](30.3-Session-Plan.md)** | ViewModel + Component Tests | 5 files | ~45k | ✅ Complete |
 | **[30.4](30.4-Session-Plan.md)** | Composite Components + Dialogs | 7 files | ~45k | Pending |
 | **[30.5](30.5-Session-Plan.md)** | Pages + Layout | 5 files | ~40k | Pending |
 | **[30.6](30.6-Session-Plan.md)** | Part 2 Tests | 6 files | ~50k | Pending |
 
-**Total: 41 files, 70+ tests**
+**Total: 41 files, 168+ tests**
 
 ---
 
@@ -75,7 +75,7 @@ This plan has been split into sub-sessions to fit within ~50k token budgets:
 - `ProjectManagement.Components.Tests/Shared/SharedComponentTests.cs` - Shared component tests
 - `ProjectManagement.Components.Tests/WorkItems/BadgeComponentTests.cs` - Badge component tests
 
-**Verification:** `dotnet test ProjectManagement.Components.Tests` (35+ tests passing)
+**Verification:** `dotnet test ProjectManagement.Components.Tests` (168 tests passing) ✅
 
 ---
 
