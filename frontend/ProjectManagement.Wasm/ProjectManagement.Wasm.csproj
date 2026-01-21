@@ -2,7 +2,14 @@
 
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
-        <OverrideHtmlAssetPlaceholders>true</OverrideHtmlAssetPlaceholders>
+    </PropertyGroup>
+
+    <!-- Desktop publish output configuration -->
+    <PropertyGroup Condition="'$(PublishDir)' == ''">
+        <!-- Default publish output goes to desktop/frontend -->
+        <PublishDir>../../desktop/frontend/</PublishDir>
+        <!-- Disable fingerprinting for desktop builds (no need for cache busting) -->
+        <WasmFingerprintAssets>false</WasmFingerprintAssets>
     </PropertyGroup>
 
     <ItemGroup>
@@ -14,4 +21,8 @@
         <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" PrivateAssets="all"/>
     </ItemGroup>
 
-</Project>  
+    <ItemGroup>
+      <None Include="wwwroot\js\desktop-interop.js" />
+    </ItemGroup>
+
+</Project>

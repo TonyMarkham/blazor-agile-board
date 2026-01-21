@@ -126,6 +126,52 @@ public sealed class WebSocketClient : IWebSocketClient
             _stateLock.Release();
         }
     }
+    
+    /// <summary>
+    /// Reconnect to a new server URL (desktop mode only).
+    /// Disconnects from current server, updates URL, and reconnects.
+    /// </summary>
+    /// <param name="newServerUrl">New WebSocket server URL (e.g., ws://127.0.0.1:54321/ws)</param>
+    /// <param name="ct">Cancellation token</param>
+    public async Task ReconnectAsync(string newServerUrl, CancellationToken ct = default)
+    {
+        ThrowIfDisposed();
+
+        if (string.IsNullOrWhiteSpace(newServerUrl))
+        {
+            throw new ArgumentException("Server URL cannot be null or empty", nameof(newServerUrl));
+        }
+
+        _logger.LogInformation("Reconnecting to new server URL: {NewUrl}", newServerUrl);
+
+        await _stateLock.WaitAsync(ct);
+        try
+        {
+            // Disconnect from current server
+            if (State != ConnectionState.Disconnected && State != ConnectionState.Closed)
+            {
+                _logger.LogInformation("Disconnecting from current server: {OldUrl}", _options.ServerUrl);
+                await DisconnectInternalAsync(ct);
+            }
+
+            // Update server URL
+            var oldUrl = _options.ServerUrl;
+            _options.ServerUrl = newServerUrl;
+            _logger.LogInformation("Server URL updated: {OldUrl} -> {NewUrl}", oldUrl, newServerUrl);
+
+            // Clear any failed connection state
+            _health.RecordDisconnected();
+            SetState(ConnectionState.Disconnected);
+        }
+        finally
+        {
+            _stateLock.Release();
+        }
+
+        // Reconnect (releases lock, so call outside try-finally)
+        _logger.LogInformation("Reconnecting to new server...");
+        await ConnectAsync(ct);
+    }
 
     public Task SubscribeAsync(IEnumerable<Guid> projectIds, CancellationToken ct = default)
     {

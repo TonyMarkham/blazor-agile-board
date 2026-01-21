@@ -1,37 +1,52 @@
 <!DOCTYPE html>
 <html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Project Management</title>
+        <base href="/" />
+        <link rel="stylesheet" href="_content/Radzen.Blazor/css/material-base.css" />
+        <link rel="stylesheet" href="_content/ProjectManagement.Components/css/app.css" />
+        <link rel="stylesheet" href="_content/ProjectManagement.Components/css/work-items.css" />
+        <link rel="stylesheet" href="_content/ProjectManagement.Components/css/kanban.css" />
+        <link rel="stylesheet" href="_content/ProjectManagement.Components/css/layout.css" />
+        <link rel="stylesheet" href="css/app.css" />
+        <link rel="icon" type="image/png" href="favicon.png" />
+        <link href="ProjectManagement.Wasm.styles.css" rel="stylesheet" />
+    </head>
+    
+    <body>
+        <div id="app">
+            <div class="loading-screen">
+                <div class="spinner"></div>
+                <p>Loading...</p>
+            </div>
+        </div>
+        
+        <div id="blazor-error-ui">
+            An unhandled error has occurred.
+            <a href="" class="reload">Reload</a>
+            <a class="dismiss">X</a>
+        </div>
 
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Project Management</title>
-    <base href="/" />
-    <link rel="stylesheet" href="_content/Radzen.Blazor/css/material-base.css" />
-    <link rel="stylesheet" href="_content/ProjectManagement.Components/css/app.css" />
-    <link rel="stylesheet" href="_content/ProjectManagement.Components/css/work-items.css" />
-    <link rel="stylesheet" href="_content/ProjectManagement.Components/css/kanban.css" />
-    <link rel="stylesheet" href="_content/ProjectManagement.Components/css/layout.css" />
-    <link rel="stylesheet" href="css/app.css" />
-    <link rel="icon" type="image/png" href="favicon.png" />
-    <link href="ProjectManagement.Wasm.styles.css" rel="stylesheet" />
-</head>
-
-<body>
-<div id="app">
-    <div class="loading-screen">
-        <div class="spinner"></div>
-        <p>Loading...</p>
-    </div>
-</div>
-
-<div id="blazor-error-ui">
-    An unhandled error has occurred.
-    <a href="" class="reload">Reload</a>
-    <a class="dismiss">X</a>
-</div>
-
-<script src="_content/Radzen.Blazor/Radzen.Blazor.js"></script>
-<script src="_framework/blazor.webassembly.js"></script>
-</body>
-
-</html> 
+        <script src="_content/Radzen.Blazor/Radzen.Blazor.js"></script>
+        <script src="js/desktop-interop.js"></script>
+        
+        <!-- Desktop mode detection (runs before Blazor) -->
+        <script>
+            // Detect Tauri desktop mode
+            window.PM_CONFIG = {
+                isDesktop: !!(window.__TAURI__),
+                serverUrl: null  // Will be set by C# after polling server
+            };
+        
+            if (window.PM_CONFIG.isDesktop) {
+                console.log('[Desktop Mode] Tauri detected');
+            } else {
+                console.log('[Web Mode] Running in browser');
+            }
+        </script>
+        
+        <script src="_framework/blazor.webassembly.js"></script>
+    </body>
+</html>

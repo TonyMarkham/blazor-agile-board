@@ -4,10 +4,15 @@
   "version": "0.1.0",
   "identifier": "com.projectmanager.app",
   "build": {
-    "beforeDevCommand": "",
-    "devUrl": "http://localhost:5173",
-    "beforeBuildCommand": "",
-    "frontendDist": "../frontend"
+    "beforeDevCommand": {
+      "script": "dotnet publish frontend/ProjectManagement.Wasm/ProjectManagement.Wasm.csproj -c Debug",
+      "cwd": "../.."
+    },
+    "beforeBuildCommand": {
+      "script": "dotnet publish frontend/ProjectManagement.Wasm/ProjectManagement.Wasm.csproj -c Release",
+      "cwd": "../.."
+    },
+    "frontendDist": "../frontend/wwwroot"
   },
   "app": {
     "withGlobalTauri": true,
@@ -74,16 +79,5 @@
       }
     }
   },
-  "plugins": {
-    "shell": {
-      "sidecar": true,
-      "scope": [
-        {
-          "name": "binaries/pm-server",
-          "sidecar": true,
-          "args": true
-        }
-      ]
-    }
-  }
+  "plugins": {}
 }

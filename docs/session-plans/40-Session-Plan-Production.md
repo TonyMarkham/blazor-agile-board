@@ -23,7 +23,7 @@ This plan has been split into sub-sessions to fit within ~50k token budgets:
 | **[40.1](40.1-Session-Plan.md)** | Foundation & Error Infrastructure | ~40k | ~95k | ✅ Complete (2026-01-21) |
 | **[40.2](40.2-Session-Plan.md)** | Health Monitoring & Lifecycle Management | ~45k | ~50k | ✅ Complete (2026-01-21) |
 | **[40.3](40.3-Session-Plan.md)** | Tauri Integration & IPC Commands | ~40k | ~25k | ✅ Complete (2026-01-21) |
-| **[40.4](40.4-Session-Plan.md)** | Frontend Integration & Desktop Mode | ~35k | - | Pending |
+| **[40.4](40.4-Session-Plan.md)** | Frontend Integration & Desktop Mode | ~35k | ~140k | ✅ 95% Complete (2026-01-21) |
 | **[40.5](40.5-Session-Plan.md)** | Build Pipeline & Testing | ~40k | - | Pending |
 
 ---
@@ -117,18 +117,35 @@ This plan has been split into sub-sessions to fit within ~50k token budgets:
 
 ---
 
-## Session 40.4: Frontend Integration & Desktop Mode
+## Session 40.4: Frontend Integration & Desktop Mode ✅
 
-**Files Created:**
-- `desktop/frontend/index.html` - Desktop frontend with startup UI
-- `frontend/ProjectManagement.Wasm/wwwroot/js/desktop-interop.js` - JS interop
-- `frontend/ProjectManagement.Services/Desktop/DesktopConfigService.cs` - Desktop detection
+**Status**: 95% Complete (2026-01-21)
+**Tokens**: ~140k (400% over estimate due to troubleshooting)
 
-**Files Modified:**
-- `frontend/ProjectManagement.Wasm/wwwroot/appsettings.json` - WebSocket config
-- `frontend/ProjectManagement.Wasm/Program.cs` - Desktop mode detection
+**Files Created (7, ~323 lines):**
+- `frontend/ProjectManagement.Wasm/wwwroot/index.html` - Enhanced with minimal desktop detection
+- `frontend/ProjectManagement.Wasm/wwwroot/js/desktop-interop.js` - Thin Tauri API bridge (30 lines)
+- `frontend/ProjectManagement.Services/Desktop/DesktopConfig.cs` - Config model
+- `frontend/ProjectManagement.Services/Desktop/ServerStatus.cs` - Status model
+- `frontend/ProjectManagement.Services/Desktop/HealthStatus.cs` - Health model
+- `frontend/ProjectManagement.Services/Desktop/ServerStateChangeHandler.cs` - Event handler
+- `frontend/ProjectManagement.Services/Desktop/DesktopConfigService.cs` - Main desktop service (188 lines)
 
-**Verification:** `dotnet build frontend/ProjectManagement.Wasm`
+**Files Modified (4):**
+- `frontend/ProjectManagement.Services/WebSocket/WebSocketClient.cs` - Added `ReconnectAsync()` method
+- `frontend/ProjectManagement.Wasm/Program.cs` - Two-phase initialization with desktop mode detection
+- `frontend/ProjectManagement.Wasm/ProjectManagement.Wasm.csproj` - Fixed PublishDir & disabled fingerprinting
+- `desktop/src-tauri/tauri.conf.json` - Build config with `cwd` and correct `frontendDist`
+
+**Key Achievements:**
+- ✅ Desktop mode auto-detection working
+- ✅ Embedded pm-server starts successfully
+- ✅ Frontend discovers server URL dynamically
+- ✅ WebSocket connects and shows "Connected" status
+- ✅ Blazor UI renders fully
+- ⚠️ One minor Radzen fix needed (non-blocking)
+
+**Verification:** ✅ `cargo tauri dev` - App launches and connects successfully
 
 ---
 
