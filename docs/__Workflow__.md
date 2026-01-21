@@ -74,7 +74,11 @@ I have staged all files, please commit without a byline.
 
 ### Init
 ```txt
-Read `docs/implementation-plan-v2.md.` We just finished impl'ing most of session 40, specifically ending just befor starting 40.5
+Read `docs/implementation-plan-v2.md.` We just finished impl'ing most of session 40.4.
 
 That's where we found an issue and created `docs/session-plans/41-Session-Plan.md`
+```
+
+```text
+Verify that the `41-Session-Plan.md` has proper dependency ordering so that when implementing sequentially, nothing references code that hasn't been written yet.
 ```
