@@ -48,19 +48,21 @@ read `docs/session-plans/50-Session-Plan.md` and break it down into multiple sub
 
 ### Other
 ```text
-Read `CRITICAL_OPERATING_CONSTRAINTS.md`, `docs/session-plans/10.1-Session-Plan.md`, `docs/session-plans/40-Session-Plan-Production.md` and `docs/implementation-plan-v2.md`
+Read `CRITICAL_OPERATING_CONSTRAINTS.md`, `docs/session-plans/40.2-Session-Plan.md`, `docs/session-plans/40-Session-Plan-Production.md` and `docs/implementation-plan-v2.md`.
+
+Please audit `docs/session-plans/40.2-Session-Plan.md` and cross reference it's contents against the current state of the project to avoid making poor assumptions.
 
 I want you to teach me by presenting me with bite-sized chunks for me to write/edit keeping the commentary separate from the code snippets to make the code snippets easier for me to follow
 ```
 
 ### End of Session Sanity Check
 ```text
-Builds clean and all tests pass. Please sanity check that everything in `docs/session-plans/40.1-Session-Plan.md` was implemented as expected.
+Builds clean and all tests pass. Please sanity check that everything in `docs/session-plans/40.2-Session-Plan.md` was implemented as expected.
 ```
 
 ### Update Docs
 ```text
-Please update `docs/session-plans/40.1-Session-Plan.md` and `docs/session-plans/40-Session-Plan.md`
+Please update `docs/session-plans/40.2-Session-Plan.md` and `docs/session-plans/40-Session-Plan.md`
 ```
 
 ### Commit

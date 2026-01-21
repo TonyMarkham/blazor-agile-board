@@ -18,27 +18,37 @@ This session creates a production-ready desktop application using Tauri to wrap 
 
 This plan has been split into sub-sessions to fit within ~50k token budgets:
 
-| Session | Scope | Est. Tokens | Status |
-|---------|-------|-------------|--------|
-| **[40.1](40.1-Session-Plan.md)** | Foundation & Error Infrastructure | ~40k | Pending |
-| **[40.2](40.2-Session-Plan.md)** | Health Monitoring & Lifecycle Management | ~45k | Pending |
-| **[40.3](40.3-Session-Plan.md)** | Tauri Integration & IPC Commands | ~40k | Pending |
-| **[40.4](40.4-Session-Plan.md)** | Frontend Integration & Desktop Mode | ~35k | Pending |
-| **[40.5](40.5-Session-Plan.md)** | Build Pipeline & Testing | ~40k | Pending |
+| Session | Scope | Est. Tokens | Actual Tokens | Status |
+|---------|-------|-------------|---------------|--------|
+| **[40.1](40.1-Session-Plan.md)** | Foundation & Error Infrastructure | ~40k | ~95k | ✅ Complete (2026-01-21) |
+| **[40.2](40.2-Session-Plan.md)** | Health Monitoring & Lifecycle Management | ~45k | - | Pending |
+| **[40.3](40.3-Session-Plan.md)** | Tauri Integration & IPC Commands | ~40k | - | Pending |
+| **[40.4](40.4-Session-Plan.md)** | Frontend Integration & Desktop Mode | ~35k | - | Pending |
+| **[40.5](40.5-Session-Plan.md)** | Build Pipeline & Testing | ~40k | - | Pending |
 
 ---
 
-## Session 40.1: Foundation & Error Infrastructure
+## Session 40.1: Foundation & Error Infrastructure ✅
 
-**Files Created:**
-- `desktop/src-tauri/Cargo.toml` - Dependencies and build configuration
-- `desktop/src-tauri/src/server/mod.rs` - Server module root
-- `desktop/src-tauri/src/server/error.rs` - Comprehensive error types
-- `desktop/src-tauri/src/server/config.rs` - Configuration with validation
-- `desktop/src-tauri/src/server/port.rs` - Port allocation logic
-- `desktop/src-tauri/src/server/lock.rs` - Single-instance lock file
+**Status**: Complete (2026-01-21)
+**Tokens**: ~95k (138% over estimate due to teaching approach)
 
-**Verification:** `cd desktop/src-tauri && cargo check`
+**Files Created (817 lines):**
+- `desktop/src-tauri/Cargo.toml` (44 lines) - Workspace dependencies
+- `desktop/src-tauri/build.rs` (3 lines) - Tauri build hook
+- `desktop/src-tauri/src/server/mod.rs` (12 lines) - Extended module exports
+- `desktop/src-tauri/src/server/error.rs` (155 lines) - `ErrorLocation` pattern with recovery hints
+- `desktop/src-tauri/src/server/config.rs` (361 lines) - Versioned config with constants
+- `desktop/src-tauri/src/server/port.rs` (75 lines) - Port allocation with constants
+- `desktop/src-tauri/src/server/lock.rs` (167 lines) - Single-instance lock with constants
+
+**Enhancements:**
+- Uses `ErrorLocation` tracking (follows codebase pattern)
+- All magic strings replaced with constants
+- Workspace dependency management
+- Complete `recovery_hint()` implementation
+
+**Verification:** ✅ `cd desktop/src-tauri && cargo check` (61 warnings, 0 errors)
 
 ---
 
