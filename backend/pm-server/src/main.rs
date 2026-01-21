@@ -1,3 +1,4 @@
+pub(crate) mod admin;
 mod error;
 mod health;
 mod logger;

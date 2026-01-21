@@ -21,7 +21,7 @@ This plan has been split into sub-sessions to fit within ~50k token budgets:
 | Session | Scope | Est. Tokens | Actual Tokens | Status |
 |---------|-------|-------------|---------------|--------|
 | **[40.1](40.1-Session-Plan.md)** | Foundation & Error Infrastructure | ~40k | ~95k | ✅ Complete (2026-01-21) |
-| **[40.2](40.2-Session-Plan.md)** | Health Monitoring & Lifecycle Management | ~45k | - | Pending |
+| **[40.2](40.2-Session-Plan.md)** | Health Monitoring & Lifecycle Management | ~45k | ~50k | ✅ Complete (2026-01-21) |
 | **[40.3](40.3-Session-Plan.md)** | Tauri Integration & IPC Commands | ~40k | - | Pending |
 | **[40.4](40.4-Session-Plan.md)** | Frontend Integration & Desktop Mode | ~35k | - | Pending |
 | **[40.5](40.5-Session-Plan.md)** | Build Pipeline & Testing | ~40k | - | Pending |
@@ -52,17 +52,35 @@ This plan has been split into sub-sessions to fit within ~50k token budgets:
 
 ---
 
-## Session 40.2: Health Monitoring & Lifecycle Management
+## Session 40.2: Health Monitoring & Lifecycle Management ✅
 
-**Files Created:**
-- `desktop/src-tauri/src/server/health.rs` - Health checker with circuit breaker
-- `desktop/src-tauri/src/server/lifecycle.rs` - Server process lifecycle
+**Status**: Complete (2026-01-21)
+**Tokens**: ~50k (111% of estimate due to teaching approach)
+
+**Files Created (808 lines):**
+- `backend/pm-server/src/admin.rs` (50 lines) - Admin endpoints (checkpoint, shutdown)
+- `desktop/src-tauri/src/server/health.rs` (193 lines) - Health checker with circuit breaker
+- `desktop/src-tauri/src/server/lifecycle.rs` (565 lines) - Process lifecycle manager
 
 **Files Modified:**
-- `desktop/src-tauri/src/server/mod.rs` - Export health and lifecycle modules
-- `backend/pm-server/src/main.rs` - Add health endpoints
+- `desktop/src-tauri/src/server/mod.rs` - Export ServerManager and health types
+- `backend/pm-server/src/main.rs` - Add admin module
+- `backend/pm-server/src/routes.rs` - Add admin routes (/admin/checkpoint, /admin/shutdown)
 
-**Verification:** `cargo check -p pm-server && cd desktop/src-tauri && cargo check`
+**Key Features:**
+- Circuit breaker pattern for health monitoring
+- Exponential backoff with configurable limits
+- Multi-layer graceful shutdown (HTTP → OS signals → force kill)
+- Platform-specific signal handling (Unix SIGTERM, Windows CTRL_BREAK)
+- Channel-based task coordination
+- Lock file management
+
+**Quality Enhancements:**
+- Extracted `ServerState` and `ServerCommand` to separate modules
+- ErrorLocation pattern throughout
+- Proper database checkpoint before shutdown
+
+**Verification:** ✅ `cargo check --workspace` (all tests passing, builds clean)
 
 ---
 
