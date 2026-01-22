@@ -50,7 +50,7 @@ read `docs/session-plans/50-Session-Plan.md` and break it down into multiple sub
 ```text
 Read `CRITICAL_OPERATING_CONSTRAINTS.md`, `docs/session-plans/41.2-Session-Plan.md`, `docs/session-plans/41-Session-Plan.md` and `docs/implementation-plan-v2.md`.
 
-Please audit `docs/session-plans/41-Session-Plan.md` and cross reference it's contents against the current state of the project to avoid making poor assumptions.
+Please audit `docs/session-plans/41.2-Session-Plan.md` and cross reference it's contents against the current state of the project to avoid making poor assumptions.
 
 I want you to teach me by presenting me with bite-sized chunks for me to write/edit keeping the commentary separate from the code snippets to make the code snippets easier for me to follow
 ```
