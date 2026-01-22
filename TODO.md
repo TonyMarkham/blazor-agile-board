@@ -2,189 +2,105 @@
 
 This file tracks improvements that are nice-to-have but not required for MVP.
 
-## Desktop UX Enhancements
-
-### Immediate Window Display (Medium Priority) ⚠️
-**Anti-Pattern**: Unity Hub shows black screen for 5+ seconds with zero feedback - users think it's frozen and check Task Manager.
-
-**Current Issue**: Tauri window waits for server startup (~600ms) before rendering, creating perception of slowness.
-
-**Psychological Timing Thresholds**:
-- 0-100ms: Instant (feels native)
-- 100-300ms: Acceptable delay
-- 300-1000ms: "Is this working?" (user doubt begins)
-- 1000ms+: "Something is broken" (user abandons or force-quits)
-
-**Quick Fix**: Show window immediately, start server in background (non-blocking)
-- Open Tauri window on launch (0ms perceived startup)
-- Display simple "Starting server..." status message
-- Emit Tauri events as server progresses: `server:starting` → `server:ready` → `server:connected`
-- Switch to main UI when WebSocket connects successfully
-
-**Implementation**:
-- Change `lib.rs` to show window **before** calling `server_manager.start().await`
-- Start server in `tauri::async_runtime::spawn()` (non-blocking background task)
-- Emit events at each stage using Tauri's event system
-- Frontend listens to events and updates status display accordingly
-- Show main app only when `server:connected` event fires
-
-**Estimated Effort**: ~1 hour
-**Priority**: Medium (core UX issue affecting perceived performance)
-**Session**: 40.5 or 41
-
 ---
 
-### User Registration & Persistent Identity (High Priority) 🔥
-**Current Issue**: Each WebSocket connection generates a new random UUID, causing project membership to be lost on reconnect.
+## URL-Based State Management (Medium Priority)
 
-**Problem**:
-- Connection 1: User `abc-123` creates project → added as admin member ✅
-- Go home, reconnect: New user `xyz-789` generated → not a member ❌
-- Result: Can't open own projects after navigating away!
+### Problem Statement
+Blazor WASM can leak memory over time. When the app slows down, users will refresh the browser. They should be able to pick up where they left off since data is synced to the backend - only the UI state is ephemeral.
 
-**Root Cause**: Desktop mode uses `"local-user"` string, which isn't a valid UUID. Backend falls back to `uuid::Uuid::new_v4()` on each connection, generating fresh random IDs.
+### Current Gap
+If UI state lives only in memory (current project, view mode, filters, selected items), a refresh dumps the user back to the home screen and they lose their context.
 
-**Solution**: After server startup and WebSocket connection:
-1. **Check for existing user**: Query server for users, check local storage for saved UUID
-2. **First launch flow**:
-   - If no users exist, prompt user to create identity (name/email optional)
-   - Generate deterministic UUID, store persistently in app data directory
-   - Create user record in database with this UUID
-3. **Subsequent launches**:
-   - Load UUID from persistent storage
-   - Use this UUID for all WebSocket connections
-   - User maintains project membership across sessions
+### Solution: URL as State Recovery Strategy
 
-**Implementation**:
-- Add user registration dialog/screen after server connection
-- Store UUID in `~/.pm/user.json` or similar persistent location
-- Pass persistent UUID to WebSocket connection setup
-- Backend validates/creates user record on connection if needed
+**Principle**: If it matters for context, it goes in the URL.
 
-**Benefits**:
-- ✅ Persistent project membership
-- ✅ Consistent user identity across sessions
-- ✅ Your projects are actually accessible after restart
-- ✅ Lays groundwork for multi-user scenarios
-
-**Estimated Effort**: ~2 hours
-**Priority**: High (blocking issue - app barely usable without this)
-**Session**: 40.5 or 41 (should be done alongside immediate window display)
-
----
-
-### Eliminate desktop-interop.js (High Priority) 🔥
-**Victory Condition**: Zero application JavaScript files. Only Blazor's required bootstrap remains.
-
-**Current Situation**: `desktop-interop.js` (30 lines) is a thin JS wrapper around Tauri APIs:
+**Route Design**:
 ```
-C# (Blazor) → JS (desktop-interop.js) → Tauri API
+/projects/{projectId}/board?filter=status:active&swimlane=assignee
+/projects/{projectId}/sprints/{sprintId}
+/projects/{projectId}/epics/{epicId}/edit
+/projects/{projectId}/items/{itemId}
 ```
 
-**Better Architecture**: Call Tauri directly from C# via IJSRuntime:
-```
-C# (Blazor) → Tauri API (direct via __TAURI__ global)
-```
+**What URL Captures**:
+- Current project
+- Current view mode (board/sprint/epic)
+- Selected item being viewed/edited
+- Filters, sorts, groupings (query params)
 
-**Implementation**:
-- Create `Services/TauriService.cs` - C# wrapper for Tauri IPC commands
-- Replace `window.DesktopInterop.getServerStatus()` → `await Tauri.GetServerStatus()`
-- Replace `window.DesktopInterop.onServerStateChanged()` → `await Tauri.OnServerStateChanged()`
-- Replace `window.DesktopInterop.isDesktop()` → `await Tauri.IsDesktop()`
-- Use `DotNetObjectReference` for event callbacks (no JS listeners)
-- **Delete** `frontend/ProjectManagement.Wasm/wwwroot/js/desktop-interop.js`
-- **Delete** `<script src="js/desktop-interop.js"></script>` from index.html
+**Blazor Implementation**:
+```razor
+@page "/projects/{ProjectId}/board"
 
-**Result**:
-- Zero application JS files in codebase
-- Only unavoidable bootstrap: `<script src="_framework/blazor.webassembly.js"></script>`
-- All desktop integration logic stays in C#
+@code {
+    [Parameter] public string ProjectId { get; set; }
 
-**Code Example**:
-```csharp
-// Services/TauriService.cs
-public class TauriService
-{
-    private readonly IJSRuntime _js;
+    [SupplyParameterFromQuery]
+    public string? Filter { get; set; }
 
-    public async Task<ServerStatus> GetServerStatus()
+    [SupplyParameterFromQuery]
+    public string? Swimlane { get; set; }
+
+    protected override async Task OnParametersSetAsync()
     {
-        return await _js.InvokeAsync<ServerStatus>(
-            "__TAURI__.core.invoke",
-            "get_server_status"
-        );
+        var parsedFilter = FilterParser.Parse(Filter);
+        await AppState.LoadProjectAsync(ProjectId);
+        await AppState.LoadBoardItemsAsync(ProjectId, parsedFilter);
     }
 }
-
-// Component usage
-@inject TauriService Tauri
-
-private async Task CheckServer()
-{
-    var status = await Tauri.GetServerStatus();
-    // Pure C# - no JS!
-}
 ```
 
-**Benefits**:
-- **Zero JS files to maintain** (just unavoidable Blazor bootstrap)
-- Type-safe C# models instead of JS objects
-- IntelliSense for all Tauri APIs
-- Debuggable C# stack traces (no JS console.log hunting)
-- One less file to copy between frontend/desktop directories
+**Flow on Refresh**:
+1. Same URL → same route → same component
+2. Component parses route params and query strings
+3. Fetches fresh data from Rust backend via WebSocket
+4. UI rebuilds in same context
 
-**Estimated Effort**: ~30 minutes (simple refactor)
-**Priority**: High (eliminates JS, can be done alongside immediate window display)
-**Session**: 40.5 or 41 (pair with immediate window display work)
+### Benefits (All Free from Good URL Design)
+- **Refresh recovery** - Land back where you were
+- **Bookmarks** - Save "My active sprint" as browser bookmark
+- **Shareability** - Share link with teammate, they see exact same view
+- **Browser history** - Back/forward buttons work naturally
+- **Deep linking** - Email notifications link directly to specific items
 
----
+### What URL Cannot Cover
+- Unsaved form input mid-typing
+- Scroll position
+- Expanded/collapsed accordion panels
 
-### Animated Startup Progress UI (Low Priority)
-**Context**: After implementing immediate window display above, enhance with detailed animated progress.
+### Supplemental: LocalStorage for Form Drafts
+For long forms, auto-save drafts to LocalStorage:
+- Key: `{userId}:{projectId}:{itemId}:draft`
+- On reload: Prompt "Recover unsaved changes?"
+- User can accept or discard
 
-**Proposed**: Replace simple status text with polished Blazor component:
-- Animated progress bar with 4 steps (Initialize → Start Server → Check Health → Load UI)
-- Error screen with retry button and diagnostics export (all in C#)
-- Reconnection overlay when server restarts during session
-- Real-time server logs streaming to startup screen
-- Graceful degradation if server fails to start
+### Implementation Checklist
+- [ ] Audit existing routes - do they capture meaningful state?
+- [ ] Add query param support for filters/sorts
+- [ ] Document URL design conventions for consistency
+- [ ] Add form draft auto-save for work item creation/editing
+- [ ] Test refresh recovery across all major views
 
-**Benefits**:
-- Professional desktop app feel (matches native apps)
-- Better debugging for users (see exactly which step failed)
-- Handles edge cases gracefully (server crashes, port conflicts, restarts)
-- Zero JavaScript (stays true to minimal-JS philosophy)
+### Estimated Effort
+- Route refactoring: ~2-3 hours
+- Query param parsing utilities: ~1 hour
+- Form draft persistence: ~2 hours
+- Testing: ~1 hour
 
-**Implementation**:
-- Create `Components/Desktop/StartupScreen.razor` with state machine
-- C# progress tracking with percentage calculations
-- CSS animations for smooth transitions
-- Tauri commands for retry/diagnostics actions
-
-**Estimated Effort**: ~4 hours
-**Priority**: Low (nice-to-have polish after immediate display works)
-**Session**: Post-MVP
+**Priority**: Medium (improves UX significantly, prevents user frustration on refresh)
+**Session**: 43 or later
 
 ---
 
 ## Known Issues (Safe to Ignore)
 
 ### Source Map Warning in Development
-**Warning**: `Source Map "http://127.0.0.1:1430/_framework/dotnet.runtime.js.map" has SyntaxError: JSON Parse error: Unrecognized token '<'`
+**Warning**: `Source Map "http://127.0.0.1:1430/_framework/dotnet.runtime.js.map" has SyntaxError: JSON Parse error`
 **Cause**: Blazor debug builds + Tauri dev server source map handling
 **Impact**: None (cosmetic browser console warning only)
 **Fix**: Not required - goes away in Release builds
-**Priority**: Ignore
-
----
-
-## Session 40.5 (Next Up)
-
-- [ ] Build scripts (dev.sh, build.sh)
-- [ ] CI/CD pipeline (GitHub Actions)
-- [ ] Unit tests for desktop integration
-- [ ] Integration tests (end-to-end)
-- [ ] Manual test checklist
 
 ---
 
