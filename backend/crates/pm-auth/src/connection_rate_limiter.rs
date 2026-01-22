@@ -18,10 +18,9 @@ pub struct ConnectionRateLimiter {
 
 impl ConnectionRateLimiter {
     pub fn new(config: RateLimitConfig) -> Self {
-        let quota = Quota::per_second(
-            NonZeroU32::new(config.max_requests / config.window_secs.max(1) as u32)
-                .unwrap_or(NonZeroU32::new(1).unwrap()),
-        );
+        let quota = Quota::with_period(std::time::Duration::from_secs(config.window_secs))
+            .unwrap()
+            .allow_burst(NonZeroU32::new(config.max_requests).unwrap());
 
         Self {
             limiter: RateLimiter::direct(quota),

@@ -84,7 +84,7 @@ else
     [Parameter]
     public Guid ProjectId { get; set; }
 
-    private WorkItemViewModel? _project;
+    private ProjectViewModel? _project;
     private bool _loading = true;
     private string _activeView = "board"; // Default to Kanban board
     private ConnectionState _connectionState = ConnectionState.Connected;
@@ -113,10 +113,9 @@ else
 
             // Set current project context for header display
             AppState.Projects.SetCurrentProject(ProjectId);
-            
-            // Get the project work item
-            var project = AppState.WorkItems.GetById(ProjectId);
-            _project = project is not null ? ViewModelFactory.Create(project) : null;
+
+            // Get the project from Projects store
+            _project = AppState.Projects.GetById(ProjectId);
         }
         catch (Exception ex)
         {
@@ -152,12 +151,8 @@ else
     private void HandleStateChanged()
     {
         // Refresh project data
-        var project = AppState.WorkItems.GetById(ProjectId);
-        if (project is not null)
-        {
-            _project = ViewModelFactory.Create(project);
-            InvokeAsync(StateHasChanged);
-        }
+        _project = AppState.Projects.GetById(ProjectId);
+        InvokeAsync(StateHasChanged);
     }
 
     private void HandleConnectionChanged(ConnectionState state)

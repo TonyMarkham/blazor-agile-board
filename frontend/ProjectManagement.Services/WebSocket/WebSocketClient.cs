@@ -178,12 +178,16 @@ public sealed class WebSocketClient : IWebSocketClient
 
     public Task SubscribeAsync(IEnumerable<Guid> projectIds, CancellationToken ct = default)
     {
-        throw new NotImplementedException();
+        // TODO: Implement subscription when backend handler is ready
+        _logger.LogDebug("Subscribe called for projects: {ProjectIds}", string.Join(", ", projectIds));
+        return Task.CompletedTask;
     }
 
     public Task UnsubscribeAsync(IEnumerable<Guid> projectIds, CancellationToken ct = default)
     {
-        throw new NotImplementedException();
+        // TODO: Implement unsubscription when backend handler is ready
+        _logger.LogDebug("Unsubscribe called for projects: {ProjectIds}", string.Join(", ", projectIds));
+        return Task.CompletedTask;
     }
 
     public async Task<WorkItem> CreateWorkItemAsync(
@@ -238,10 +242,40 @@ public sealed class WebSocketClient : IWebSocketClient
         throw new NotImplementedException();
     }
 
-    public Task<IReadOnlyList<WorkItem>> GetWorkItemsAsync(Guid projectId, DateTime? since = null,
+    public async Task<IReadOnlyList<WorkItem>> GetWorkItemsAsync(Guid projectId, DateTime? since = null,
         CancellationToken ct = default)
     {
-        throw new NotImplementedException();
+        ThrowIfDisposed();
+        EnsureConnected();
+
+        var message = new Pm.WebSocketMessage
+        {
+            MessageId = Guid.NewGuid().ToString(),
+            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            GetWorkItemsRequest = new Pm.GetWorkItemsRequest
+            {
+                ProjectId = projectId.ToString()
+            }
+        };
+
+        if (since.HasValue)
+            message.GetWorkItemsRequest.SinceTimestamp = new DateTimeOffset(since.Value).ToUnixTimeSeconds();
+
+        var response = await SendRequestAsync(message, ct);
+
+        if (response.PayloadCase == Pm.WebSocketMessage.PayloadOneofCase.Error)
+            throw new ServerRejectedException(
+                response.Error.Code,
+                response.Error.Message,
+                response.Error.Field);
+
+        if (response.PayloadCase != Pm.WebSocketMessage.PayloadOneofCase.WorkItemsList)
+            throw new InvalidOperationException(
+                $"Unexpected response type: {response.PayloadCase}");
+
+        return response.WorkItemsList.WorkItems
+            .Select(ProtoConverter.ToDomain)
+            .ToList();
     }
 
     public async ValueTask DisposeAsync()

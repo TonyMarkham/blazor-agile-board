@@ -60,6 +60,19 @@ pub async fn handler(
     // Parse user_id to Uuid for handlers
     let user_uuid = uuid::Uuid::parse_str(&user_id).unwrap_or_else(|_| uuid::Uuid::new_v4());
 
+    // Ensure user exists in database (desktop mode)
+    if state.jwt_validator.is_none() {
+        let pool = state.pool.clone();
+        let user_id_str = user_uuid.to_string();
+        tokio::spawn(async move {
+            let _ = sqlx::query("INSERT OR IGNORE INTO users (id, email) VALUES (?, ?)")
+                .bind(&user_id_str)
+                .bind(format!("user-{}@localhost", &user_id_str[..8]))
+                .execute(&pool)
+                .await;
+        });
+    }
+
     // Upgrade to WebSocket
     Ok(ws.on_upgrade(move |socket| {
         handle_socket(socket, connection_id, state, rate_limiter, user_uuid)

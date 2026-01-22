@@ -12,8 +12,8 @@ use crate::handlers::{
 use crate::{MessageValidator, log_handler_entry};
 use crate::{Result as WsResult, WsError};
 
-use pm_core::{ActivityLog, Project, ProjectStatus};
-use pm_db::{ActivityLogRepository, ProjectRepository, WorkItemRepository};
+use pm_core::{ActivityLog, Project, ProjectMember, ProjectStatus};
+use pm_db::{ActivityLogRepository, ProjectMemberRepository, ProjectRepository, WorkItemRepository};
 use pm_proto::{
     CreateProjectRequest, DeleteProjectRequest, FieldChange, ListProjectsRequest,
     UpdateProjectRequest, WebSocketMessage,
@@ -104,7 +104,21 @@ pub async fn handle_create(
     })
     .await?;
 
-    // 6. Log activity
+    // 6. Add creator as project admin
+    let member = ProjectMember {
+        id: Uuid::new_v4(),
+        project_id: project.id,
+        user_id: ctx.user_id,
+        role: "admin".to_string(),
+        created_at: Utc::now(),
+    };
+    let member_repo = ProjectMemberRepository::new(ctx.pool.clone());
+    db_write(&ctx, "add_project_member", || async {
+        member_repo.create(&member).await.map_err(WsError::from)
+    })
+    .await?;
+
+    // 7. Log activity
     let activity = ActivityLog::created("project", project.id, ctx.user_id);
     let pool_clone = ctx.pool.clone();
     db_write(&ctx, "log_create_activity", || async {
@@ -114,10 +128,10 @@ pub async fn handle_create(
     })
     .await?;
 
-    // 7. Build response
+    // 8. Build response
     let response = build_project_created_response(&ctx.message_id, &project, ctx.user_id);
 
-    // 8. Store idempotency (after commit, failure here is non-fatal)
+    // 9. Store idempotency (after commit, failure here is non-fatal)
     use base64::Engine;
     use prost::Message as ProstMessage;
     let response_bytes = response.encode_to_vec();

@@ -106,7 +106,7 @@ heartbeat_timeout_secs = 60
 [rate_limit]
 # Maximum requests per window (range: 1-10000, default: 100)
 # Applied per WebSocket connection to prevent abuse
-max_requests = 100
+max_requests = 1000
 
 # Rate limit window in seconds (range: 1-3600, default: 60)
 # Requests are counted within this sliding window

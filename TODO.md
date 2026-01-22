@@ -34,6 +34,45 @@ This file tracks improvements that are nice-to-have but not required for MVP.
 
 ---
 
+### User Registration & Persistent Identity (High Priority) 🔥
+**Current Issue**: Each WebSocket connection generates a new random UUID, causing project membership to be lost on reconnect.
+
+**Problem**:
+- Connection 1: User `abc-123` creates project → added as admin member ✅
+- Go home, reconnect: New user `xyz-789` generated → not a member ❌
+- Result: Can't open own projects after navigating away!
+
+**Root Cause**: Desktop mode uses `"local-user"` string, which isn't a valid UUID. Backend falls back to `uuid::Uuid::new_v4()` on each connection, generating fresh random IDs.
+
+**Solution**: After server startup and WebSocket connection:
+1. **Check for existing user**: Query server for users, check local storage for saved UUID
+2. **First launch flow**:
+   - If no users exist, prompt user to create identity (name/email optional)
+   - Generate deterministic UUID, store persistently in app data directory
+   - Create user record in database with this UUID
+3. **Subsequent launches**:
+   - Load UUID from persistent storage
+   - Use this UUID for all WebSocket connections
+   - User maintains project membership across sessions
+
+**Implementation**:
+- Add user registration dialog/screen after server connection
+- Store UUID in `~/.pm/user.json` or similar persistent location
+- Pass persistent UUID to WebSocket connection setup
+- Backend validates/creates user record on connection if needed
+
+**Benefits**:
+- ✅ Persistent project membership
+- ✅ Consistent user identity across sessions
+- ✅ Your projects are actually accessible after restart
+- ✅ Lays groundwork for multi-user scenarios
+
+**Estimated Effort**: ~2 hours
+**Priority**: High (blocking issue - app barely usable without this)
+**Session**: 40.5 or 41 (should be done alongside immediate window display)
+
+---
+
 ### Eliminate desktop-interop.js (High Priority) 🔥
 **Victory Condition**: Zero application JavaScript files. Only Blazor's required bootstrap remains.
 
