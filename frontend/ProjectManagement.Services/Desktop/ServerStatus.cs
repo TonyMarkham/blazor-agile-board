@@ -30,4 +30,16 @@ public sealed record ServerStatus
     /// </summary>
     [JsonPropertyName("error")]
     public string? Error { get; init; }
+    
+    /// <summary>
+    /// Whether the server is healthy and ready for connections.
+    /// </summary>
+    [JsonPropertyName("is_healthy")]
+    public bool IsHealthy { get; init; }
+
+    /// <summary>
+    /// Port number when server is running.
+    /// </summary>
+    [JsonPropertyName("port")]
+    public int? Port { get; init; }
 }

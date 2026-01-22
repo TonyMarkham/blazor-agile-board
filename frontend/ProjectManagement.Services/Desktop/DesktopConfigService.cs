@@ -1,188 +1,112 @@
   using Microsoft.Extensions.Logging;
-  using Microsoft.JSInterop;
 
   namespace ProjectManagement.Services.Desktop;
 
-  /// <summary>
-  /// Service for detecting and managing desktop mode via Tauri.
-  /// </summary>
-  public sealed class DesktopConfigService : IAsyncDisposable
+  public sealed class DesktopConfigService : IDesktopConfigService, IAsyncDisposable
   {
-      private readonly IJSRuntime _jsRuntime;
+      private readonly TauriService _tauriService;
       private readonly ILogger<DesktopConfigService> _logger;
-      private DesktopConfig? _cachedConfig;
-      private IJSObjectReference? _interopModule;
+      private string? _serverStateSubscriptionId;
+      private TaskCompletionSource<bool>? _serverReadyTcs;
+
+      // Server state constants
+      private const string ServerStateRunning = "running";
+      private const string ServerStateFailed = "failed";
 
       public DesktopConfigService(
-          IJSRuntime jsRuntime,
+          TauriService tauriService,
           ILogger<DesktopConfigService> logger)
       {
-          _jsRuntime = jsRuntime;
+          _tauriService = tauriService;
           _logger = logger;
       }
 
-      /// <summary>
-      /// Get desktop configuration. Returns null if not in desktop mode.
-      /// </summary>
-      public async Task<DesktopConfig?> GetConfigAsync()
-      {
-          if (_cachedConfig != null)
-              return _cachedConfig;
-
-          try
-          {
-              // Read window.PM_CONFIG set by index.html
-              _cachedConfig = await _jsRuntime.InvokeAsync<DesktopConfig>(
-                  "eval",
-                  "window.PM_CONFIG"
-              );
-
-              if (_cachedConfig?.IsDesktop == true)
-              {
-                  _logger.LogInformation("Desktop mode detected");
-                  return _cachedConfig;
-              }
-
-              _logger.LogInformation("Web mode detected");
-              return null;
-          }
-          catch (Exception ex)
-          {
-              _logger.LogWarning(ex, "Failed to detect desktop mode, assuming web mode");
-              return null;
-          }
-      }
-
-      /// <summary>
-      /// Check if running in desktop mode.
-      /// </summary>
       public async Task<bool> IsDesktopModeAsync()
       {
-          var config = await GetConfigAsync();
-          return config?.IsDesktop == true;
+          return await _tauriService.IsDesktopAsync();
       }
 
-      /// <summary>
-      /// Get server status from Tauri (desktop mode only).
-      /// </summary>
-      public async Task<ServerStatus?> GetServerStatusAsync()
+      public async Task<string> GetWebSocketUrlAsync(CancellationToken ct = default)
       {
-          if (!await IsDesktopModeAsync())
-          {
-              throw new InvalidOperationException("Not in desktop mode");
-          }
+          return await _tauriService.GetWebSocketUrlAsync(ct);
+      }
+
+      public async Task<string> WaitForServerAsync(TimeSpan timeout, CancellationToken ct = default)
+      {
+          using var timeoutCts = new CancellationTokenSource(timeout);
+          using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
+
+          _serverReadyTcs = new TaskCompletionSource<bool>(
+              TaskCreationOptions.RunContinuationsAsynchronously);
 
           try
           {
-              var module = await GetInteropModuleAsync();
-              return await module.InvokeAsync<ServerStatus>("getServerStatus");
-          }
-          catch (Exception ex)
-          {
-              _logger.LogError(ex, "Failed to get server status from Tauri");
-              throw;
-          }
-      }
-
-      /// <summary>
-      /// Poll server until it's running (desktop mode only).
-      /// </summary>
-      public async Task<string> WaitForServerAsync(
-          TimeSpan timeout,
-          CancellationToken ct = default)
-      {
-          if (!await IsDesktopModeAsync())
-          {
-              throw new InvalidOperationException("Not in desktop mode");
-          }
-
-          var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-          var pollInterval = TimeSpan.FromMilliseconds(500);
-
-          while (stopwatch.Elapsed < timeout && !ct.IsCancellationRequested)
-          {
-              try
+              // Check current status first
+              var status = await _tauriService.GetServerStatusAsync(linkedCts.Token);
+              if (status.State == ServerStateRunning && status.IsHealthy)
               {
-                  var status = await GetServerStatusAsync();
-
-                  if (status?.State == "running" && !string.IsNullOrEmpty(status.WebsocketUrl))
-                  {
-                      _logger.LogInformation(
-                          "Server ready at {Url} after {Elapsed}ms",
-                          status.WebsocketUrl,
-                          stopwatch.ElapsedMilliseconds);
-                      return status.WebsocketUrl;
-                  }
-
-                  if (status?.State == "failed")
-                  {
-                      throw new InvalidOperationException(
-                          $"Server failed to start: {status.Error}");
-                  }
-
-                  _logger.LogDebug(
-                      "Server state: {State}, waiting... ({Elapsed}s)",
-                      status?.State,
-                      (int)stopwatch.Elapsed.TotalSeconds);
-              }
-              catch (Exception ex) when (ex is not InvalidOperationException)
-              {
-                  _logger.LogDebug(ex, "Server status check failed, retrying...");
+                  _logger.LogInformation("Server already running on port {Port}", status.Port);
+                  return status.WebsocketUrl ?? throw new InvalidOperationException("Server running but WebSocket URL is null");
               }
 
-              await Task.Delay(pollInterval, ct);
+              // Subscribe to state changes
+              _serverStateSubscriptionId = await _tauriService.SubscribeToServerStateAsync(
+                  OnServerStateChangedAsync,
+                  linkedCts.Token);
+
+              // Wait for server ready
+              using (linkedCts.Token.Register(() =>
+              {
+                  if (timeoutCts.IsCancellationRequested)
+                      _serverReadyTcs.TrySetException(new TimeoutException("Server startup timed out"));
+                  else
+                      _serverReadyTcs.TrySetCanceled(ct);
+              }))
+              {
+                  await _serverReadyTcs.Task;
+
+                  // Get the final URL after server is ready
+                  var finalStatus = await _tauriService.GetServerStatusAsync(linkedCts.Token);
+                  return finalStatus.WebsocketUrl ?? throw new InvalidOperationException("Server ready but WebSocket URL is null");
+              }
           }
-
-          throw new TimeoutException(
-              $"Server did not start within {timeout.TotalSeconds}s");
-      }
-
-      /// <summary>
-      /// Subscribe to server state change events (desktop mode only).
-      /// </summary>
-      public async Task SubscribeToServerStateChangesAsync( Func<string, Task> callback)
-      {
-          if (!await IsDesktopModeAsync())
+          finally
           {
-              return; // No-op in web mode
-          }
-
-          try
-          {
-              var module = await GetInteropModuleAsync();
-              var dotNetRef = DotNetObjectReference.Create(
-                  new ServerStateChangeHandler(callback, _logger));
-
-              await module.InvokeVoidAsync(
-                  "onServerStateChanged",
-                  dotNetRef);
-
-              _logger.LogInformation("Subscribed to server state changes");
-          }
-          catch (Exception ex)
-          {
-              _logger.LogError(ex, "Failed to subscribe to server state changes");
+              // Cleanup subscription
+              if (_serverStateSubscriptionId != null)
+              {
+                  await _tauriService.UnsubscribeAsync(_serverStateSubscriptionId);
+                  _serverStateSubscriptionId = null;
+              }
           }
       }
 
-      private async Task<IJSObjectReference> GetInteropModuleAsync()
+      private Task OnServerStateChangedAsync(ServerStateEvent evt)
       {
-          if (_interopModule != null)
-              return _interopModule;
+          _logger.LogDebug("Server state changed: {State}", evt.State);
 
-          _interopModule = await _jsRuntime.InvokeAsync<IJSObjectReference>(
-              "eval",
-              "window.DesktopInterop"
-          );
+          switch (evt.State)
+          {
+              case ServerStateRunning:
+                  _serverReadyTcs?.TrySetResult(true);
+                  break;
 
-          return _interopModule;
+              case ServerStateFailed:
+                  var error = new Exception(evt.Error ?? "Server failed to start");
+                  _serverReadyTcs?.TrySetException(error);
+                  break;
+          }
+
+          return Task.CompletedTask;
       }
 
       public async ValueTask DisposeAsync()
       {
-          if (_interopModule != null)
+          if (_serverStateSubscriptionId != null)
           {
-              await _interopModule.DisposeAsync();
+              await _tauriService.UnsubscribeAsync(_serverStateSubscriptionId);
           }
+
+          await _tauriService.DisposeAsync();
       }
   }

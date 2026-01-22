@@ -19,12 +19,12 @@
   // === Phase 1: Detect Desktop Mode ===
 
   // Register minimal services for detection
-  builder.Services.AddScoped<DesktopConfigService>();
+  builder.Services.AddScoped<IDesktopConfigService, DesktopConfigService>();
   builder.Logging.SetMinimumLevel(LogLevel.Information);
 
   // Build temporary host for desktop detection
   var tempHost = builder.Build();
-  var desktopConfigService = tempHost.Services.GetRequiredService<DesktopConfigService>();
+  var desktopConfigService = tempHost.Services.GetRequiredService<IDesktopConfigService>();
   var logger = tempHost.Services.GetRequiredService<ILogger<Program>>();
 
   var isDesktopMode = await desktopConfigService.IsDesktopModeAsync();
@@ -102,7 +102,9 @@
   });
 
   // Desktop Config Service
-  builder.Services.AddScoped<DesktopConfigService>();
+  builder.Services.AddScoped<IDesktopConfigService, DesktopConfigService>();
+  builder.Services.AddScoped<TauriService>();
+  builder.Services.AddScoped<UserIdentityService>();
 
   // Validators (required by WebSocketClient)
   builder.Services.AddSingleton<IValidator<CreateWorkItemRequest>, CreateWorkItemRequestValidator>();
@@ -137,49 +139,6 @@
   builder.Services.AddRadzenComponents();
 
   var app = builder.Build();
-
-  // === Setup Desktop Mode Reconnection Handler ===
-
-  if (isDesktopMode)
-  {
-      var desktopConfig = app.Services.GetRequiredService<DesktopConfigService>();
-      var wsClient = app.Services.GetRequiredService<WebSocketClient>();
-      var reconnectLogger = app.Services.GetRequiredService<ILogger<Program>>();
-
-      // Subscribe to server state changes (for restarts)
-      await desktopConfig.SubscribeToServerStateChangesAsync(async (state) =>
-      {
-          reconnectLogger.LogInformation("Server state changed: {State}", state);
-
-          // If server is running again after restart, reconnect
-          if (state.Contains("Running", StringComparison.OrdinalIgnoreCase))
-          {
-              try
-              {
-                  var newStatus = await desktopConfig.GetServerStatusAsync();
-
-                  if (!string.IsNullOrEmpty(newStatus?.WebsocketUrl) &&
-                      newStatus.WebsocketUrl != serverUrl)
-                  {
-                      reconnectLogger.LogInformation(
-                          "Server URL changed: {OldUrl} -> {NewUrl}",
-                          serverUrl,
-                          newStatus.WebsocketUrl);
-
-                      // Reconnect to new URL
-                      await wsClient.ReconnectAsync(newStatus.WebsocketUrl);
-                      serverUrl = newStatus.WebsocketUrl;
-                  }
-              }
-              catch (Exception ex)
-              {
-                  reconnectLogger.LogError(ex, "Failed to reconnect after server restart");
-              }
-          }
-      });
-
-      logger.LogInformation("✅ Desktop reconnection handler configured");
-  }
 
   // === Initialize Application State ===
 

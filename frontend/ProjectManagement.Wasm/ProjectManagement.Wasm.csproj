@@ -21,8 +21,4 @@
         <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" PrivateAssets="all"/>
     </ItemGroup>
 
-    <ItemGroup>
-      <None Include="wwwroot\js\desktop-interop.js" />
-    </ItemGroup>
-
 </Project>
