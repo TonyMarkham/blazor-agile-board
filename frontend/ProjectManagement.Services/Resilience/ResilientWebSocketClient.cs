@@ -54,6 +54,24 @@ public sealed class ResilientWebSocketClient : IWebSocketClient
         remove => _inner.OnWorkItemDeleted -= value;
     }
 
+    public event Action<Project>? OnProjectCreated
+    {
+        add => _inner.OnProjectCreated += value;
+        remove => _inner.OnProjectCreated -= value;
+    }
+
+    public event Action<Project, IReadOnlyList<FieldChange>>? OnProjectUpdated
+    {
+        add => _inner.OnProjectUpdated += value;
+        remove => _inner.OnProjectUpdated -= value;
+    }
+
+    public event Action<Guid>? OnProjectDeleted
+    {
+        add => _inner.OnProjectDeleted += value;
+        remove => _inner.OnProjectDeleted -= value;
+    }
+
     public Task ConnectAsync(CancellationToken ct = default)
     {
         return _inner.ConnectAsync(ct);
@@ -114,6 +132,42 @@ public sealed class ResilientWebSocketClient : IWebSocketClient
     {
         return ExecuteWithResilienceAsync(
             token => _inner.GetWorkItemsAsync(projectId, since, token),
+            ct);
+    }
+
+    public Task<Project> CreateProjectAsync(
+        CreateProjectRequest request,
+        CancellationToken ct = default)
+    {
+        return ExecuteWithResilienceAsync(
+            token => _inner.CreateProjectAsync(request, token),
+            ct);
+    }
+
+    public Task<Project> UpdateProjectAsync(
+        UpdateProjectRequest request,
+        CancellationToken ct = default)
+    {
+        return ExecuteWithResilienceAsync(
+            token => _inner.UpdateProjectAsync(request, token),
+            ct);
+    }
+
+    public Task DeleteProjectAsync(Guid projectId, int expectedVersion, CancellationToken ct = default)
+    {
+        return ExecuteWithResilienceAsync(
+            async token =>
+            {
+                await _inner.DeleteProjectAsync(projectId, expectedVersion, token);
+                return true;
+            },
+            ct);
+    }
+
+    public Task<IReadOnlyList<Project>> GetProjectsAsync(CancellationToken ct = default)
+    {
+        return ExecuteWithResilienceAsync(
+            token => _inner.GetProjectsAsync(token),
             ct);
     }
 

@@ -71,6 +71,9 @@ public sealed class WebSocketClient : IWebSocketClient
     public event Action<WorkItem>? OnWorkItemCreated;
     public event Action<WorkItem, IReadOnlyList<FieldChange>>? OnWorkItemUpdated;
     public event Action<Guid>? OnWorkItemDeleted;
+    public event Action<Project>? OnProjectCreated;
+    public event Action<Project, IReadOnlyList<FieldChange>>? OnProjectUpdated;
+    public event Action<Guid>? OnProjectDeleted;
 
     public async Task ConnectAsync(CancellationToken ct = default)
     {
@@ -126,7 +129,7 @@ public sealed class WebSocketClient : IWebSocketClient
             _stateLock.Release();
         }
     }
-    
+
     /// <summary>
     /// Reconnect to a new server URL (desktop mode only).
     /// Disconnects from current server, updates URL, and reconnects.
@@ -262,7 +265,95 @@ public sealed class WebSocketClient : IWebSocketClient
         _stateLock.Dispose();
     }
 
-    // ... other CRUD methods follow same pattern                                                                                                               
+    public async Task<Project> CreateProjectAsync(CreateProjectRequest request, CancellationToken ct = default)
+    {
+        ThrowIfDisposed();
+        EnsureConnected();
+
+        var message = new Pm.WebSocketMessage
+        {
+            MessageId = Guid.NewGuid().ToString(),
+            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            CreateProjectRequest = ProtoConverter.ToProto(request),
+        };
+
+        var response = await SendRequestAsync(message, ct);
+
+        if (response.PayloadCase == Pm.WebSocketMessage.PayloadOneofCase.Error)
+            throw new ServerRejectedException(response.Error.Code, response.Error.Message);
+
+        if (response.PayloadCase != Pm.WebSocketMessage.PayloadOneofCase.ProjectCreated)
+            throw new InvalidOperationException($"Unexpected response type: {response.PayloadCase}");
+
+        return ProtoConverter.ToDomain(response.ProjectCreated.Project);
+    }
+
+    public async Task<Project> UpdateProjectAsync(UpdateProjectRequest request, CancellationToken ct = default)
+    {
+        ThrowIfDisposed();
+        EnsureConnected();
+
+        var message = new Pm.WebSocketMessage
+        {
+            MessageId = Guid.NewGuid().ToString(),
+            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            UpdateProjectRequest = ProtoConverter.ToProto(request),
+        };
+
+        var response = await SendRequestAsync(message, ct);
+
+        if (response.PayloadCase == Pm.WebSocketMessage.PayloadOneofCase.Error)
+            throw new ServerRejectedException(response.Error.Code, response.Error.Message);
+
+        if (response.PayloadCase != Pm.WebSocketMessage.PayloadOneofCase.ProjectUpdated)
+            throw new InvalidOperationException($"Unexpected response type: {response.PayloadCase}");
+
+        return ProtoConverter.ToDomain(response.ProjectUpdated.Project);
+    }
+
+    public async Task DeleteProjectAsync(Guid projectId, int expectedVersion, CancellationToken ct = default)
+    {
+        ThrowIfDisposed();
+        EnsureConnected();
+
+        var message = new Pm.WebSocketMessage
+        {
+            MessageId = Guid.NewGuid().ToString(),
+            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            DeleteProjectRequest = ProtoConverter.ToDeleteProjectProto(projectId, expectedVersion),
+        };
+
+        var response = await SendRequestAsync(message, ct);
+
+        if (response.PayloadCase == Pm.WebSocketMessage.PayloadOneofCase.Error)
+            throw new ServerRejectedException(response.Error.Code, response.Error.Message);
+
+        if (response.PayloadCase != Pm.WebSocketMessage.PayloadOneofCase.ProjectDeleted)
+            throw new InvalidOperationException($"Unexpected response type: {response.PayloadCase}");
+    }
+
+    public async Task<IReadOnlyList<Project>> GetProjectsAsync(CancellationToken ct = default)
+    {
+        ThrowIfDisposed();
+        EnsureConnected();
+
+        var message = new Pm.WebSocketMessage
+        {
+            MessageId = Guid.NewGuid().ToString(),
+            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            ListProjectsRequest = new Pm.ListProjectsRequest(),
+        };
+
+        var response = await SendRequestAsync(message, ct);
+
+        if (response.PayloadCase == Pm.WebSocketMessage.PayloadOneofCase.Error)
+            throw new ServerRejectedException(response.Error.Code, response.Error.Message);
+
+        if (response.PayloadCase != Pm.WebSocketMessage.PayloadOneofCase.ProjectList)
+            throw new InvalidOperationException($"Unexpected response type: {response.PayloadCase}");
+
+        return response.ProjectList.Projects.Select(ProtoConverter.ToDomain).ToList();
+    }
 
     #region Private Methods
 
@@ -406,6 +497,24 @@ public sealed class WebSocketClient : IWebSocketClient
                 if (Guid.TryParse(message.WorkItemDeleted.WorkItemId, out var deletedId))
                     OnWorkItemDeleted?.Invoke(deletedId);
 
+                break;
+
+            case Pm.WebSocketMessage.PayloadOneofCase.ProjectCreated:
+                var createdProject = ProtoConverter.ToDomain(message.ProjectCreated.Project);
+                OnProjectCreated?.Invoke(createdProject);
+                break;
+
+            case Pm.WebSocketMessage.PayloadOneofCase.ProjectUpdated:
+                var updatedProject = ProtoConverter.ToDomain(message.ProjectUpdated.Project);
+                var projectChanges = message.ProjectUpdated.Changes
+                    .Select(c => new FieldChange(c.FieldName, c.OldValue, c.NewValue))
+                    .ToList();
+                OnProjectUpdated?.Invoke(updatedProject, projectChanges);
+                break;
+
+            case Pm.WebSocketMessage.PayloadOneofCase.ProjectDeleted:
+                if (Guid.TryParse(message.ProjectDeleted.ProjectId, out var deletedProjectId))
+                    OnProjectDeleted?.Invoke(deletedProjectId);
                 break;
 
             default:

@@ -88,21 +88,4 @@
           result.IsValid.Should().BeFalse();
           result.Errors.Should().ContainSingle(e => e.Field == "description");
       }
-
-      [Fact]
-      public void Validate_ProjectWithParent_ReturnsError()
-      {
-          var request = new CreateWorkItemRequest
-          {
-              ItemType = WorkItemType.Project,
-              Title = "Valid Project",
-              ProjectId = Guid.NewGuid(),
-              ParentId = Guid.NewGuid()
-          };
-
-          var result = _sut.Validate(request);
-
-          result.IsValid.Should().BeFalse();
-          result.Errors.Should().ContainSingle(e => e.Field == "parentId");
-      }
   }

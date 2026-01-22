@@ -123,7 +123,7 @@
     private void RefreshData()
     {
         var items = AppState.WorkItems.GetByProject(ProjectId)
-            .Where(w => w.ItemType != WorkItemType.Project && w.DeletedAt is null);
+            .Where(w => w.DeletedAt is null);
 
         _allItems = ViewModelFactory.CreateMany(items).ToList();
         ApplyFilters();

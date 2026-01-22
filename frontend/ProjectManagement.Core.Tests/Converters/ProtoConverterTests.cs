@@ -112,7 +112,6 @@
       }
 
       [Theory]
-      [InlineData(WorkItemType.Project, Pm.WorkItemType.Project)]
       [InlineData(WorkItemType.Epic, Pm.WorkItemType.Epic)]
       [InlineData(WorkItemType.Story, Pm.WorkItemType.Story)]
       [InlineData(WorkItemType.Task, Pm.WorkItemType.Task)]

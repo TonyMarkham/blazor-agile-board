@@ -16,7 +16,6 @@
 
     private string TypeName => Type switch
     {
-        WorkItemType.Project => "Project",
         WorkItemType.Epic => "Epic",
         WorkItemType.Story => "Story",
         WorkItemType.Task => "Task",
@@ -25,7 +24,6 @@
 
     private string IconName => Type switch
     {
-        WorkItemType.Project => "folder",
         WorkItemType.Epic => "rocket_launch",
         WorkItemType.Story => "description",
         WorkItemType.Task => "task_alt",
@@ -34,7 +32,6 @@
 
     private string IconColor => Type switch
     {
-        WorkItemType.Project => "var(--rz-primary)",
         WorkItemType.Epic => "#9c27b0",      // Purple
         WorkItemType.Story => "#2196f3",     // Blue
         WorkItemType.Task => "#4caf50",      // Green

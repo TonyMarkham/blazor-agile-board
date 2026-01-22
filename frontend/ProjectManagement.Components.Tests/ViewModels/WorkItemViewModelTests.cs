@@ -178,7 +178,6 @@ public class WorkItemViewModelTests
     }
 
     [Theory]
-    [InlineData(WorkItemType.Project, "Project")]
     [InlineData(WorkItemType.Epic, "Epic")]
     [InlineData(WorkItemType.Story, "Story")]
     [InlineData(WorkItemType.Task, "Task")]

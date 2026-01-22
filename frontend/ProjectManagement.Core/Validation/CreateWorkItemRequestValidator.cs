@@ -24,9 +24,6 @@ public sealed class CreateWorkItemRequestValidator : IValidator<CreateWorkItemRe
             errors.Add(new ValidationError("description",
                 $"Description must be {MaxDescriptionLength} characters or less"));
 
-        if (request.ItemType == WorkItemType.Project && request.ParentId.HasValue)
-            errors.Add(new ValidationError("parentId", "Projects cannot have a parent"));
-
         return errors.Count == 0 ? ValidationResult.Success() : ValidationResult.Failure(errors);
     }
 }

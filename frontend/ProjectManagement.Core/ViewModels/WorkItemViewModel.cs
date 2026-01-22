@@ -69,7 +69,6 @@ public sealed class WorkItemViewModel : IViewModel<WorkItem>, IEquatable<WorkIte
 
     public string ItemTypeDisplayName => ItemType switch
     {
-        WorkItemType.Project => "Project",
         WorkItemType.Epic => "Epic",
         WorkItemType.Story => "Story",
         WorkItemType.Task => "Task",

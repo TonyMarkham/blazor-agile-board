@@ -37,4 +37,47 @@ public interface IWebSocketClient : IAsyncDisposable
 
     Task<IReadOnlyList<WorkItem>> GetWorkItemsAsync(Guid projectId, DateTime? since = null,
         CancellationToken ct = default);
+    
+    // ============================================================
+    // Project Events
+    // ============================================================
+
+    /// <summary>
+    /// Fired when a project is created (by us or another user).
+    /// </summary>
+    event Action<Project>? OnProjectCreated;
+
+    /// <summary>
+    /// Fired when a project is updated (by us or another user).
+    /// </summary>
+    event Action<Project, IReadOnlyList<FieldChange>>? OnProjectUpdated;
+
+    /// <summary>
+    /// Fired when a project is deleted (by us or another user).
+    /// </summary>
+    event Action<Guid>? OnProjectDeleted;
+
+    // ============================================================
+    // Project Operations
+    // ============================================================
+
+    /// <summary>
+    /// Create a new project.
+    /// </summary>
+    Task<Project> CreateProjectAsync(CreateProjectRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Update an existing project.
+    /// </summary>
+    Task<Project> UpdateProjectAsync(UpdateProjectRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Delete a project (soft delete).
+    /// </summary>
+    Task DeleteProjectAsync(Guid projectId, int expectedVersion, CancellationToken ct = default);
+
+    /// <summary>
+    /// Get all projects.
+    /// </summary>
+    Task<IReadOnlyList<Project>> GetProjectsAsync(CancellationToken ct = default);
 }

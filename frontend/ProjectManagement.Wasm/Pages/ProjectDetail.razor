@@ -36,7 +36,7 @@ else
         <RadzenStack Orientation="Orientation.Horizontal"
                      AlignItems="AlignItems.Center"
                      Gap="0.75rem">
-            <WorkItemTypeIcon Type="WorkItemType.Project" Size="1.75rem" />
+            <RadzenIcon Icon="folder" Style="color: var(--rz-primary); font-size: 1.75rem;" />
             <div>
                 <h1 class="page-title">@_project.Title</h1>
                 @if (!string.IsNullOrEmpty(_project.Description))

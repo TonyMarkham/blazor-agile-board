@@ -80,7 +80,7 @@ else
                         <RadzenStack Orientation="Orientation.Horizontal"
                                      AlignItems="AlignItems.Center"
                                      Gap="0.75rem">
-                            <WorkItemTypeIcon Type="WorkItemType.Project" Size="1.25rem" />
+                            <RadzenIcon Icon="folder" Style="color: var(--rz-primary); font-size: 1.25rem;" />
                             <div>
                                 <RadzenText TextStyle="TextStyle.Body1" class="m-0">
                                     @project.Title
@@ -157,14 +157,9 @@ else
 
     private async Task ShowCreateProjectDialog()
     {
-        var result = await DialogService.OpenAsync<WorkItemDialog>(
-            "Create Project",
-            new Dictionary<string, object>
-            {
-                { "DefaultItemType", WorkItemType.Project },
-                { "ProjectId", Guid.Empty } // Projects don't have a parent project
-            },
-            new DialogOptions { Width = "600px" });
+        // TODO: Replace with ProjectDialog in Session 41.4
+        await Task.CompletedTask;
+        var result = false;
 
         if (result is true)
         {

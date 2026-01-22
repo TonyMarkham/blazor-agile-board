@@ -24,7 +24,6 @@ public class BadgeComponentTests : BunitContext
     #region WorkItemTypeIcon Tests
 
     [Theory]
-    [InlineData(WorkItemType.Project, "folder")]
     [InlineData(WorkItemType.Epic, "rocket_launch")]
     [InlineData(WorkItemType.Story, "description")]
     [InlineData(WorkItemType.Task, "task_alt")]
@@ -39,7 +38,6 @@ public class BadgeComponentTests : BunitContext
     }
 
     [Theory]
-    [InlineData(WorkItemType.Project, "Project")]
     [InlineData(WorkItemType.Epic, "Epic")]
     [InlineData(WorkItemType.Story, "Story")]
     [InlineData(WorkItemType.Task, "Task")]
@@ -54,7 +52,6 @@ public class BadgeComponentTests : BunitContext
     }
 
     [Theory]
-    [InlineData(WorkItemType.Project, "Project")]
     [InlineData(WorkItemType.Epic, "Epic")]
     [InlineData(WorkItemType.Story, "Story")]
     [InlineData(WorkItemType.Task, "Task")]
@@ -82,7 +79,6 @@ public class BadgeComponentTests : BunitContext
     }
 
     [Theory]
-    [InlineData(WorkItemType.Project, "var(--rz-primary)")]
     [InlineData(WorkItemType.Epic, "#9c27b0")]
     [InlineData(WorkItemType.Story, "#2196f3")]
     [InlineData(WorkItemType.Task, "#4caf50")]

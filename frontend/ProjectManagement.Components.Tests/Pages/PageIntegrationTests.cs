@@ -482,7 +482,6 @@ public class PageIntegrationTests : BunitContext
         Id = Guid.NewGuid(),
         Title = title,
         Description = "Test Description",
-        ItemType = WorkItemType.Project,
         ProjectId = Guid.Empty,
         Status = "active",
         Priority = "medium",

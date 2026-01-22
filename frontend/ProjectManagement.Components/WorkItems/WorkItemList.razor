@@ -157,7 +157,7 @@
             await Task.Yield();
 
             var items = AppState.WorkItems.GetByProject(ProjectId)
-                .Where(w => w.ItemType != WorkItemType.Project && w.DeletedAt is null);
+                .Where(w => w.DeletedAt is null);
 
             _allItems = ViewModelFactory.CreateMany(items).ToList();
             _indentCache.Clear();
@@ -220,7 +220,7 @@
         while (currentParentId.HasValue && level < maxDepth)
         {
             var parent = AppState.WorkItems.GetById(currentParentId.Value);
-            if (parent is null || parent.ItemType == WorkItemType.Project) break;
+            if (parent is null) break;
             currentParentId = parent.ParentId;
             level++;
         }

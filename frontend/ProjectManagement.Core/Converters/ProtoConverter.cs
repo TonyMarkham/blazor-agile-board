@@ -17,6 +17,95 @@ public static class ProtoConverter
 {
     private static readonly DateTime UnixEpoch = new(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
+    #region Project Conversions
+
+    /// <summary>
+    /// Convert proto Project to domain Project.
+    /// </summary>
+    public static Project ToDomain(Proto.Project proto)
+    {
+        ArgumentNullException.ThrowIfNull(proto);
+
+        return new Project
+        {
+            Id = ParseGuid(proto.Id, "Project.Id"),
+            Title = proto.Title ?? string.Empty,
+            Description = string.IsNullOrEmpty(proto.Description) ? null : proto.Description,
+            Key = proto.Key ?? string.Empty,
+            Status = proto.Status switch
+            {
+                Proto.ProjectStatus.Active => ProjectStatus.Active,
+                Proto.ProjectStatus.Archived => ProjectStatus.Archived,
+                _ => ProjectStatus.Active
+            },
+            Version = proto.Version,
+            CreatedAt = FromUnixTimestamp(proto.CreatedAt),
+            UpdatedAt = FromUnixTimestamp(proto.UpdatedAt),
+            CreatedBy = ParseGuid(proto.CreatedBy, "Project.CreatedBy"),
+            UpdatedBy = ParseGuid(proto.UpdatedBy, "Project.UpdatedBy"),
+            DeletedAt = proto.DeletedAt == 0 ? null : FromUnixTimestamp(proto.DeletedAt),
+        };
+    }
+
+    /// <summary>
+    /// Convert CreateProjectRequest to proto.
+    /// </summary>
+    public static Proto.CreateProjectRequest ToProto(CreateProjectRequest req)
+    {
+        ArgumentNullException.ThrowIfNull(req);
+
+        return new Proto.CreateProjectRequest
+        {
+            Title = req.Title,
+            Description = req.Description ?? string.Empty,
+            Key = req.Key,
+        };
+    }
+
+    /// <summary>
+    /// Convert UpdateProjectRequest to proto.
+    /// </summary>
+    public static Proto.UpdateProjectRequest ToProto(UpdateProjectRequest req)
+    {
+        ArgumentNullException.ThrowIfNull(req);
+
+        var proto = new Proto.UpdateProjectRequest
+        {
+            ProjectId = req.ProjectId.ToString(),
+            ExpectedVersion = req.ExpectedVersion,
+        };
+
+        if (req.Title is not null)
+            proto.Title = req.Title;
+
+        if (req.Description is not null)
+            proto.Description = req.Description;
+
+        if (req.Status.HasValue)
+            proto.Status = req.Status.Value switch
+            {
+                ProjectStatus.Active => Proto.ProjectStatus.Active,
+                ProjectStatus.Archived => Proto.ProjectStatus.Archived,
+                _ => Proto.ProjectStatus.Active
+            };
+
+        return proto;
+    }
+
+    /// <summary>
+    /// Convert delete request to proto.
+    /// </summary>
+    public static Proto.DeleteProjectRequest ToDeleteProjectProto(Guid projectId, int expectedVersion)
+    {
+        return new Proto.DeleteProjectRequest
+        {
+            ProjectId = projectId.ToString(),
+            ExpectedVersion = expectedVersion,
+        };
+    }
+
+    #endregion
+    
     #region WorkItem Conversions
 
     public static DomainWorkItem ToDomain(ProtoWorkItem proto)
@@ -92,7 +181,6 @@ public static class ProtoConverter
     {
         return proto switch
         {
-            ProtoWorkItemType.Project => DomainWorkItemType.Project,
             ProtoWorkItemType.Epic => DomainWorkItemType.Epic,
             ProtoWorkItemType.Story => DomainWorkItemType.Story,
             ProtoWorkItemType.Task => DomainWorkItemType.Task,
@@ -104,7 +192,6 @@ public static class ProtoConverter
     {
         return domain switch
         {
-            DomainWorkItemType.Project => ProtoWorkItemType.Project,
             DomainWorkItemType.Epic => ProtoWorkItemType.Epic,
             DomainWorkItemType.Story => ProtoWorkItemType.Story,
             DomainWorkItemType.Task => ProtoWorkItemType.Task,
