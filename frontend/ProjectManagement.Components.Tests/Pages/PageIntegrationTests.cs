@@ -18,6 +18,7 @@ public class PageIntegrationTests : BunitContext
     private readonly Mock<IWorkItemStore> _workItemStoreMock;
     private readonly Mock<ISprintStore> _sprintStoreMock;
     private readonly AppState _appState;
+    private readonly Mock<IProjectStore> _projectStoreMock;
 
     public PageIntegrationTests()
     {
@@ -28,8 +29,8 @@ public class PageIntegrationTests : BunitContext
 
         _workItemStoreMock = new Mock<IWorkItemStore>();
         _sprintStoreMock = new Mock<ISprintStore>();
-        var projectStoreMock = new Mock<IProjectStore>();
-        projectStoreMock.Setup(p => p.Projects).Returns(new List<ProjectViewModel>());
+        _projectStoreMock = new Mock<IProjectStore>();
+        _projectStoreMock.Setup(p => p.Projects).Returns(new List<ProjectViewModel>());
 
         var mockClient = new Mock<IWebSocketClient>();
         mockClient.Setup(c => c.State).Returns(ConnectionState.Connected);
@@ -39,18 +40,42 @@ public class PageIntegrationTests : BunitContext
             mockClient.Object,
             _workItemStoreMock.Object,
             _sprintStoreMock.Object,
-            projectStoreMock.Object,
+            _projectStoreMock.Object,
             Mock.Of<Microsoft.Extensions.Logging.ILogger<AppState>>());
+        
+        // Set current user for AppState (required for Session 42.2)
+        var testUser = UserIdentity.Create("Test User", "test@example.com");
+        _appState.SetCurrentUser(testUser);
 
         Services.AddSingleton(_appState);
         Services.AddSingleton(_workItemStoreMock.Object);
         Services.AddSingleton(_sprintStoreMock.Object);
-        Services.AddSingleton<IProjectStore>(projectStoreMock.Object);
+        Services.AddSingleton<IProjectStore>(_projectStoreMock.Object);
         Services.AddScoped<ViewModelFactory>();
 
         JSInterop.Mode = JSRuntimeMode.Loose;
     }
 
+    #region Helpers
+
+    private static ProjectViewModel CreateProjectViewModel(string title, Guid? projectId = null) => new(
+        new Project
+        {
+            Id = projectId ?? Guid.NewGuid(),
+            Title = title,
+            Description = "Test Description",
+            Key = "TEST",
+            Status = ProjectStatus.Active,
+            Version = 1,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+            CreatedBy = Guid.NewGuid(),
+            UpdatedBy = Guid.NewGuid(),
+            DeletedAt = null
+        });
+
+    #endregion
+    
     #region Home Page Tests
 
     [Fact]
@@ -128,8 +153,8 @@ public class PageIntegrationTests : BunitContext
     {
         // Arrange
         var projectId = Guid.NewGuid();
-        var project = CreateProject("My Project") with { Id = projectId };
-        _workItemStoreMock.Setup(s => s.GetById(projectId)).Returns(project);
+        var projectViewModel = CreateProjectViewModel("My Project", projectId);
+        _projectStoreMock.Setup(s => s.GetById(projectId)).Returns(projectViewModel);
         _workItemStoreMock.Setup(s => s.GetByProject(projectId)).Returns(Array.Empty<WorkItem>());
 
         // Act
@@ -149,8 +174,8 @@ public class PageIntegrationTests : BunitContext
     {
         // Arrange
         var projectId = Guid.NewGuid();
-        var project = CreateProject("My Project") with { Id = projectId };
-        _workItemStoreMock.Setup(s => s.GetById(projectId)).Returns(project);
+        var projectViewModel = CreateProjectViewModel("My Project", projectId);
+        _projectStoreMock.Setup(s => s.GetById(projectId)).Returns(projectViewModel);
         _workItemStoreMock.Setup(s => s.GetByProject(projectId)).Returns(Array.Empty<WorkItem>());
 
         // Act
@@ -168,8 +193,8 @@ public class PageIntegrationTests : BunitContext
     {
         // Arrange
         var projectId = Guid.NewGuid();
-        var project = CreateProject("My Project") with { Id = projectId };
-        _workItemStoreMock.Setup(s => s.GetById(projectId)).Returns(project);
+        var projectViewModel = CreateProjectViewModel("My Project", projectId);
+        _projectStoreMock.Setup(s => s.GetById(projectId)).Returns(projectViewModel);
         _workItemStoreMock.Setup(s => s.GetByProject(projectId)).Returns(Array.Empty<WorkItem>());
 
         // Act
@@ -189,8 +214,8 @@ public class PageIntegrationTests : BunitContext
     {
         // Arrange
         var projectId = Guid.NewGuid();
-        var project = CreateProject("My Project") with { Id = projectId };
-        _workItemStoreMock.Setup(s => s.GetById(projectId)).Returns(project);
+        var projectViewModel = CreateProjectViewModel("My Project", projectId);
+        _projectStoreMock.Setup(s => s.GetById(projectId)).Returns(projectViewModel);
         _workItemStoreMock.Setup(s => s.GetByProject(projectId)).Returns(Array.Empty<WorkItem>());
 
         // Act
@@ -208,8 +233,8 @@ public class PageIntegrationTests : BunitContext
     {
         // Arrange
         var projectId = Guid.NewGuid();
-        var project = CreateProject("My Project") with { Id = projectId };
-        _workItemStoreMock.Setup(s => s.GetById(projectId)).Returns(project);
+        var projectViewModel = CreateProjectViewModel("My Project", projectId);
+        _projectStoreMock.Setup(s => s.GetById(projectId)).Returns(projectViewModel);
         _workItemStoreMock.Setup(s => s.GetByProject(projectId)).Returns(Array.Empty<WorkItem>());
 
         // Act

@@ -24,6 +24,7 @@ public interface IWebSocketClient : IAsyncDisposable
 
     // Connection
     Task ConnectAsync(CancellationToken ct = default);
+    Task ConnectAsync(Guid userId, CancellationToken ct = default);
     Task DisconnectAsync(CancellationToken ct = default);
 
     // Subscriptions

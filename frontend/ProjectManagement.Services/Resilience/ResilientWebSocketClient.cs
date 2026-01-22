@@ -76,6 +76,11 @@ public sealed class ResilientWebSocketClient : IWebSocketClient
     {
         return _inner.ConnectAsync(ct);
     }
+    
+    public Task ConnectAsync(Guid userId, CancellationToken ct = default)
+    {
+        return _inner.ConnectAsync(userId, ct);
+    }
 
     public Task DisconnectAsync(CancellationToken ct = default)
     {

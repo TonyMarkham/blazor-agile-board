@@ -106,7 +106,6 @@ else
     private List<ProjectViewModel> _projects = new();
     private bool _loading = true;
     private ConnectionState _connectionState = ConnectionState.Connected;
-    private readonly Guid _componentInstanceId = Guid.NewGuid();
 
     // Stats
     private int _activeItems;
@@ -115,9 +114,6 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        Console.WriteLine($"[HOME DIAGNOSTIC] OnInitializedAsync called - ComponentId: {_componentInstanceId}");
-        Console.WriteLine($"[HOME DIAGNOSTIC] Stack trace: {Environment.StackTrace}");
-
         _connectionState = AppState.ConnectionState;
         AppState.OnConnectionStateChanged += HandleConnectionChanged;
 
@@ -132,16 +128,12 @@ else
 
     private async Task LoadDataAsync()
     {
-        Console.WriteLine($"[HOME DIAGNOSTIC] LoadDataAsync called - ComponentId: {_componentInstanceId}");
-        Console.WriteLine($"[HOME DIAGNOSTIC] Stack trace: {Environment.StackTrace}");
-
         _loading = true;
         StateHasChanged();
 
         try
         {
             // Load projects from server
-            Console.WriteLine($"[HOME DIAGNOSTIC] Calling AppState.LoadProjectsAsync - ComponentId: {_componentInstanceId}");
             await AppState.LoadProjectsAsync();
 
             // Get projects from store
@@ -186,17 +178,12 @@ else
     
     private void OnProjectsChanged()
     {
-        Console.WriteLine($"[HOME DIAGNOSTIC] OnProjectsChanged called - ComponentId: {_componentInstanceId}");
-        Console.WriteLine($"[HOME DIAGNOSTIC] Stack trace: {Environment.StackTrace}");
-
         _projects = AppState.Projects.Projects.ToList();
         InvokeAsync(StateHasChanged);
     }
 
     public void Dispose()
     {
-        Console.WriteLine($"[HOME DIAGNOSTIC] Dispose called - ComponentId: {_componentInstanceId}");
-
         AppState.OnConnectionStateChanged -= HandleConnectionChanged;
         AppState.Projects.OnProjectsChanged -= OnProjectsChanged;
     }

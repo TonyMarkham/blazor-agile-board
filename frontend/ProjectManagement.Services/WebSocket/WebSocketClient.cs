@@ -8,6 +8,7 @@ using ProjectManagement.Core.Exceptions;
 using ProjectManagement.Core.Interfaces;
 using ProjectManagement.Core.Models;
 using ProjectManagement.Core.Validation;
+using System.Web;
 
 namespace ProjectManagement.Services.WebSocket;
 
@@ -34,6 +35,10 @@ public sealed class WebSocketClient : IWebSocketClient
     private CancellationTokenSource? _receiveCts;
     private Task? _receiveTask;
     private HashSet<Guid> _subscribedProjects = new();
+    
+    // Query parameter names
+    private const string QueryParamUserId = "user_id";
+    private const string QueryParamToken = "token";
 
     public WebSocketClient(
         IOptions<WebSocketOptions> options,
@@ -102,6 +107,55 @@ public sealed class WebSocketClient : IWebSocketClient
             SetState(ConnectionState.Connected);
 
             _logger.LogInformation("WebSocket connected to {Uri}", uri);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to connect to WebSocket");
+            SetState(ConnectionState.Disconnected);
+            throw new ConnectionException("Failed to connect to server", ex);
+        }
+        finally
+        {
+            _stateLock.Release();
+        }
+    }
+    
+    /// <summary>
+    /// Connects to WebSocket server with explicit user identity.
+    /// Used in desktop mode where JWT authentication is disabled.
+    /// </summary>
+    public async Task ConnectAsync(Guid userId, CancellationToken ct = default)
+    {
+        ThrowIfDisposed();
+
+        if (userId == Guid.Empty)
+        {
+            throw new ArgumentException("User ID cannot be empty", nameof(userId));
+        }
+
+        await _stateLock.WaitAsync(ct);
+        try
+        {
+            if (State == ConnectionState.Connected)
+                return;
+
+            SetState(ConnectionState.Connecting);
+
+            _connection = _connectionFactory();
+            var uri = BuildConnectionUri(userId);
+
+            await _connection.ConnectAsync(uri, ct);
+
+            _receiveCts = new CancellationTokenSource();
+            _heartbeatCts = new CancellationTokenSource();
+
+            _receiveTask = ReceiveLoopAsync(_receiveCts.Token);
+            _heartbeatTask = HeartbeatLoopAsync(_heartbeatCts.Token);
+
+            _health.RecordConnected();
+            SetState(ConnectionState.Connected);
+
+            _logger.LogInformation("WebSocket connected to {Uri} with user {UserId}", uri, userId);
         }
         catch (Exception ex)
         {
@@ -646,13 +700,25 @@ public sealed class WebSocketClient : IWebSocketClient
         SetState(ConnectionState.Disconnected);
     }
 
-    private Uri BuildConnectionUri()
+    private Uri BuildConnectionUri(Guid? userId = null)
     {
-        var uri = new UriBuilder(_options.ServerUrl);
+        var uriBuilder = new UriBuilder(_options.ServerUrl);
+        var query = HttpUtility.ParseQueryString(uriBuilder.Query);
 
-        if (!string.IsNullOrEmpty(_options.JwtToken)) uri.Query = $"token={Uri.EscapeDataString(_options.JwtToken)}";
+        // Add user_id if provided (desktop mode)
+        if (userId.HasValue && userId.Value != Guid.Empty)
+        {
+            query[QueryParamUserId] = userId.Value.ToString();
+        }
 
-        return uri.Uri;
+        // Add JWT token if available (web mode)
+        if (!string.IsNullOrEmpty(_options.JwtToken))
+        {
+            query[QueryParamToken] = Uri.EscapeDataString(_options.JwtToken);
+        }
+
+        uriBuilder.Query = query.ToString();
+        return uriBuilder.Uri;
     }
 
     private void SetState(ConnectionState newState)

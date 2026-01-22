@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using ProjectManagement.Core.Interfaces;
+using ProjectManagement.Core.Models;
 
 namespace ProjectManagement.Services.State;
 
@@ -11,6 +12,11 @@ public sealed class AppState : IDisposable
 {
     private readonly IWebSocketClient _client;
     private readonly ILogger<AppState> _logger;
+    
+    private UserIdentity? _currentUser;
+    private readonly List<Action<ConnectionState>> _connectionStateCallbacks = new();
+
+    public UserIdentity? CurrentUser => _currentUser;
 
     private bool _disposed;
 
@@ -32,6 +38,7 @@ public sealed class AppState : IDisposable
         _client.OnStateChanged += state =>
         {
             OnConnectionStateChanged?.Invoke(state);
+            NotifyConnectionStateChanged(state);
             OnStateChanged?.Invoke();
         };
 
@@ -59,6 +66,40 @@ public sealed class AppState : IDisposable
         if (Projects is IDisposable projectsDisposable)
             projectsDisposable.Dispose();
     }
+    
+    public void SetCurrentUser(UserIdentity user)
+    {
+        _currentUser = user ?? throw new ArgumentNullException(nameof(user));
+        _logger.LogInformation("AppState user set: {UserId}", user.Id);
+    }
+
+    public IDisposable SubscribeToConnectionStateChanged(Action<ConnectionState> callback)
+    {
+        _connectionStateCallbacks.Add(callback);
+        return new CallbackDisposable(() => _connectionStateCallbacks.Remove(callback));
+    }
+
+    private void NotifyConnectionStateChanged(ConnectionState state)
+    {
+        foreach (var callback in _connectionStateCallbacks.ToList())
+        {
+            try
+            {
+                callback(state);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in connection state callback");
+            }
+        }
+    }
+
+    private sealed class CallbackDisposable : IDisposable
+    {
+        private readonly Action _onDispose;
+        public CallbackDisposable(Action onDispose) => _onDispose = onDispose;
+        public void Dispose() => _onDispose();
+    }
 
     public event Action? OnStateChanged;
     public event Action<ConnectionState>? OnConnectionStateChanged;
@@ -70,9 +111,15 @@ public sealed class AppState : IDisposable
     {
         ThrowIfDisposed();
 
-        _logger.LogInformation("Initializing application state");
+        if (_currentUser == null)
+        {
+            throw new InvalidOperationException(
+                "CurrentUser must be set before InitializeAsync. Call SetCurrentUser() first.");
+        }
 
-        await _client.ConnectAsync(ct);
+        _logger.LogInformation("Initializing application state for user {UserId}", _currentUser.Id);
+
+        await _client.ConnectAsync(_currentUser.Id, ct);
 
         _logger.LogInformation("Application state initialized");
     }
