@@ -110,6 +110,12 @@ pub enum ServerError {
         source: reqwest::Error,
         location: ErrorLocation,
     },
+
+    #[error("Server startup failed: {message}")]
+    StartupFailed {
+        message: String,
+        location: ErrorLocation,
+    },
 }
 
 impl ServerError {

@@ -38,6 +38,7 @@ pub struct ServerManager {
     actual_port: Arc<Mutex<Option<u16>>>,
     command_tx: mpsc::Sender<ServerCommand>,
     command_rx: Arc<Mutex<mpsc::Receiver<ServerCommand>>>,
+    ready_signal_tx: Arc<Mutex<Option<tokio::sync::oneshot::Sender<()>>>>,
 }
 
 impl ServerManager {
@@ -60,6 +61,7 @@ impl ServerManager {
             actual_port: Arc::new(Mutex::new(None)),
             command_tx,
             command_rx: Arc::new(Mutex::new(command_rx)),
+            ready_signal_tx: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -83,8 +85,8 @@ impl ServerManager {
         let lock = LockFile::acquire(&self.data_dir, port)?;
         *self.lock_file.lock().await = Some(lock);
 
-        // Spawn the server process
-        self.spawn_process(app, port).await?;
+        // Spawn the server process and get ready signal receiver
+        let ready_rx = self.spawn_process(app, port).await?;
 
         // Store actual port
         *self.actual_port.lock().await = Some(port);
@@ -93,12 +95,43 @@ impl ServerManager {
         let health_checker = HealthChecker::new(port, 3);
         *self.health_checker.lock().await = Some(health_checker);
 
-        // Wait for server to be ready
-        let timeout = Duration::from_secs(self.config.resilience.startup_timeout_secs);
+        // Wait for server to signal it's ready (with timeout)
+        let timeout_secs = self.config.resilience.startup_timeout_secs;
+        let ready_result = tokio::time::timeout(Duration::from_secs(timeout_secs), ready_rx).await;
+
+        match ready_result {
+            Ok(Ok(())) => {
+                info!("Server signaled ready");
+            }
+            Ok(Err(_)) => {
+                return Err(ServerError::StartupFailed {
+                    message: "Ready signal channel closed unexpectedly".into(),
+                    location: error_location::ErrorLocation::from(Location::caller()),
+                });
+            }
+            Err(_) => {
+                return Err(ServerError::StartupTimeout {
+                    timeout_secs,
+                    location: error_location::ErrorLocation::from(Location::caller()),
+                });
+            }
+        }
+
+        // Verify with a single health check
         {
             let checker = self.health_checker.lock().await;
             if let Some(ref hc) = *checker {
-                hc.wait_ready(timeout).await?;
+                match hc.check().await {
+                    HealthStatus::Healthy { .. } => {
+                        info!("Health check confirmed server is ready");
+                    }
+                    status => {
+                        warn!(
+                            "Server signaled ready but health check returned: {:?}",
+                            status
+                        );
+                    }
+                }
             }
         }
 
@@ -117,7 +150,20 @@ impl ServerManager {
     }
 
     /// Spawn the pm-server sidecar process.
-    async fn spawn_process(&self, app: &tauri::AppHandle, port: u16) -> ServerResult<()> {
+    async fn spawn_process(
+        &self,
+        app: &tauri::AppHandle,
+        port: u16,
+    ) -> ServerResult<tokio::sync::oneshot::Receiver<()>> {
+        info!(
+            "Spawning pm-server with PM_CONFIG_DIR={}",
+            self.data_dir.display()
+        );
+
+        // CREATE THE CHANNEL HERE
+        let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
+        *self.ready_signal_tx.lock().await = Some(ready_tx);
+
         let sidecar = app
             .shell()
             .sidecar("pm-server")
@@ -138,20 +184,29 @@ impl ServerManager {
 
         // Handle process output in background task
         let _data_dir = self.data_dir.clone();
+        let ready_signal_tx = self.ready_signal_tx.clone();
         tauri::async_runtime::spawn(async move {
             use tauri_plugin_shell::process::CommandEvent;
 
             while let Some(event) = rx.recv().await {
                 match event {
                     CommandEvent::Stdout(line) => {
-                        debug!("pm-server: {}", String::from_utf8_lossy(&line));
+                        let msg = String::from_utf8_lossy(&line);
+                        info!("pm-server: {}", msg);
+
+                        // Signal readiness when server announces it
+                        if msg.contains("Server ready to accept connections") {
+                            if let Some(tx) = ready_signal_tx.lock().await.take() {
+                                let _ = tx.send(());
+                            }
+                        }
                     }
                     CommandEvent::Stderr(line) => {
                         let msg = String::from_utf8_lossy(&line);
                         if msg.contains("ERROR") || msg.contains("WARN") {
                             warn!("pm-server: {}", msg);
                         } else {
-                            debug!("pm-server: {}", msg);
+                            info!("pm-server: {}", msg);
                         }
                     }
                     CommandEvent::Error(e) => {
@@ -170,7 +225,7 @@ impl ServerManager {
 
         *self.process.lock().await = Some(child);
 
-        Ok(())
+        Ok(ready_rx)
     }
 
     /// Start background health monitoring task.

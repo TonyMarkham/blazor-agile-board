@@ -5,11 +5,11 @@
   "identifier": "com.projectmanager.app",
   "build": {
     "beforeDevCommand": {
-      "script": "dotnet publish frontend/ProjectManagement.Wasm/ProjectManagement.Wasm.csproj -c Debug",
+      "script": "just build-dev",
       "cwd": "../.."
     },
     "beforeBuildCommand": {
-      "script": "dotnet publish frontend/ProjectManagement.Wasm/ProjectManagement.Wasm.csproj -c Release",
+      "script": "just build-release",
       "cwd": "../.."
     },
     "frontendDist": "../frontend/wwwroot"
@@ -48,7 +48,7 @@
     ],
     "externalBin": [],
     "resources": {
-      "../../backend/config.example.toml": ""
+      "../../.pm/config.toml": ".pm/config.toml"
     },
     "targets": ["app", "dmg", "nsis", "deb", "rpm"],
     "category": "Productivity",

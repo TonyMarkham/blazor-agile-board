@@ -12,6 +12,9 @@ use std::sync::Arc;
 use tauri::{Emitter, Manager};
 use tracing::{error, info};
 
+const PM_SERVER_CONFIG_DIRECTORY_NAME: &str = ".pm";
+const PM_SERVER_CONFIG_FILENAME: &str = "config.toml";
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -25,7 +28,10 @@ pub fn run() {
         }))
         .setup(|app| {
             // Get data directory early for logging setup
-            let data_dir = app.path().app_data_dir()?;
+            let data_dir = app
+                .path()
+                .app_data_dir()?
+                .join(PM_SERVER_CONFIG_DIRECTORY_NAME);
             std::fs::create_dir_all(&data_dir)?;
 
             // Initialize logging with rotation
@@ -33,6 +39,20 @@ pub fn run() {
 
             info!("Starting Project Manager v{}", env!("CARGO_PKG_VERSION"));
             info!("Data directory: {:?}", data_dir);
+
+            // Extract bundled pm-server config on first run
+            let pm_config_dest = data_dir.join(PM_SERVER_CONFIG_FILENAME);
+            if !pm_config_dest.exists() {
+                if let Ok(resource_dir) = app.path().resource_dir() {
+                    let pm_config_src = resource_dir
+                        .join(PM_SERVER_CONFIG_DIRECTORY_NAME)
+                        .join(PM_SERVER_CONFIG_FILENAME);
+                    if pm_config_src.exists() {
+                        std::fs::copy(&pm_config_src, &pm_config_dest)?;
+                        info!("Extracted pm-server config to {}", pm_config_dest.display());
+                    }
+                }
+            }
 
             // Load or create config
             let config = ServerConfig::load_or_create(&data_dir)
@@ -91,12 +111,12 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
-              commands::get_server_status,
-              commands::get_websocket_url,
-              commands::restart_server,
-              commands::export_diagnostics,
-              commands::get_recent_logs,
-          ])
+            commands::get_server_status,
+            commands::get_websocket_url,
+            commands::restart_server,
+            commands::export_diagnostics,
+            commands::get_recent_logs,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

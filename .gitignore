@@ -58,6 +58,9 @@ bld/
 *.sqlite3
 /data/
 
+# Application data directory (desktop mode)
+.pm/
+
 # OS files
 .DS_Store
 Thumbs.db

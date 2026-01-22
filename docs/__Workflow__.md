@@ -82,3 +82,8 @@ That's where we found an issue and created `docs/session-plans/41-Session-Plan.m
 ```text
 Verify that the `41-Session-Plan.md` has proper dependency ordering so that when implementing sequentially, nothing references code that hasn't been written yet.
 ```
+
+```text
+read `docs/session-plans/41-Session-Plan.md` and break it down into multiple sub-sessions targeting <50k tokens each that can be presented to a future user as       
+  teaching material. Take inspiration from the plan/sub-plans in `docs/session-plans/template`
+```

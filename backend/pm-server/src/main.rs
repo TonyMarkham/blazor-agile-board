@@ -30,8 +30,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     config.log_summary();
 
     // Initialize database pool
-    let database_path = &config.database.path;
-    info!("Connecting to database: {}", database_path);
+    let database_path = config.database_path()?;
+    info!("Connecting to database: {}", database_path.display());
 
     let pool = SqlitePoolOptions::new()
         .max_connections(10)
