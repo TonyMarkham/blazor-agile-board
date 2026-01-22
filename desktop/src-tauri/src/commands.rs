@@ -1,9 +1,13 @@
 //! Tauri IPC commands for frontend communication.
 
+use crate::identity::{
+    backup_corrupted, load, load_result::LoadResult, save, user_identity::UserIdentity,
+};
 use crate::server::{HealthStatus, ServerManager, ServerState};
 
 use std::sync::Arc;
 
+use log::error;
 use serde::Serialize;
 use tauri::{Manager, State};
 
@@ -226,4 +230,31 @@ pub async fn get_recent_logs(
         .collect();
 
     Ok(log_lines)
+}
+
+/// Loads user identity from app data directory.
+#[tauri::command]
+pub async fn load_user_identity(app: tauri::AppHandle) -> Result<LoadResult, String> {
+    load(&app).map_err(|e| {
+        error!("Failed to load identity: {e}");
+        format!("{e}\n\nHint: {}", e.recovery_hint())
+    })
+}
+
+/// Saves user identity using atomic write pattern.
+#[tauri::command]
+pub async fn save_user_identity(app: tauri::AppHandle, user: UserIdentity) -> Result<(), String> {
+    save(&app, &user).map_err(|e| {
+        error!("Failed to save identity: {e}");
+        format!("{e}\n\nHint: {}", e.recovery_hint())
+    })
+}
+
+/// Backs up corrupted user.json for debugging.
+#[tauri::command]
+pub async fn backup_corrupted_user_identity(app: tauri::AppHandle) -> Result<(), String> {
+    backup_corrupted(&app).map(|_| ()).map_err(|e| {
+        error!("Failed to backup corrupted identity: {e}");
+        format!("{e}\n\nHint: {}", e.recovery_hint())
+    })
 }

@@ -31,5 +31,6 @@ pm-db = { workspace = true }
 [dev-dependencies]
 axum-test = { workspace = true }
 proptest = { workspace = true }
+serial_test = { workspace = true }
 tokio-test = { workspace = true }
 googletest = { workspace = true }

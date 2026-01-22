@@ -13,7 +13,9 @@ use crate::{MessageValidator, log_handler_entry};
 use crate::{Result as WsResult, WsError};
 
 use pm_core::{ActivityLog, Project, ProjectMember, ProjectStatus};
-use pm_db::{ActivityLogRepository, ProjectMemberRepository, ProjectRepository, WorkItemRepository};
+use pm_db::{
+    ActivityLogRepository, ProjectMemberRepository, ProjectRepository, WorkItemRepository,
+};
 use pm_proto::{
     CreateProjectRequest, DeleteProjectRequest, FieldChange, ListProjectsRequest,
     UpdateProjectRequest, WebSocketMessage,

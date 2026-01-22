@@ -31,6 +31,7 @@ pub use error::{Result, WsError};
 pub use handlers::{
     authorization::check_permission,
     change_tracker::track_changes,
+    connection::extract_user_id,
     context::HandlerContext,
     db_ops::{db_read, db_transaction, db_write},
     dispatcher::dispatch,

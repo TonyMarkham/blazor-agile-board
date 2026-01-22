@@ -79,7 +79,7 @@ dir = "log"
 
 # Enable colored output (default: true)
 # Set to false for non-TTY environments (CI, Docker logs, systemd)
-colored = true
+colored = false
 
 # =============================================================================
 # WebSocket Configuration

@@ -1,4 +1,5 @@
 mod commands;
+mod identity;
 mod logging;
 mod server;
 mod tray;
@@ -6,6 +7,9 @@ mod tray;
 use logging::setup_logging;
 use server::{ServerConfig, ServerManager};
 use tray::TrayManager;
+
+#[cfg(test)]
+mod tests;
 
 use std::sync::Arc;
 
@@ -113,6 +117,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::get_server_status,
             commands::get_websocket_url,
+            commands::load_user_identity,
+            commands::save_user_identity,
+            commands::backup_corrupted_user_identity,
             commands::restart_server,
             commands::export_diagnostics,
             commands::get_recent_logs,
