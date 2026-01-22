@@ -10,13 +10,15 @@ public class ViewModelFactoryTests
 {
     private readonly Mock<IWorkItemStore> _workItemStore;
     private readonly Mock<ISprintStore> _sprintStore;
+    private readonly Mock<IProjectStore> _projectStore;
     private readonly ViewModelFactory _factory;
 
     public ViewModelFactoryTests()
     {
         _workItemStore = new Mock<IWorkItemStore>();
         _sprintStore = new Mock<ISprintStore>();
-        _factory = new ViewModelFactory(_workItemStore.Object, _sprintStore.Object);
+        _projectStore = new Mock<IProjectStore>();
+        _factory = new ViewModelFactory(_workItemStore.Object, _sprintStore.Object, _projectStore.Object);
     }
 
     #region Constructor Tests
@@ -25,7 +27,7 @@ public class ViewModelFactoryTests
     public void Constructor_ThrowsArgumentNullException_WhenWorkItemStoreIsNull()
     {
         // Act
-        var act = () => new ViewModelFactory(null!, _sprintStore.Object);
+        var act = () => new ViewModelFactory(null!, _sprintStore.Object, _projectStore.Object);
 
         // Assert
         act.Should().Throw<ArgumentNullException>()
@@ -36,11 +38,22 @@ public class ViewModelFactoryTests
     public void Constructor_ThrowsArgumentNullException_WhenSprintStoreIsNull()
     {
         // Act
-        var act = () => new ViewModelFactory(_workItemStore.Object, null!);
+        var act = () => new ViewModelFactory(_workItemStore.Object, null!, _projectStore.Object);
 
         // Assert
         act.Should().Throw<ArgumentNullException>()
             .WithParameterName("sprintStore");
+    }
+    
+    [Fact]
+    public void Constructor_ThrowsArgumentNullException_WhenProjectStoreIsNull()
+    {
+        // Act
+        var act = () => new ViewModelFactory(_workItemStore.Object, _sprintStore.Object, null!);
+
+        // Assert
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("projectStore");
     }
 
     #endregion

@@ -352,6 +352,7 @@ public class DialogTests : BunitContext
     {
         var workItemStore = new Mock<IWorkItemStore>();
         var sprintStore = new Mock<ISprintStore>();
+        var projectStore = new Mock<IProjectStore>();
         sprintStore.Setup(s => s.GetByProject(It.IsAny<Guid>()))
             .Returns(Array.Empty<Sprint>());
 
@@ -359,11 +360,13 @@ public class DialogTests : BunitContext
             Mock.Of<IWebSocketClient>(),
             workItemStore.Object,
             sprintStore.Object,
+            projectStore.Object,
             Mock.Of<Microsoft.Extensions.Logging.ILogger<AppState>>());
         
         Services.AddSingleton(appState);
         Services.AddSingleton(workItemStore.Object);
         Services.AddSingleton(sprintStore.Object);
+        Services.AddSingleton<IProjectStore>(projectStore.Object);
         Services.AddScoped<ViewModelFactory>();
     }
 

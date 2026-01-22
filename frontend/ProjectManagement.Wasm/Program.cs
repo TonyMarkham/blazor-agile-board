@@ -127,6 +127,7 @@
   // State Management
   builder.Services.AddSingleton<IWorkItemStore, WorkItemStore>();
   builder.Services.AddSingleton<ISprintStore, SprintStore>();
+  builder.Services.AddSingleton<IProjectStore, ProjectStore>();
   builder.Services.AddSingleton<AppState>();
 
   // ViewModels

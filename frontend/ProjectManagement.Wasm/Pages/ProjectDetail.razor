@@ -111,6 +111,9 @@ else
             // Load project data
             await AppState.LoadProjectAsync(ProjectId);
 
+            // Set current project context for header display
+            AppState.Projects.SetCurrentProject(ProjectId);
+            
             // Get the project work item
             var project = AppState.WorkItems.GetById(ProjectId);
             _project = project is not null ? ViewModelFactory.Create(project) : null;

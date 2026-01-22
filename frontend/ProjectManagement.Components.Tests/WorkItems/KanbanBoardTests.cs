@@ -28,6 +28,7 @@ public class KanbanBoardTests : BunitContext
 
         _workItemStoreMock = new Mock<IWorkItemStore>();
         _sprintStoreMock = new Mock<ISprintStore>();
+        var projectStoreMock = new Mock<IProjectStore>();
 
         var mockClient = new Mock<IWebSocketClient>();
         mockClient.Setup(c => c.State).Returns(ConnectionState.Connected);
@@ -37,11 +38,13 @@ public class KanbanBoardTests : BunitContext
             mockClient.Object,
             _workItemStoreMock.Object,
             _sprintStoreMock.Object,
+            projectStoreMock.Object,
             Mock.Of<Microsoft.Extensions.Logging.ILogger<AppState>>());
 
         Services.AddSingleton(_appState);
         Services.AddSingleton(_workItemStoreMock.Object);
         Services.AddSingleton(_sprintStoreMock.Object);
+        Services.AddSingleton<IProjectStore>(projectStoreMock.Object);
         Services.AddScoped<ViewModelFactory>();
 
         JSInterop.Mode = JSRuntimeMode.Loose;

@@ -92,4 +92,9 @@ html, body {
 
 body {
     font-family: 'Roboto', sans-serif;
-}   
+}
+
+.project-context {
+    font-weight: normal;
+    font-size: 0.9em;
+}

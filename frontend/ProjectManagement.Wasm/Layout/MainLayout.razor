@@ -3,6 +3,8 @@
 @using Radzen.Blazor
 @using ProjectManagement.Wasm.Shared
 @using ProjectManagement.Components.Shared
+@using ProjectManagement.Services.State
+@inject AppState AppState
 
 <RadzenLayout>
     <RadzenHeader>
@@ -16,9 +18,18 @@
                          AlignItems="AlignItems.Center"
                          Gap="0.75rem">
                 <RadzenIcon Icon="dashboard" Style="font-size: 1.5rem;" />
-                <RadzenText TextStyle="TextStyle.H5" class="m-0">
-                    Agile Board
-                </RadzenText>
+                <RadzenStack Orientation="Orientation.Horizontal"
+                             AlignItems="AlignItems.Center"
+                             Gap="0.75rem">
+                    <RadzenIcon Icon="dashboard" Style="font-size: 1.5rem;" />
+                    <RadzenText TextStyle="TextStyle.H5" class="m-0">
+                        Agile Board
+                        @if (AppState.Projects.CurrentProject is { } project)
+                        {
+                            <span class="project-context text-muted"> / @project.Title</span>
+                        }
+                    </RadzenText>
+                </RadzenStack>
             </RadzenStack>
             <ConnectionStatus />
         </RadzenStack>

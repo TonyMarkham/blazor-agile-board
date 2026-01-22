@@ -31,7 +31,8 @@
       [Property]
       public bool WorkItem_RoundTrip_PreservesItemType(int typeValue)
       {
-          if (typeValue < 1 || typeValue > 4) return true;
+          // Skip value 1 (Project was removed in Session 41)
+          if (typeValue < 2 || typeValue > 4) return true;
 
           var itemType = (WorkItemType)typeValue;
           var original = CreateWorkItem(Guid.NewGuid()) with { ItemType = itemType };

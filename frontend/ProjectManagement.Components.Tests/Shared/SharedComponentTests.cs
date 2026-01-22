@@ -38,12 +38,14 @@ public class SharedComponentTests : BunitContext
 
         var mockWorkItemStore = new Mock<IWorkItemStore>();
         var mockSprintStore = new Mock<ISprintStore>();
+        var mockProjectStore = new Mock<IProjectStore>();
         var mockLogger = NullLogger<AppState>.Instance;
 
         return new AppState(
             mockClient.Object,
             mockWorkItemStore.Object,
             mockSprintStore.Object,
+            mockProjectStore.Object,
             mockLogger);
     }
 

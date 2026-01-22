@@ -18,6 +18,7 @@ public sealed class AppState : IDisposable
         IWebSocketClient client,
         IWorkItemStore workItems,
         ISprintStore sprints,
+        IProjectStore projects,
         ILogger<AppState> logger)
     {
         _client = client;
@@ -25,6 +26,7 @@ public sealed class AppState : IDisposable
 
         WorkItems = workItems;
         Sprints = sprints;
+        Projects = projects;
 
         // Forward events                                                                                             
         _client.OnStateChanged += state =>
@@ -35,10 +37,13 @@ public sealed class AppState : IDisposable
 
         workItems.OnChanged += () => OnStateChanged?.Invoke();
         sprints.OnChanged += () => OnStateChanged?.Invoke();
+        projects.OnCurrentProjectChanged += () => OnStateChanged?.Invoke();
+        projects.OnProjectsChanged += () => OnStateChanged?.Invoke();
     }
 
     public IWorkItemStore WorkItems { get; }
     public ISprintStore Sprints { get; }
+    public IProjectStore Projects { get; }
     public IConnectionHealth ConnectionHealth => _client.Health;
     public ConnectionState ConnectionState => _client.State;
 
@@ -51,6 +56,8 @@ public sealed class AppState : IDisposable
             workItemsDisposable.Dispose();
         if (Sprints is IDisposable sprintsDisposable)
             sprintsDisposable.Dispose();
+        if (Projects is IDisposable projectsDisposable)
+            projectsDisposable.Dispose();
     }
 
     public event Action? OnStateChanged;
@@ -87,6 +94,18 @@ public sealed class AppState : IDisposable
         await Sprints.RefreshAsync(projectId, ct);
 
         _logger.LogInformation("Project {ProjectId} loaded", projectId);
+    }
+    
+    /// <summary>
+    ///     Load all projects from the server.
+    /// </summary>
+    public async Task LoadProjectsAsync(CancellationToken ct = default)
+    {
+        ThrowIfDisposed();
+
+        _logger.LogInformation("Loading projects");
+        await Projects.RefreshAsync(ct);
+        _logger.LogInformation("Projects loaded");
     }
 
     private void ThrowIfDisposed()

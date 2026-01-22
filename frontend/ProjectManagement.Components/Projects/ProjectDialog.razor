@@ -1,0 +1,160 @@
+  @using ProjectManagement.Core.Models
+  @using ProjectManagement.Core.ViewModels
+  @using ProjectManagement.Core.Exceptions
+  @using ProjectManagement.Services.State
+  @inject AppState AppState
+  @inject DialogService DialogService
+  @inject NotificationService NotificationService
+
+  <RadzenTemplateForm TItem="ProjectFormModel" Data="@_model" Submit="@OnSubmit">
+      <div class="form-group mb-3">
+          <RadzenLabel Text="Title" Component="Title" class="d-block mb-1" />
+          <RadzenTextBox Name="Title" @bind-Value="_model.Title" MaxLength="200"
+                         Change="@OnTitleChanged" Style="width: 100%" />
+          <RadzenRequiredValidator Component="Title" Text="Title is required" />
+      </div>
+
+      <div class="form-group mb-3">
+          <RadzenLabel Text="Key" Component="Key" class="d-block mb-1" />
+          <RadzenTextBox Name="Key" @bind-Value="_model.Key" MaxLength="20"
+                         Disabled="@IsEditMode" Style="width: 100%"
+                         Placeholder="@(IsEditMode ? "" : "AUTO-GENERATED")" />
+          <RadzenRequiredValidator Component="Key" Text="Key is required" />
+          <RadzenRegexValidator Component="Key" Pattern="^[A-Z0-9_]{2,20}$"
+                                Text="Key must be 2-20 uppercase letters, numbers, or underscores" />
+          @if (!IsEditMode)
+          {
+              <small class="text-muted">Auto-generated from title. Can be customized.</small>
+          }
+      </div>
+
+      <div class="form-group mb-3">
+          <RadzenLabel Text="Description" Component="Description" class="d-block mb-1" />
+          <RadzenTextArea Name="Description" @bind-Value="_model.Description"
+                          MaxLength="10000" Rows="4" Style="width: 100%" />
+      </div>
+
+      @if (IsEditMode)
+      {
+          <div class="form-group mb-3">
+              <RadzenLabel Text="Status" Component="Status" class="d-block mb-1" />
+              <RadzenDropDown Name="Status" @bind-Value="_model.Status"
+                              Data="@_statusOptions" TextProperty="Text" ValueProperty="Value"
+                              Style="width: 100%" />
+          </div>
+      }
+
+      <div class="dialog-buttons d-flex justify-content-end gap-2 mt-4">
+          <RadzenButton ButtonType="ButtonType.Button" Text="Cancel"
+                        ButtonStyle="ButtonStyle.Light"
+                        Click="@(() => DialogService.Close(null))" />
+          <RadzenButton ButtonType="ButtonType.Submit"
+                        Text="@(IsEditMode ? "Save Changes" : "Create Project")"
+                        ButtonStyle="ButtonStyle.Primary"
+                        Disabled="@_isSubmitting"
+                        IsBusy="@_isSubmitting" />
+      </div>
+  </RadzenTemplateForm>
+
+  @code {
+      [Parameter] public ProjectViewModel? Project { get; set; }
+
+      private ProjectFormModel _model = new();
+      private bool _isSubmitting;
+      private bool IsEditMode => Project is not null;
+
+      private readonly record struct StatusOption(string Text, ProjectStatus Value);
+      private static readonly StatusOption[] _statusOptions =
+      [
+          new("Active", ProjectStatus.Active),
+          new("Archived", ProjectStatus.Archived),
+      ];
+
+      protected override void OnInitialized()
+      {
+          if (Project is not null)
+          {
+              _model = new()
+              {
+                  Title = Project.Title,
+                  Key = Project.Key,
+                  Description = Project.Description,
+                  Status = Project.Status,
+              };
+          }
+      }
+
+      private void OnTitleChanged(string title)
+      {
+          if (IsEditMode) return; // Don't auto-generate key on edit
+          _model.Key = GenerateKey(title);
+      }
+
+      private static string GenerateKey(string title) =>
+          new string(title
+              .ToUpperInvariant()
+              .Where(c => char.IsLetterOrDigit(c))
+              .Take(10)
+              .ToArray());
+
+      private async Task OnSubmit()
+      {
+          if (_isSubmitting) return;
+          _isSubmitting = true;
+
+          try
+          {
+              if (IsEditMode)
+              {
+                  var request = new UpdateProjectRequest
+                  {
+                      ProjectId = Project!.Id,
+                      ExpectedVersion = Project.Version,
+                      Title = _model.Title != Project.Title ? _model.Title : null,
+                      Description = _model.Description != Project.Description ? _model.Description : null,
+                      Status = _model.Status != Project.Status ? _model.Status : null,
+                  };
+
+                  var updated = await AppState.Projects.UpdateAsync(request);
+                  NotificationService.Notify(NotificationSeverity.Success, "Project Updated",
+                      $"Project '{updated.Title}' has been updated.");
+                  DialogService.Close(updated);
+              }
+              else
+              {
+                  var request = new CreateProjectRequest
+                  {
+                      Title = _model.Title,
+                      Description = _model.Description,
+                      Key = _model.Key,
+                  };
+
+                  var created = await AppState.Projects.CreateAsync(request);
+                  NotificationService.Notify(NotificationSeverity.Success, "Project Created",
+                      $"Project '{created.Title}' ({created.Key}) has been created.");
+                  DialogService.Close(created);
+              }
+          }
+          catch (ServerRejectedException ex)
+          {
+              NotificationService.Notify(NotificationSeverity.Error, "Error", ex.Message);
+          }
+          catch (Exception)
+          {
+              NotificationService.Notify(NotificationSeverity.Error, "Error",
+                  "An unexpected error occurred. Please try again.");
+          }
+          finally
+          {
+              _isSubmitting = false;
+          }
+      }
+
+      private sealed class ProjectFormModel
+      {
+          public string Title { get; set; } = "";
+          public string Key { get; set; } = "";
+          public string? Description { get; set; }
+          public ProjectStatus Status { get; set; } = ProjectStatus.Active;
+      }
+  }

@@ -11,13 +11,16 @@ public sealed class ViewModelFactory
 {
     private readonly IWorkItemStore _workItemStore;
     private readonly ISprintStore _sprintStore;
+    private readonly IProjectStore _projectStore;
 
-    public ViewModelFactory(IWorkItemStore workItemStore, ISprintStore sprintStore)
+    public ViewModelFactory(IWorkItemStore workItemStore, ISprintStore sprintStore, IProjectStore projectStore)
     {
         ArgumentNullException.ThrowIfNull(workItemStore);
         ArgumentNullException.ThrowIfNull(sprintStore);
+        ArgumentNullException.ThrowIfNull(projectStore);
         _workItemStore = workItemStore;
         _sprintStore = sprintStore;
+        _projectStore = projectStore;
     }
 
     /// <summary>
@@ -74,5 +77,33 @@ public sealed class ViewModelFactory
     {
         ArgumentNullException.ThrowIfNull(sprint);
         return new SprintViewModel(sprint, isPending);
+    }
+    
+    /// <summary>
+    /// Create a ProjectViewModel from a Project, checking pending state.
+    /// </summary>
+    public ProjectViewModel Create(Project project)
+    {
+        ArgumentNullException.ThrowIfNull(project);
+        var isPending = _projectStore.IsPending(project.Id);
+        return new ProjectViewModel(project, isPending);
+    }
+
+    /// <summary>
+    /// Create ViewModels for multiple projects.
+    /// </summary>
+    public IReadOnlyList<ProjectViewModel> CreateMany(IEnumerable<Project> projects)
+    {
+        ArgumentNullException.ThrowIfNull(projects);
+        return projects.Select(Create).ToList();
+    }
+
+    /// <summary>
+    /// Create a ProjectViewModel with explicit pending state (for optimistic creates).
+    /// </summary>
+    public ProjectViewModel CreateWithPendingState(Project project, bool isPending)
+    {
+        ArgumentNullException.ThrowIfNull(project);
+        return new ProjectViewModel(project, isPending);
     }
 }

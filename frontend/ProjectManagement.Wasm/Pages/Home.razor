@@ -1,6 +1,7 @@
 ﻿@page "/"
 @using ProjectManagement.Core.Models
 @using ProjectManagement.Core.ViewModels
+@using ProjectManagement.Components.Projects
 @inject AppState AppState
 @inject ViewModelFactory ViewModelFactory
 @inject DialogService DialogService
@@ -69,7 +70,7 @@ else
                                OnClick="@ShowCreateProjectDialog" />
             </div>
 
-            <RadzenDataList Data="@_projects" TItem="WorkItemViewModel">
+            <RadzenDataList Data="@_projects" TItem="ProjectViewModel">
                 <Template Context="project">
                     <RadzenStack Orientation="Orientation.Horizontal"
                                  AlignItems="AlignItems.Center"
@@ -102,7 +103,7 @@ else
 }
 
 @code {
-    private List<WorkItemViewModel> _projects = new();
+    private List<ProjectViewModel> _projects = new();
     private bool _loading = true;
     private ConnectionState _connectionState = ConnectionState.Connected;
 
@@ -117,6 +118,12 @@ else
         AppState.OnStateChanged += HandleStateChanged;
         AppState.OnConnectionStateChanged += HandleConnectionChanged;
 
+        // Clear project context on home page
+        AppState.Projects.ClearCurrentProject();
+
+        // Subscribe to project changes
+        AppState.Projects.OnProjectsChanged += OnProjectsChanged;
+
         await LoadDataAsync();
     }
 
@@ -127,18 +134,13 @@ else
 
         try
         {
-            await Task.Yield();
+            // Load projects from server
+            await AppState.LoadProjectsAsync();
 
-            // In a real app, we'd load projects from a dedicated API
-            // For now, we look for work items with ItemType.Project
-            // This would typically be handled by a ProjectStore
-            _projects = new List<WorkItemViewModel>();
+            // Get projects from store
+            _projects = AppState.Projects.Projects.ToList();
 
-            // Calculate stats from loaded data
-            // _activeItems = work items in progress
-            // _completedToday = work items completed today
-            // _activeSprints = sprints with Active status
-
+            // Calculate stats (simplified for now - would query work items in real app)
             _activeItems = 0;
             _completedToday = 0;
             _activeSprints = 0;
@@ -150,20 +152,22 @@ else
         }
     }
 
-    private void NavigateToProject(WorkItemViewModel project)
+    private void NavigateToProject(ProjectViewModel project)
     {
         NavigationManager.NavigateTo($"/project/{project.Id}");
     }
 
     private async Task ShowCreateProjectDialog()
     {
-        // TODO: Replace with ProjectDialog in Session 41.4
-        await Task.CompletedTask;
-        var result = false;
+        var result = await DialogService.OpenAsync<ProjectDialog>(
+            "Create Project",
+            new Dictionary<string, object>(),
+            new DialogOptions { Width = "500px" });
 
-        if (result is true)
+        if (result is Project created)
         {
-            await LoadDataAsync();
+            // Navigate to the new project
+            NavigationManager.NavigateTo($"/project/{created.Id}");
         }
     }
 
@@ -177,10 +181,17 @@ else
         _connectionState = state;
         InvokeAsync(StateHasChanged);
     }
+    
+    private void OnProjectsChanged()
+    {
+        _projects = AppState.Projects.Projects.ToList();
+        InvokeAsync(StateHasChanged);
+    }
 
     public void Dispose()
     {
         AppState.OnStateChanged -= HandleStateChanged;
         AppState.OnConnectionStateChanged -= HandleConnectionChanged;
+        AppState.Projects.OnProjectsChanged -= OnProjectsChanged;
     }
 }
