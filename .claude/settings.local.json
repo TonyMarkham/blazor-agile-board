@@ -18,7 +18,8 @@
       "Bash(ls:*)",
       "Bash(sqlite3:*)",
       "Bash(dotnet build:*)",
-      "Bash(dotnet test:*)"
+      "Bash(dotnet test:*)",
+      "Bash(grep:*)"
     ]
   }
 }
