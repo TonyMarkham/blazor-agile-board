@@ -46,15 +46,15 @@ pub fn run() {
 
             // Extract bundled pm-server config on first run
             let pm_config_dest = data_dir.join(PM_SERVER_CONFIG_FILENAME);
-            if !pm_config_dest.exists() {
-                if let Ok(resource_dir) = app.path().resource_dir() {
-                    let pm_config_src = resource_dir
-                        .join(PM_SERVER_CONFIG_DIRECTORY_NAME)
-                        .join(PM_SERVER_CONFIG_FILENAME);
-                    if pm_config_src.exists() {
-                        std::fs::copy(&pm_config_src, &pm_config_dest)?;
-                        info!("Extracted pm-server config to {}", pm_config_dest.display());
-                    }
+            if !pm_config_dest.exists()
+                && let Ok(resource_dir) = app.path().resource_dir()
+            {
+                let pm_config_src = resource_dir
+                    .join(PM_SERVER_CONFIG_DIRECTORY_NAME)
+                    .join(PM_SERVER_CONFIG_FILENAME);
+                if pm_config_src.exists() {
+                    std::fs::copy(&pm_config_src, &pm_config_dest)?;
+                    info!("Extracted pm-server config to {}", pm_config_dest.display());
                 }
             }
 

@@ -169,15 +169,13 @@ pub async fn export_diagnostics(
     // Add log files
     let logs_dir = data_dir.join("logs");
     if logs_dir.exists() {
-        for entry in std::fs::read_dir(&logs_dir).map_err(|e| e.to_string())? {
-            if let Ok(entry) = entry {
-                let path = entry.path();
-                if path.is_file() {
-                    let name = format!("logs/{}", path.file_name().unwrap().to_string_lossy());
-                    zip.start_file(&name, options).map_err(|e| e.to_string())?;
-                    let content = std::fs::read(&path).map_err(|e| e.to_string())?;
-                    zip.write_all(&content).map_err(|e| e.to_string())?;
-                }
+        for entry in (std::fs::read_dir(&logs_dir).map_err(|e| e.to_string())?).flatten() {
+            let path = entry.path();
+            if path.is_file() {
+                let name = format!("logs/{}", path.file_name().unwrap().to_string_lossy());
+                zip.start_file(&name, options).map_err(|e| e.to_string())?;
+                let content = std::fs::read(&path).map_err(|e| e.to_string())?;
+                zip.write_all(&content).map_err(|e| e.to_string())?;
             }
         }
     }

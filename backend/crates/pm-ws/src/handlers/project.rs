@@ -194,28 +194,28 @@ pub async fn handle_update(
     if let Some(ref title) = req.title {
         MessageValidator::validate_string(title, "title", 1, 200)?;
     }
-    if let Some(ref desc) = req.description {
-        if desc.len() > 10000 {
-            return Err(WsError::ValidationError {
-                message: "description exceeds maximum length (10000)".to_string(),
-                field: Some("description".to_string()),
-                location: ErrorLocation::from(Location::caller()),
-            });
-        }
+    if let Some(ref desc) = req.description
+        && desc.len() > 10000
+    {
+        return Err(WsError::ValidationError {
+            message: "description exceeds maximum length (10000)".to_string(),
+            field: Some("description".to_string()),
+            location: ErrorLocation::from(Location::caller()),
+        });
     }
 
     // 4. Track changes
     let mut changes = Vec::new();
 
-    if let Some(ref new_title) = req.title {
-        if &project.title != new_title {
-            changes.push(FieldChange {
-                field_name: "title".to_string(),
-                old_value: Some(project.title.clone()),
-                new_value: Some(new_title.clone()),
-            });
-            project.title = sanitize_string(new_title);
-        }
+    if let Some(ref new_title) = req.title
+        && &project.title != new_title
+    {
+        changes.push(FieldChange {
+            field_name: "title".to_string(),
+            old_value: Some(project.title.clone()),
+            new_value: Some(new_title.clone()),
+        });
+        project.title = sanitize_string(new_title);
     }
 
     if let Some(ref new_desc) = req.description {

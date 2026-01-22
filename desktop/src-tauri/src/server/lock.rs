@@ -41,21 +41,21 @@ impl LockFile {
         let path = data_dir.join(LOCK_FILENAME);
 
         // Check if existing lock is stale
-        if path.exists() {
-            if let Ok(existing) = Self::read_lock_info(&path) {
-                if Self::is_process_running(existing.pid) {
-                    return Err(ServerError::AlreadyRunning {
-                        path: path.clone(),
-                        location: ErrorLocation::from(Location::caller()),
-                    });
-                }
-                // Stale lock from crashed process, remove it
-                tracing::info!(
-                    "Removing stale lock file (PID {} not running)",
-                    existing.pid
-                );
-                std::fs::remove_file(&path).ok();
+        if path.exists()
+            && let Ok(existing) = Self::read_lock_info(&path)
+        {
+            if Self::is_process_running(existing.pid) {
+                return Err(ServerError::AlreadyRunning {
+                    path: path.clone(),
+                    location: ErrorLocation::from(Location::caller()),
+                });
             }
+            // Stale lock from crashed process, remove it
+            tracing::info!(
+                "Removing stale lock file (PID {} not running)",
+                existing.pid
+            );
+            std::fs::remove_file(&path).ok();
         }
 
         // Create lock file with exclusive access

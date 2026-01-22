@@ -15,7 +15,7 @@ use tauri::async_runtime::Mutex;
 use tauri_plugin_shell::ShellExt;
 use tauri_plugin_shell::process::CommandChild;
 use tokio::sync::{mpsc, watch};
-use tracing::{debug, error, info, warn};
+use tracing::{error, info, warn};
 
 /// Manages the pm-server process lifecycle.
 ///
@@ -79,7 +79,7 @@ impl ServerManager {
         let port =
             PortManager::find_available(self.config.server.port, self.config.server.port_range)?;
 
-        info!("Using port {}", port);
+        info!("Using port {port}");
 
         // Acquire lock file
         let lock = LockFile::acquire(&self.data_dir, port)?;
@@ -126,10 +126,7 @@ impl ServerManager {
                         info!("Health check confirmed server is ready");
                     }
                     status => {
-                        warn!(
-                            "Server signaled ready but health check returned: {:?}",
-                            status
-                        );
+                        warn!("Server signaled ready but health check returned: {status:?}");
                     }
                 }
             }
@@ -192,25 +189,25 @@ impl ServerManager {
                 match event {
                     CommandEvent::Stdout(line) => {
                         let msg = String::from_utf8_lossy(&line);
-                        info!("pm-server: {}", msg);
+                        info!("pm-server: {msg}");
 
                         // Signal readiness when server announces it
-                        if msg.contains("Server ready to accept connections") {
-                            if let Some(tx) = ready_signal_tx.lock().await.take() {
-                                let _ = tx.send(());
-                            }
+                        if msg.contains("Server ready to accept connections")
+                            && let Some(tx) = ready_signal_tx.lock().await.take()
+                        {
+                            let _ = tx.send(());
                         }
                     }
                     CommandEvent::Stderr(line) => {
                         let msg = String::from_utf8_lossy(&line);
                         if msg.contains("ERROR") || msg.contains("WARN") {
-                            warn!("pm-server: {}", msg);
+                            warn!("pm-server: {msg}");
                         } else {
-                            info!("pm-server: {}", msg);
+                            info!("pm-server: {msg}");
                         }
                     }
                     CommandEvent::Error(e) => {
-                        error!("pm-server error: {}", e);
+                        error!("pm-server error: {e}");
                     }
                     CommandEvent::Terminated(payload) => {
                         info!(
@@ -268,10 +265,7 @@ impl ServerManager {
                                 break;
                             }
 
-                            warn!(
-                                "Server unhealthy, requesting restart {}/{}",
-                                count, max_restarts
-                            );
+                            warn!("Server unhealthy, requesting restart {count}/{max_restarts}");
 
                             let _ = command_tx
                                 .send(ServerCommand::Restart { attempt: count })
@@ -305,7 +299,7 @@ impl ServerManager {
 
                 match cmd {
                     ServerCommand::Restart { attempt } => {
-                        info!("Processing restart request, attempt {}", attempt);
+                        info!("Processing restart request, attempt {attempt}");
                         let _ = state_tx.send(ServerState::Restarting { attempt });
 
                         // Kill existing process
@@ -330,7 +324,7 @@ impl ServerManager {
                         ) {
                             Ok(p) => p,
                             Err(e) => {
-                                error!("Failed to find available port: {}", e);
+                                error!("Failed to find available port: {e}");
                                 let _ = state_tx.send(ServerState::Failed {
                                     error: e.to_string(),
                                 });
@@ -348,7 +342,7 @@ impl ServerManager {
                         }) {
                             Ok(s) => s,
                             Err(e) => {
-                                error!("Failed to create sidecar: {}", e);
+                                error!("Failed to create sidecar: {e}");
                                 let _ = state_tx.send(ServerState::Failed {
                                     error: e.to_string(),
                                 });
@@ -371,13 +365,12 @@ impl ServerManager {
                                         Duration::from_secs(config.resilience.startup_timeout_secs);
                                     match checker.wait_ready(timeout).await {
                                         Ok(()) => {
-                                            info!("Server restarted successfully on port {}", port);
+                                            info!("Server restarted successfully on port {port}");
                                             let _ = state_tx.send(ServerState::Running { port });
                                         }
                                         Err(e) => {
                                             warn!(
-                                                "Server failed to become ready after restart: {}",
-                                                e
+                                                "Server failed to become ready after restart: {e}"
                                             );
                                             // Health monitor will detect and request another restart
                                         }
@@ -385,7 +378,7 @@ impl ServerManager {
                                 }
                             }
                             Err(e) => {
-                                error!("Failed to spawn process: {}", e);
+                                error!("Failed to spawn process: {e}");
                                 let _ = state_tx.send(ServerState::Failed {
                                     error: e.to_string(),
                                 });
@@ -393,9 +386,9 @@ impl ServerManager {
                         }
                     }
                     ServerCommand::MaxRestartsExceeded { count } => {
-                        error!("Max restarts exceeded: {} attempts", count);
+                        error!("Max restarts exceeded: {count} attempts");
                         let _ = state_tx.send(ServerState::Failed {
-                            error: format!("Server crashed {} times", count),
+                            error: format!("Server crashed {count} times"),
                         });
                         break;
                     }
@@ -441,7 +434,7 @@ impl ServerManager {
         self.actual_port
             .lock()
             .await
-            .map(|p| format!("ws://127.0.0.1:{}/ws", p))
+            .map(|p| format!("ws://127.0.0.1:{p}/ws"))
     }
 
     /// Get current port (if running).
@@ -469,10 +462,10 @@ impl ServerManager {
         }
 
         // Checkpoint database before shutdown
-        if self.config.database.checkpoint_on_shutdown {
-            if let Err(e) = self.checkpoint_database().await {
-                warn!("Failed to checkpoint database: {}", e);
-            }
+        if self.config.database.checkpoint_on_shutdown
+            && let Err(e) = self.checkpoint_database().await
+        {
+            warn!("Failed to checkpoint database: {e}");
         }
 
         // Graceful shutdown with timeout
@@ -496,7 +489,7 @@ impl ServerManager {
                     use nix::unistd::Pid;
 
                     let pid = child.pid();
-                    info!("Sending SIGTERM to pid {}", pid);
+                    info!("Sending SIGTERM to pid {pid}");
                     kill(Pid::from_raw(pid as i32), Signal::SIGTERM).ok();
                 }
 
@@ -507,7 +500,7 @@ impl ServerManager {
                     };
 
                     let pid = child.pid();
-                    info!("Sending CTRL_BREAK to pid {}", pid);
+                    info!("Sending CTRL_BREAK to pid {pid}");
                     unsafe {
                         GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, pid);
                     }
@@ -560,7 +553,7 @@ impl ServerManager {
             .lock()
             .await
             .unwrap_or(self.config.server.port);
-        let url = format!("http://127.0.0.1:{}/admin/checkpoint", port);
+        let url = format!("http://127.0.0.1:{port}/admin/checkpoint");
 
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(10))
@@ -592,7 +585,7 @@ impl ServerManager {
 
     /// Request graceful shutdown via HTTP endpoint.
     async fn request_graceful_shutdown(&self, port: u16) -> bool {
-        let url = format!("http://127.0.0.1:{}/admin/shutdown", port);
+        let url = format!("http://127.0.0.1:{port}/admin/shutdown");
 
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(5))
@@ -609,7 +602,7 @@ impl ServerManager {
                     warn!("Shutdown request returned HTTP {}", resp.status());
                 }
                 Err(e) => {
-                    warn!("Failed to send shutdown request: {}", e);
+                    warn!("Failed to send shutdown request: {e}");
                 }
             }
         }

@@ -7,10 +7,11 @@ use error_location::ErrorLocation;
 use serde::{Deserialize, Serialize};
 
 /// Project lifecycle status
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum ProjectStatus {
     /// Project is active and accepting work
+    #[default]
     Active,
     /// Project is archived (read-only, hidden from default views)
     Archived,
@@ -39,12 +40,6 @@ impl FromStr for ProjectStatus {
                 location: ErrorLocation::from(Location::caller()),
             }),
         }
-    }
-}
-
-impl Default for ProjectStatus {
-    fn default() -> Self {
-        Self::Active
     }
 }
 

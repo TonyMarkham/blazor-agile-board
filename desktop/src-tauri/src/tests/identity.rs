@@ -59,10 +59,7 @@ fn given_all_fields_when_serialize_then_produces_valid_json() {
 
 #[test]
 fn given_file_read_error_when_is_transient_then_returns_true() {
-    let err = IdentityError::file_read(
-        PathBuf::from("/test"),
-        std::io::Error::new(std::io::ErrorKind::Other, "test"),
-    );
+    let err = IdentityError::file_read(PathBuf::from("/test"), std::io::Error::other("test"));
     assert!(err.is_transient());
 }
 
@@ -77,10 +74,7 @@ fn given_any_error_when_recovery_hint_then_returns_non_empty_string() {
     let errors = vec![
         IdentityError::app_data_dir("test"),
         IdentityError::corrupted(PathBuf::from("/test"), "bad"),
-        IdentityError::file_read(
-            PathBuf::from("/test"),
-            std::io::Error::new(std::io::ErrorKind::Other, "test"),
-        ),
+        IdentityError::file_read(PathBuf::from("/test"), std::io::Error::other("test")),
     ];
 
     for err in errors {
@@ -119,7 +113,7 @@ fn given_atomic_rename_error_when_is_transient_then_returns_true() {
     let err = IdentityError::atomic_rename(
         PathBuf::from("/from"),
         PathBuf::from("/to"),
-        std::io::Error::new(std::io::ErrorKind::Other, "test"),
+        std::io::Error::other("test"),
     );
     assert!(err.is_transient());
 }

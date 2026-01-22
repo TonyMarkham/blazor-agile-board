@@ -94,11 +94,10 @@ impl TrayManager {
                     button_state: MouseButtonState::Up,
                     ..
                 } = event
+                    && let Some(window) = tray.app_handle().get_webview_window("main")
                 {
-                    if let Some(window) = tray.app_handle().get_webview_window("main") {
-                        window.show().ok();
-                        window.set_focus().ok();
-                    }
+                    window.show().ok();
+                    window.set_focus().ok();
                 }
             })
             .build(app.app_handle())?;
@@ -136,12 +135,11 @@ impl TrayManager {
         };
 
         // Update menu item text
-        if let Some(menu) = app.menu() {
-            if let Some(item) = menu.get(&self.status_item_id) {
-                if let Some(menu_item) = item.as_menuitem() {
-                    let _ = menu_item.set_text(&status_text);
-                }
-            }
+        if let Some(menu) = app.menu()
+            && let Some(item) = menu.get(&self.status_item_id)
+            && let Some(menu_item) = item.as_menuitem()
+        {
+            let _ = menu_item.set_text(&status_text);
         }
 
         // Update tray tooltip

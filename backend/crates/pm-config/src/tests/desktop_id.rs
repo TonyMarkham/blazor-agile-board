@@ -22,8 +22,10 @@ fn given_default_auth_config_when_get_desktop_user_id_then_returns_default() {
 #[test]
 fn given_custom_desktop_user_id_when_get_then_returns_custom() {
     // Given
-    let mut config = AuthConfig::default();
-    config.desktop_user_id = Some("my-custom-user".to_string());
+    let config = AuthConfig {
+        desktop_user_id: Some("my-custom-user".to_string()),
+        ..Default::default()
+    };
 
     // When
     let user_id = config.get_desktop_user_id();
@@ -35,8 +37,10 @@ fn given_custom_desktop_user_id_when_get_then_returns_custom() {
 #[test]
 fn given_empty_desktop_user_id_when_get_then_generates_session_uuid() {
     // Given
-    let mut config = AuthConfig::default();
-    config.desktop_user_id = Some("".to_string());
+    let config = AuthConfig {
+        desktop_user_id: Some("".to_string()),
+        ..Default::default()
+    };
 
     // When
     let user_id = config.get_desktop_user_id();
@@ -49,8 +53,10 @@ fn given_empty_desktop_user_id_when_get_then_generates_session_uuid() {
 #[test]
 fn given_none_desktop_user_id_when_get_then_generates_session_uuid() {
     // Given
-    let mut config = AuthConfig::default();
-    config.desktop_user_id = None;
+    let config = AuthConfig {
+        desktop_user_id: None,
+        ..Default::default()
+    };
 
     // When
     let user_id = config.get_desktop_user_id();

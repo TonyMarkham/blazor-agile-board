@@ -3,7 +3,7 @@ mod common;
 use common::{create_test_pool, create_test_project, create_test_sprint, create_test_user};
 
 use pm_core::SprintStatus;
-use pm_db::{ProjectRepository, SprintRepository, WorkItemRepository};
+use pm_db::{ProjectRepository, SprintRepository};
 
 use chrono::Utc;
 use googletest::prelude::*;

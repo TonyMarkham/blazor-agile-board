@@ -62,11 +62,11 @@ impl PortManager {
 
         if let Some(client) = client {
             let url = format!("{PROTOCOL}://{HOST}:{port}/{HEALTH_ENDPOINT}");
-            if let Ok(resp) = client.get(&url).send().await {
-                if let Ok(body) = resp.text().await {
-                    // Check if response contains our server identifier
-                    return body.contains(SERVER_IDENTIFIER) || body.contains(expected_version);
-                }
+            if let Ok(resp) = client.get(&url).send().await
+                && let Ok(body) = resp.text().await
+            {
+                // Check if response contains our server identifier
+                return body.contains(SERVER_IDENTIFIER) || body.contains(expected_version);
             }
         }
 

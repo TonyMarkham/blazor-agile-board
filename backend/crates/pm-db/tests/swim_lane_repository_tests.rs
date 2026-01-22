@@ -5,7 +5,7 @@ use common::{
     create_test_swim_lane_with_status, create_test_user,
 };
 
-use pm_db::{ProjectRepository, SwimLaneRepository, WorkItemRepository};
+use pm_db::{ProjectRepository, SwimLaneRepository};
 
 use chrono::Utc;
 use googletest::prelude::*;
