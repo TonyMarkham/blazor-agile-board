@@ -41,6 +41,10 @@ pub use handlers::{
     },
     hierarchy_validator::validate_hierarchy,
     idempotency::{check_idempotency, store_idempotency},
+    project::{
+        handle_create as handle_create_project, handle_delete as handle_delete_project,
+        handle_list, handle_update as handle_update_project,
+    },
     query::handle_get_work_items,
     response_builder::{
         build_error_response, build_work_item_created_response, build_work_item_deleted_response,

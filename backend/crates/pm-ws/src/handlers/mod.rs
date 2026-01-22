@@ -7,6 +7,7 @@ pub(crate) mod error_boundary;
 pub(crate) mod error_codes;
 pub(crate) mod hierarchy_validator;
 pub(crate) mod idempotency;
+pub(crate) mod project;
 pub(crate) mod query;
 pub(crate) mod response_builder;
 pub(crate) mod work_item;

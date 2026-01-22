@@ -155,6 +155,44 @@ impl MessageValidator {
         Ok(())
     }
 
+    /// Validate project creation request
+    #[track_caller]
+    pub fn validate_project_create(
+        title: &str,
+        description: Option<&str>,
+        key: &str,
+    ) -> WsErrorResult<()> {
+        // Validate title (same limits as work items)
+        Self::validate_string(title, "title", 1, 200)?;
+
+        // Validate description if present (same limit as work items)
+        if let Some(desc) = description
+            && desc.len() > 10000
+        {
+            return Err(WsError::InvalidMessage {
+                message: "description exceeds maximum length (10000)".to_string(),
+                location: ErrorLocation::from(Location::caller()),
+            });
+        }
+
+        // Validate key format
+        if key.len() < 2 || key.len() > 20 {
+            return Err(WsError::InvalidMessage {
+                message: "key must be 2-20 characters".to_string(),
+                location: ErrorLocation::from(Location::caller()),
+            });
+        }
+
+        if !key.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+            return Err(WsError::InvalidMessage {
+                message: "key must contain only letters, numbers, and underscores".to_string(),
+                location: ErrorLocation::from(Location::caller()),
+            });
+        }
+
+        Ok(())
+    }
+
     /// Validate pagination parameters                                                                                                                                           
     #[track_caller]
     pub fn validate_pagination(limit: u32, _offset: u32) -> WsErrorResult<()> {

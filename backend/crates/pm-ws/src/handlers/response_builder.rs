@@ -1,9 +1,13 @@
 use pm_core::WorkItem;
+use pm_core::{Project, ProjectStatus};
 use pm_proto::{
-    Error as PmProtoError, FieldChange, WebSocketMessage, WorkItem as PmProtoWorkItem,
-    WorkItemCreated, WorkItemDeleted, WorkItemUpdated, WorkItemsList,
+    Error as PmProtoError, FieldChange, Project as ProtoProject, ProjectCreated, ProjectDeleted,
+    ProjectList, ProjectStatus as ProtoProjectStatus, ProjectUpdated, WebSocketMessage,
+    WorkItem as PmProtoWorkItem, WorkItemCreated, WorkItemDeleted, WorkItemUpdated, WorkItemsList,
     web_socket_message::Payload::{
-        Error as ProtoError, WorkItemCreated as ProtoWorkItemCreated,
+        Error as ProtoError, ProjectCreated as ProtoProjectCreated,
+        ProjectDeleted as ProtoProjectDeleted, ProjectList as ProtoProjectList,
+        ProjectUpdated as ProtoProjectUpdated, WorkItemCreated as ProtoWorkItemCreated,
         WorkItemDeleted as ProtoWorkItemDeleted, WorkItemUpdated as ProtoWorkItemUpdated,
         WorkItemsList as ProtoWorkItemsList,
     },
@@ -108,5 +112,86 @@ fn work_item_to_proto(item: &WorkItem) -> PmProtoWorkItem {
         created_by: item.created_by.to_string(),
         updated_by: item.updated_by.to_string(),
         deleted_at: item.deleted_at.map(|dt| dt.timestamp()),
+    }
+}
+
+/// Convert domain Project to proto Project
+fn project_to_proto(project: &Project) -> ProtoProject {
+    ProtoProject {
+        id: project.id.to_string(),
+        title: project.title.clone(),
+        description: project.description.clone(),
+        key: project.key.clone(),
+        status: match project.status {
+            ProjectStatus::Active => ProtoProjectStatus::Active.into(),
+            ProjectStatus::Archived => ProtoProjectStatus::Archived.into(),
+        },
+        version: project.version,
+        created_at: project.created_at.timestamp(),
+        updated_at: project.updated_at.timestamp(),
+        created_by: project.created_by.to_string(),
+        updated_by: project.updated_by.to_string(),
+        deleted_at: project.deleted_at.map(|dt| dt.timestamp()),
+    }
+}
+
+/// Build ProjectCreated response
+pub fn build_project_created_response(
+    message_id: &str,
+    project: &Project,
+    actor_id: Uuid,
+) -> WebSocketMessage {
+    WebSocketMessage {
+        message_id: message_id.to_string(),
+        timestamp: Utc::now().timestamp(),
+        payload: Some(ProtoProjectCreated(ProjectCreated {
+            project: Some(project_to_proto(project)),
+            user_id: actor_id.to_string(),
+        })),
+    }
+}
+
+/// Build ProjectUpdated response with field changes
+pub fn build_project_updated_response(
+    message_id: &str,
+    project: &Project,
+    changes: &[FieldChange],
+    actor_id: Uuid,
+) -> WebSocketMessage {
+    WebSocketMessage {
+        message_id: message_id.to_string(),
+        timestamp: Utc::now().timestamp(),
+        payload: Some(ProtoProjectUpdated(ProjectUpdated {
+            project: Some(project_to_proto(project)),
+            changes: changes.to_vec(),
+            user_id: actor_id.to_string(),
+        })),
+    }
+}
+
+/// Build ProjectDeleted response
+pub fn build_project_deleted_response(
+    message_id: &str,
+    project_id: Uuid,
+    actor_id: Uuid,
+) -> WebSocketMessage {
+    WebSocketMessage {
+        message_id: message_id.to_string(),
+        timestamp: Utc::now().timestamp(),
+        payload: Some(ProtoProjectDeleted(ProjectDeleted {
+            project_id: project_id.to_string(),
+            user_id: actor_id.to_string(),
+        })),
+    }
+}
+
+/// Build ProjectList response
+pub fn build_project_list_response(message_id: &str, projects: &[Project]) -> WebSocketMessage {
+    WebSocketMessage {
+        message_id: message_id.to_string(),
+        timestamp: Utc::now().timestamp(),
+        payload: Some(ProtoProjectList(ProjectList {
+            projects: projects.iter().map(project_to_proto).collect(),
+        })),
     }
 }

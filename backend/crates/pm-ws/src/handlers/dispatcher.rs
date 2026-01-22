@@ -1,6 +1,7 @@
 use crate::{
-    HandlerContext, WsError, build_error_response, handle_create, handle_delete,
-    handle_get_work_items, handle_update, log_handler_entry,
+    HandlerContext, WsError, build_error_response, handle_create, handle_create_project,
+    handle_delete, handle_delete_project, handle_get_work_items, handle_list, handle_update,
+    handle_update_project, log_handler_entry,
 };
 
 use pm_proto::{Pong, WebSocketMessage, web_socket_message::Payload};
@@ -61,10 +62,19 @@ async fn dispatch_inner(msg: WebSocketMessage, ctx: HandlerContext) -> WebSocket
     let message_id = msg.message_id.clone();
 
     let result = match msg.payload {
+        // Work Item handlers
         Some(Payload::CreateWorkItemRequest(req)) => handle_create(req, ctx).await,
         Some(Payload::UpdateWorkItemRequest(req)) => handle_update(req, ctx).await,
         Some(Payload::DeleteWorkItemRequest(req)) => handle_delete(req, ctx).await,
         Some(Payload::GetWorkItemsRequest(req)) => handle_get_work_items(req, ctx).await,
+
+        // Project handlers
+        Some(Payload::CreateProjectRequest(req)) => handle_create_project(req, ctx).await,
+        Some(Payload::UpdateProjectRequest(req)) => handle_update_project(req, ctx).await,
+        Some(Payload::DeleteProjectRequest(req)) => handle_delete_project(req, ctx).await,
+        Some(Payload::ListProjectsRequest(req)) => handle_list(req, ctx).await,
+
+        // Ping/Pong
         Some(Payload::Ping(ping)) => {
             return WebSocketMessage {
                 message_id,
@@ -74,6 +84,8 @@ async fn dispatch_inner(msg: WebSocketMessage, ctx: HandlerContext) -> WebSocket
                 })),
             };
         }
+
+        // Not yet implemented
         Some(Payload::Subscribe(_)) | Some(Payload::Unsubscribe(_)) => {
             return build_error_response(
                 &message_id,
@@ -84,6 +96,8 @@ async fn dispatch_inner(msg: WebSocketMessage, ctx: HandlerContext) -> WebSocket
                 },
             );
         }
+
+        // Unknown payload
         _ => Err(WsError::InvalidMessage {
             message: "Unsupported or missing message payload".to_string(),
             location: ErrorLocation::from(Location::caller()),
@@ -98,13 +112,23 @@ async fn dispatch_inner(msg: WebSocketMessage, ctx: HandlerContext) -> WebSocket
 
 fn payload_to_handler_name(payload: &Option<Payload>) -> &'static str {
     match payload {
+        // Work Items
         Some(Payload::CreateWorkItemRequest(_)) => "CreateWorkItem",
         Some(Payload::UpdateWorkItemRequest(_)) => "UpdateWorkItem",
         Some(Payload::DeleteWorkItemRequest(_)) => "DeleteWorkItem",
         Some(Payload::GetWorkItemsRequest(_)) => "GetWorkItems",
+
+        // Projects
+        Some(Payload::CreateProjectRequest(_)) => "CreateProject",
+        Some(Payload::UpdateProjectRequest(_)) => "UpdateProject",
+        Some(Payload::DeleteProjectRequest(_)) => "DeleteProject",
+        Some(Payload::ListProjectsRequest(_)) => "ListProjects",
+
+        // Control
         Some(Payload::Subscribe(_)) => "Subscribe",
         Some(Payload::Unsubscribe(_)) => "Unsubscribe",
         Some(Payload::Ping(_)) => "Ping",
+
         _ => "Unknown",
     }
 }
