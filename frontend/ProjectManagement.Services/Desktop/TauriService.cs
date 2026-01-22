@@ -117,25 +117,12 @@
 
           try
           {
-              // Register the listener and store unlisten function
               await _js.InvokeVoidAsync(
-                  "eval",
+                  "setupTauriListener",
                   ct,
-                  $@"
-                  (async () => {{
-                      const unlisten = await window.__TAURI__.event.listen(
-                          '{EventServerStateChanged}',
-                          (event) => DotNet.invokeMethodAsync(
-                              '{AssemblyName}',
-                              '{HandleEventMethod}',
-                              '{subscriptionId}',
-                              event.payload
-                          )
-                      );
-                      window.{JsUnlistenersGlobal} = window.{JsUnlistenersGlobal} || {{}};
-                      window.{JsUnlistenersGlobal}['{subscriptionId}'] = unlisten;
-                  }})()
-                  "
+                  dotNetRef,
+                  subscriptionId,
+                  EventServerStateChanged
               );
 
               var subscription = new TauriEventSubscription(
@@ -148,6 +135,7 @@
               _subscriptions[subscriptionId] = subscription;
 
               _logger.LogDebug("Created server state subscription: {Id}", subscriptionId);
+              
               return subscriptionId;
           }
           catch

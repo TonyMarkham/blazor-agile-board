@@ -5,7 +5,7 @@ mod server;
 mod tray;
 
 use logging::setup_logging;
-use server::{ServerConfig, ServerManager};
+use server::{ServerConfig, ServerManager, ServerState};
 use tray::TrayManager;
 
 #[cfg(test)]
@@ -88,20 +88,36 @@ pub fn run() {
 
             // Subscribe to state changes for tray updates
             let app_handle = app.handle().clone();
+            let manager_for_events = manager.clone();
             let mut state_rx = manager.subscribe();
             tauri::async_runtime::spawn(async move {
+                info!("State subscription task started");
                 while state_rx.changed().await.is_ok() {
+                    info!("State change detected");
                     let state = state_rx.borrow().clone();
+                    info!("New state: {:?}", state);
 
                     // Update tray via TrayManager
                     if let Some(tray_mgr) = app_handle.try_state::<Arc<TrayManager>>() {
                         tray_mgr.update_status(&app_handle, &state);
                     }
 
-                    // Emit to frontend
-                    app_handle
-                        .emit("server-state-changed", format!("{:?}", state))
-                        .ok();
+                    // Emit to frontend - extract data from state to avoid lock contention
+                    let port = match &state {
+                        server::ServerState::Running { port } => Some(*port),
+                        _ => None,
+                    };
+                    let ws_url = port.map(|p| format!("ws://127.0.0.1:{}/ws", p));
+
+                    let status = commands::build_server_status(
+                        &state, port, ws_url,
+                        None, // Health check happens separately, not in state events
+                    );
+
+                    let json = serde_json::to_string(&status)
+                        .unwrap_or_else(|e| format!("{{\"error\": \"{}\"}}", e));
+                    info!("Emitting server-state-changed: {}", json);
+                    app_handle.emit("server-state-changed", status).ok();
                 }
             });
 

@@ -13,8 +13,9 @@
   using Radzen;
 
   var builder = WebAssemblyHostBuilder.CreateDefault(args);
-  builder.RootComponents.Add<App>("#app");
-  builder.RootComponents.Add<HeadOutlet>("head::after");
+  builder.Services.AddScoped<TauriService>();
+  builder.Services.AddScoped<IDesktopConfigService, DesktopConfigService>();
+  builder.Logging.SetMinimumLevel(LogLevel.Information);
 
   // === Phase 1: Detect Desktop Mode ===
 
@@ -102,8 +103,8 @@
   });
 
   // Desktop Config Service
-  builder.Services.AddScoped<IDesktopConfigService, DesktopConfigService>();
   builder.Services.AddScoped<TauriService>();
+  builder.Services.AddScoped<IDesktopConfigService, DesktopConfigService>();
   builder.Services.AddScoped<UserIdentityService>();
 
   // Validators (required by WebSocketClient)

@@ -1,5 +1,7 @@
+use serde::Serialize;
+
 /// Current state of the server process.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub enum ServerState {
     /// Server is not running
     Stopped,

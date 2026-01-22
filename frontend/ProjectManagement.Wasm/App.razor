@@ -1,6 +1,301 @@
-﻿<Router AppAssembly="@typeof(App).Assembly">
-    <Found Context="routeData">
-        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)"/>
-        <FocusOnNavigate RouteData="@routeData" Selector="h1"/>
-    </Found>
-</Router>
+﻿  @using ProjectManagement.Core.State
+  @using ProjectManagement.Core.Models
+  @using ProjectManagement.Services.Desktop
+  @using ProjectManagement.Services.State
+  @using ProjectManagement.Components.Desktop
+  @using ProjectManagement.Wasm.Layout
+  @implements IDisposable
+  @inject IDesktopConfigService DesktopConfig
+  @inject UserIdentityService UserIdentityService
+  @inject AppState AppState
+  @inject ILogger<App> Logger
+
+  @switch (StartupState)
+  {
+      case AppStartupState.Initializing:
+      case AppStartupState.WaitingForServer:
+      case AppStartupState.CheckingIdentity:
+      case AppStartupState.ConnectingWebSocket:
+          <StartupScreen
+              State="StartupState"
+              StatusMessage="@StatusMessage"
+              OnRetry="OnRetryAsync" />
+          break;
+
+      case AppStartupState.NeedsRegistration:
+          <UserRegistrationScreen
+              OnUserCreated="OnUserRegisteredAsync"
+              OnError="OnRegistrationError" />
+          break;
+
+      case AppStartupState.Error:
+          <ErrorScreen
+              Title="@ErrorTitle"
+              Message="@ErrorMessage"
+              OnRetry="OnRetryAsync" />
+          break;
+
+      case AppStartupState.Reconnecting:
+          <StartupScreen
+              State="StartupState"
+              StatusMessage="@StatusMessage"
+              OnRetry="OnRetryAsync" />
+          break;
+
+      case AppStartupState.Ready:
+          <Router AppAssembly="@typeof(App).Assembly">
+              <Found Context="routeData">
+                  <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+              </Found>
+              <NotFound>
+                  <PageTitle>Not found</PageTitle>
+                  <LayoutView Layout="@typeof(MainLayout)">
+                      <p role="alert">Sorry, there's nothing at this address.</p>
+                  </LayoutView>
+              </NotFound>
+          </Router>
+          break;
+  }
+
+  @code {
+      // Timeout configuration
+      private static readonly TimeSpan ServerStartupTimeout = TimeSpan.FromSeconds(30);
+
+      // Status messages
+      private const string StatusInitializing = "Initializing...";
+      private const string StatusStartingServer = "Starting server...";
+      private const string StatusLoadingProfile = "Loading your profile...";
+      private const string StatusConnectingWorkspace = "Connecting to workspace...";
+      private const string StatusReconnecting = "Reconnecting...";
+
+      // Error titles
+      private const string ErrorTitleDefault = "Error";
+      private const string ErrorTitleStartupFailed = "Startup Failed";
+      private const string ErrorTitleServerTimeout = "Server Timeout";
+      private const string ErrorTitleServerError = "Server Error";
+      private const string ErrorTitleProfileError = "Profile Error";
+      private const string ErrorTitleRegistrationFailed = "Registration Failed";
+      private const string ErrorTitleConnectionFailed = "Connection Failed";
+
+      // Error messages
+      private const string ErrorMessageUnexpected = "An unexpected error occurred. Please try again.";
+      private const string ErrorMessageServerTimeout = "The server took too long to start. Please try again.";
+      private const string ErrorMessageProfileLoad = "Could not load your profile. Please try again.";
+      private const string ErrorMessageConnectionFailed = "Could not connect to workspace. Please try again.";
+      private const string ErrorMessageNetworkFailed = "Could not establish connection. Please check your network and try again.";
+
+      private AppStartupState StartupState = AppStartupState.Initializing;
+      private string StatusMessage = StatusInitializing;
+      private string ErrorTitle = ErrorTitleDefault;
+      private string? ErrorMessage;
+      private UserIdentity? CurrentUser;
+      private bool IsDesktopMode;
+      private CancellationTokenSource? _cts;
+      private IDisposable? _connectionStateSubscription;
+
+      protected override async Task OnInitializedAsync()
+      {
+          _cts = new CancellationTokenSource();
+
+          try
+          {
+              await RunStartupSequenceAsync(_cts.Token);
+          }
+          catch (OperationCanceledException)
+          {
+              Logger.LogInformation("Startup cancelled");
+          }
+          catch (Exception ex)
+          {
+              Logger.LogError(ex, "Fatal error during startup");
+              TransitionTo(AppStartupState.Error);
+              ErrorTitle = ErrorTitleStartupFailed;
+              ErrorMessage = ErrorMessageUnexpected;
+          }
+      }
+
+      private async Task RunStartupSequenceAsync(CancellationToken ct)
+      {
+          // Step 1: Detect desktop mode
+          try
+          {
+              IsDesktopMode = await DesktopConfig.IsDesktopModeAsync();
+          }
+          catch (Exception ex)
+          {
+              Logger.LogWarning(ex, "Failed to detect desktop mode, assuming web");
+              IsDesktopMode = false;
+          }
+
+          if (!IsDesktopMode)
+          {
+              // Web mode - skip desktop startup
+              TransitionTo(AppStartupState.Ready);
+              return;
+          }
+
+          // Step 2: Wait for server
+          TransitionTo(AppStartupState.WaitingForServer);
+          StatusMessage = StatusStartingServer;
+          await InvokeAsync(StateHasChanged);
+
+          try
+          {
+              await DesktopConfig.WaitForServerAsync(ServerStartupTimeout, ct);
+          }
+          catch (TimeoutException)
+          {
+              Logger.LogError("Server startup timed out");
+              TransitionTo(AppStartupState.Error);
+              ErrorTitle = ErrorTitleServerTimeout;
+              ErrorMessage = ErrorMessageServerTimeout;
+              return;
+          }
+          catch (Exception ex)
+          {
+              Logger.LogError(ex, "Server startup failed");
+              TransitionTo(AppStartupState.Error);
+              ErrorTitle = ErrorTitleServerError;
+              ErrorMessage = ex.Message;
+              return;
+          }
+
+          // Step 3: Check for existing user identity
+          TransitionTo(AppStartupState.CheckingIdentity);
+          StatusMessage = StatusLoadingProfile;
+          await InvokeAsync(StateHasChanged);
+
+          try
+          {
+              CurrentUser = await UserIdentityService.GetCurrentUserAsync(ct);
+          }
+          catch (Exception ex)
+          {
+              Logger.LogError(ex, "Failed to load user identity");
+              TransitionTo(AppStartupState.Error);
+              ErrorTitle = ErrorTitleProfileError;
+              ErrorMessage = ErrorMessageProfileLoad;
+              return;
+          }
+
+          if (CurrentUser == null)
+          {
+              // First launch - need registration
+              TransitionTo(AppStartupState.NeedsRegistration);
+              await InvokeAsync(StateHasChanged);
+              return;
+          }
+
+          // Step 4: Connect WebSocket
+          await ConnectWithUserAsync(CurrentUser, ct);
+      }
+
+      private async Task OnUserRegisteredAsync(UserIdentity user)
+      {
+          CurrentUser = user;
+          _cts ??= new CancellationTokenSource();
+
+          try
+          {
+              await ConnectWithUserAsync(user, _cts.Token);
+          }
+          catch (Exception ex)
+          {
+              Logger.LogError(ex, "Failed to connect after registration");
+              TransitionTo(AppStartupState.Error);
+              ErrorTitle = ErrorTitleConnectionFailed;
+              ErrorMessage = ErrorMessageConnectionFailed;
+          }
+      }
+
+      private void OnRegistrationError(string error)
+      {
+          TransitionTo(AppStartupState.Error);
+          ErrorTitle = ErrorTitleRegistrationFailed;
+          ErrorMessage = error;
+      }
+
+      private async Task ConnectWithUserAsync(UserIdentity user, CancellationToken ct)
+      {
+          TransitionTo(AppStartupState.ConnectingWebSocket);
+          StatusMessage = StatusConnectingWorkspace;
+          await InvokeAsync(StateHasChanged);
+
+          try
+          {
+              // Set user before connecting
+              AppState.SetCurrentUser(user);
+
+              // Subscribe to connection state changes
+              _connectionStateSubscription?.Dispose();
+              _connectionStateSubscription = AppState.SubscribeToConnectionStateChanged(OnConnectionStateChanged);
+
+              await AppState.InitializeAsync(ct);
+
+              TransitionTo(AppStartupState.Ready);
+              Logger.LogInformation("Startup complete for user {UserId}", user.Id);
+          }
+          catch (Exception ex)
+          {
+              Logger.LogError(ex, "WebSocket connection failed");
+              TransitionTo(AppStartupState.Error);
+              ErrorTitle = ErrorTitleConnectionFailed;
+              ErrorMessage = ErrorMessageNetworkFailed;
+          }
+
+          await InvokeAsync(StateHasChanged);
+      }
+
+      private async void OnConnectionStateChanged(ConnectionState state)
+      {
+          if (state == ConnectionState.Disconnected && StartupState == AppStartupState.Ready)
+          {
+              Logger.LogWarning("WebSocket disconnected, attempting reconnect");
+              TransitionTo(AppStartupState.Reconnecting);
+              StatusMessage = StatusReconnecting;
+              await InvokeAsync(StateHasChanged);
+          }
+          else if (state == ConnectionState.Connected && StartupState == AppStartupState.Reconnecting)
+          {
+              Logger.LogInformation("WebSocket reconnected");
+              TransitionTo(AppStartupState.Ready);
+              await InvokeAsync(StateHasChanged);
+          }
+      }
+
+      private async Task OnRetryAsync()
+      {
+          TransitionTo(AppStartupState.Initializing);
+          ErrorMessage = "";
+          ErrorTitle = ErrorTitleDefault;
+          StatusMessage = StatusInitializing;
+
+          _cts?.Cancel();
+          _cts?.Dispose();
+          _cts = new CancellationTokenSource();
+
+          await InvokeAsync(StateHasChanged);
+          await RunStartupSequenceAsync(_cts.Token);
+      }
+
+      private void TransitionTo(AppStartupState newState)
+      {
+          if (StartupState == newState) return;
+
+          if (!AppStartupStateTransitions.CanTransition(StartupState, newState))
+          {
+              Logger.LogWarning("Invalid state transition from {From} to {To}, forcing",
+                  StartupState, newState);
+          }
+
+          Logger.LogDebug("State transition: {From} → {To}", StartupState, newState);
+          StartupState = newState;
+      }
+
+      public void Dispose()
+      {
+          _connectionStateSubscription?.Dispose();
+          _cts?.Cancel();
+          _cts?.Dispose();
+      }
+  }

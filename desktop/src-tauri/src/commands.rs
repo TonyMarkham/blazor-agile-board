@@ -20,6 +20,7 @@ pub struct ServerStatus {
     pub health: Option<HealthInfo>,
     pub error: Option<String>,
     pub recovery_hint: Option<String>,
+    pub is_healthy: bool,
 }
 
 /// Health information for frontend display.
@@ -82,29 +83,7 @@ pub async fn get_server_status(
     let ws_url = manager.websocket_url().await;
     let health = manager.health().await;
 
-    let (state_str, error, recovery_hint) = match &state {
-        ServerState::Stopped => ("stopped".into(), None, None),
-        ServerState::Starting => ("starting".into(), None, None),
-        ServerState::Running { .. } => ("running".into(), None, None),
-        ServerState::Restarting { attempt } => {
-            (format!("restarting (attempt {})", attempt), None, None)
-        }
-        ServerState::ShuttingDown => ("shutting_down".into(), None, None),
-        ServerState::Failed { error } => (
-            "failed".into(),
-            Some(error.clone()),
-            Some("Please check the logs or restart the application.".into()),
-        ),
-    };
-
-    Ok(ServerStatus {
-        state: state_str,
-        port,
-        websocket_url: ws_url,
-        health: health.as_ref().map(|h| h.into()),
-        error,
-        recovery_hint,
-    })
+    Ok(build_server_status(&state, port, ws_url, health.as_ref()))
 }
 
 /// Get WebSocket URL for frontend connection.
@@ -255,4 +234,43 @@ pub async fn backup_corrupted_user_identity(app: tauri::AppHandle) -> Result<(),
         error!("Failed to backup corrupted identity: {e}");
         format!("{e}\n\nHint: {}", e.recovery_hint())
     })
+}
+
+/// Converts internal server state to frontend-facing status.
+///
+/// Shared by `get_server_status` command and state change events.
+/// Health parameter is optional since state events don't include health checks.
+pub fn build_server_status(
+    state: &ServerState,
+    port: Option<u16>,
+    ws_url: Option<String>,
+    health: Option<&HealthStatus>,
+) -> ServerStatus {
+    let (state_str, error, recovery_hint) = match state {
+        ServerState::Stopped => ("stopped".into(), None, None),
+        ServerState::Starting => ("starting".into(), None, None),
+        ServerState::Running { .. } => ("running".into(), None, None),
+        ServerState::Restarting { attempt } => {
+            (format!("restarting (attempt {})", attempt), None, None)
+        }
+        ServerState::ShuttingDown => ("shutting_down".into(), None, None),
+        ServerState::Failed { error } => (
+            "failed".into(),
+            Some(error.clone()),
+            Some("Please check the logs or restart the application.".into()),
+        ),
+    };
+
+    let is_healthy = state_str == "running"
+        && health.map_or(false, |h| matches!(h, HealthStatus::Healthy { .. }));
+
+    ServerStatus {
+        state: state_str,
+        port,
+        websocket_url: ws_url,
+        health: health.map(|h| h.into()),
+        error,
+        recovery_hint,
+        is_healthy,
+    }
 }

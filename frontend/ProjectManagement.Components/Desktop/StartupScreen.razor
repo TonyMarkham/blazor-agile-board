@@ -1,0 +1,121 @@
+  @using ProjectManagement.Core.State
+  @inject ILogger<StartupScreen> Logger
+
+  <div class="startup-screen" role="status" aria-live="polite">
+      <div class="startup-content">
+          <div class="app-logo" aria-hidden="true">
+              <svg class="logo-icon" viewBox="0 0 24 24" width="64" height="64">
+                  <path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+              </svg>
+          </div>
+
+          <h1 class="app-title">Project Manager</h1>
+
+          @if (!HasError)
+          {
+              <div class="progress-section">
+                  <div class="spinner" aria-hidden="true">
+                      <div class="spinner-ring"></div>
+                  </div>
+
+                  <p class="status-message" id="status-message">@StatusMessage</p>
+                  <p class="status-detail">@GetStateDetail()</p>
+
+                  <div class="progress-bar" role="progressbar"
+                       aria-valuenow="@GetProgressPercent()"
+                       aria-valuemin="0"
+                       aria-valuemax="100"
+                       aria-labelledby="status-message">
+                      <div class="progress-fill" style="width: @(GetProgressPercent())%"></div>
+                  </div>
+              </div>
+          }
+          else
+          {
+              <div class="error-section" role="alert">
+                  <div class="error-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" width="48" height="48">
+                          <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                      </svg>
+                  </div>
+                  <p class="error-message">@ErrorMessage</p>
+
+                  <div class="error-actions">
+                      <button class="btn btn-primary"
+                              @onclick="OnRetryClick"
+                              @onkeydown="OnRetryKeyDown"
+                              aria-label="Retry starting the application">
+                          <svg class="btn-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                              <path fill="currentColor" d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31
+  0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                          </svg>
+                          Retry
+                      </button>
+                  </div>
+              </div>
+          }
+      </div>
+  </div>
+
+  @code {
+      // Progress percentages for each state
+      private const int ProgressInitializing = 10;
+      private const int ProgressWaitingForServer = 30;
+      private const int ProgressCheckingIdentity = 50;
+      private const int ProgressConnectingWebSocket = 70;
+      private const int ProgressReconnecting = 50;
+      private const int ProgressReady = 100;
+      private const int ProgressDefault = 0;
+
+      // State detail messages
+      private const string DetailInitializing = "Detecting environment...";
+      private const string DetailWaitingForServer = "This may take a few seconds on first launch";
+      private const string DetailCheckingIdentity = "Loading your profile...";
+      private const string DetailConnectingWebSocket = "Establishing real-time connection...";
+      private const string DetailReconnecting = "Connection lost, attempting to reconnect...";
+
+      // Keyboard keys
+      private const string KeyEnter = "Enter";
+      private const string KeySpace = " ";
+
+      [Parameter] public AppStartupState State { get; set; }
+      [Parameter] public string StatusMessage { get; set; } = "";
+      [Parameter] public string? ErrorMessage { get; set; }
+      [Parameter] public EventCallback OnRetry { get; set; }
+
+      private bool HasError => !string.IsNullOrEmpty(ErrorMessage);
+
+      private string GetStateDetail() => State switch
+      {
+          AppStartupState.Initializing => DetailInitializing,
+          AppStartupState.WaitingForServer => DetailWaitingForServer,
+          AppStartupState.CheckingIdentity => DetailCheckingIdentity,
+          AppStartupState.ConnectingWebSocket => DetailConnectingWebSocket,
+          AppStartupState.Reconnecting => DetailReconnecting,
+          _ => ""
+      };
+
+      private int GetProgressPercent() => State switch
+      {
+          AppStartupState.Initializing => ProgressInitializing,
+          AppStartupState.WaitingForServer => ProgressWaitingForServer,
+          AppStartupState.CheckingIdentity => ProgressCheckingIdentity,
+          AppStartupState.ConnectingWebSocket => ProgressConnectingWebSocket,
+          AppStartupState.Reconnecting => ProgressReconnecting,
+          AppStartupState.Ready => ProgressReady,
+          _ => ProgressDefault
+      };
+
+      private async Task OnRetryClick()
+      {
+          await OnRetry.InvokeAsync();
+      }
+
+      private async Task OnRetryKeyDown(KeyboardEventArgs e)
+      {
+          if (e.Key == KeyEnter || e.Key == KeySpace)
+          {
+              await OnRetry.InvokeAsync();
+          }
+      }
+  }

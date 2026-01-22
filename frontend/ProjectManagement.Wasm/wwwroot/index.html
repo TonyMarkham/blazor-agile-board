@@ -44,6 +44,21 @@
             } else {
                 console.log('[Web Mode] Running in browser');
             }
+
+            window.setupTauriListener = async function(dotNetHelper, subscriptionId, eventName) {
+                console.log('[Tauri Setup] Setting up listener for:', eventName, 'subscriptionId:', subscriptionId);
+                const unlisten = await window.__TAURI__.event.listen(
+                    eventName,
+                    async (event) => {
+                        console.log('[Tauri Event] Received:', eventName, 'Payload:', JSON.stringify(event.payload));
+                        await dotNetHelper.invokeMethodAsync('HandleEventAsync', event.payload);
+                    }
+                );
+
+                window.__PM_UNLISTENERS__ = window.__PM_UNLISTENERS__ || {};
+                window.__PM_UNLISTENERS__[subscriptionId] = unlisten;
+                console.log('[Tauri Setup] Listener registered successfully');
+            };
         </script>
         
         <script src="_framework/blazor.webassembly.js"></script>

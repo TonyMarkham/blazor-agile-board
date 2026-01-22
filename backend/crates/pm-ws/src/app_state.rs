@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use axum::{
     extract::{
-        State,
+        Query, State,
         ws::{WebSocket, WebSocketUpgrade},
     },
     http::{HeaderMap, StatusCode},
@@ -35,11 +35,17 @@ pub struct AppState {
 /// WebSocket upgrade handler
 pub async fn handler(
     State(state): State<AppState>,
+    Query(params): Query<std::collections::HashMap<String, String>>,
     headers: HeaderMap,
     ws: WebSocketUpgrade,
 ) -> Result<Response, StatusCode> {
     // Extract and validate user ID (JWT or desktop mode)
-    let user_id = extract_user_id(&headers, &state.jwt_validator, &state.desktop_user_id)?;
+    let user_id = extract_user_id(
+        &headers,
+        &params,
+        &state.jwt_validator,
+        &state.desktop_user_id,
+    )?;
     debug!("WebSocket upgrade request from user {}", user_id);
 
     // Register connection (enforces connection limits)
@@ -110,11 +116,12 @@ async fn handle_socket(
     }
 }
 
-/// Extract and validate user ID from Authorization header or use desktop user ID
+/// Extract and validate user ID from Authorization header or query params (desktop mode)
 fn extract_user_id(
     headers: &HeaderMap,
+    query_params: &std::collections::HashMap<String, String>,
     validator: &Option<Arc<JwtValidator>>,
-    desktop_user_id: &str,
+    desktop_user_id_fallback: &str,
 ) -> Result<String, StatusCode> {
     match validator {
         Some(v) => {
@@ -142,9 +149,18 @@ fn extract_user_id(
             Ok(claims.sub)
         }
         None => {
-            // Auth disabled - use configured desktop user ID
-            debug!("Auth disabled, using desktop user ID: {}", desktop_user_id);
-            Ok(desktop_user_id.to_string())
+            // Auth disabled - check query params for user_id first
+            if let Some(user_id) = query_params.get("user_id") {
+                debug!("Desktop mode: using user_id from query params: {}", user_id);
+                Ok(user_id.clone())
+            } else {
+                // Fallback to configured desktop user ID for legacy clients
+                debug!(
+                    "Desktop mode: no user_id in query params, using fallback: {}",
+                    desktop_user_id_fallback
+                );
+                Ok(desktop_user_id_fallback.to_string())
+            }
         }
     }
 }
