@@ -5,8 +5,7 @@ use common::{
     create_test_work_item,
 };
 
-use pm_db::DependencyRepository;
-use pm_db::WorkItemRepository;
+use pm_db::{DependencyRepository, ProjectRepository, WorkItemRepository};
 
 use chrono::Utc;
 use googletest::prelude::*;
@@ -21,7 +20,10 @@ async fn given_valid_dependency_when_created_then_can_be_found_by_id() {
 
     let project = create_test_project(user_id);
     // WorkItemRepository is now stateless
-    WorkItemRepository::create(&pool, &project).await.unwrap();
+    ProjectRepository::new(pool.clone())
+        .create(&project)
+        .await
+        .unwrap();
 
     let item1 = create_test_work_item(project.id, user_id);
     let item2 = create_test_work_item(project.id, user_id);
@@ -67,7 +69,10 @@ async fn given_existing_dependency_when_soft_deleted_then_not_found_by_id() {
 
     let project = create_test_project(user_id);
     // WorkItemRepository is now stateless
-    WorkItemRepository::create(&pool, &project).await.unwrap();
+    ProjectRepository::new(pool.clone())
+        .create(&project)
+        .await
+        .unwrap();
 
     let item1 = create_test_work_item(project.id, user_id);
     let item2 = create_test_work_item(project.id, user_id);
@@ -96,7 +101,10 @@ async fn given_item_with_blockers_when_finding_blocking_then_returns_blockers() 
 
     let project = create_test_project(user_id);
     // WorkItemRepository is now stateless
-    WorkItemRepository::create(&pool, &project).await.unwrap();
+    ProjectRepository::new(pool.clone())
+        .create(&project)
+        .await
+        .unwrap();
 
     let item_a = create_test_work_item(project.id, user_id);
     let item_b = create_test_work_item(project.id, user_id);
@@ -135,7 +143,10 @@ async fn given_item_blocking_others_when_finding_blocked_then_returns_blocked_it
 
     let project = create_test_project(user_id);
     // WorkItemRepository is now stateless
-    WorkItemRepository::create(&pool, &project).await.unwrap();
+    ProjectRepository::new(pool.clone())
+        .create(&project)
+        .await
+        .unwrap();
 
     let item_a = create_test_work_item(project.id, user_id);
     let item_b = create_test_work_item(project.id, user_id);
@@ -174,7 +185,10 @@ async fn given_item_with_no_blockers_when_finding_blocking_then_returns_empty_ve
 
     let project = create_test_project(user_id);
     // WorkItemRepository is now stateless
-    WorkItemRepository::create(&pool, &project).await.unwrap();
+    ProjectRepository::new(pool.clone())
+        .create(&project)
+        .await
+        .unwrap();
 
     let item = create_test_work_item(project.id, user_id);
     WorkItemRepository::create(&pool, &item).await.unwrap();
@@ -197,7 +211,10 @@ async fn given_item_blocking_none_when_finding_blocked_then_returns_empty_vec() 
 
     let project = create_test_project(user_id);
     // WorkItemRepository is now stateless
-    WorkItemRepository::create(&pool, &project).await.unwrap();
+    ProjectRepository::new(pool.clone())
+        .create(&project)
+        .await
+        .unwrap();
 
     let item = create_test_work_item(project.id, user_id);
     WorkItemRepository::create(&pool, &item).await.unwrap();
@@ -220,7 +237,10 @@ async fn given_dependencies_with_one_deleted_when_finding_blocking_then_excludes
 
     let project = create_test_project(user_id);
     // WorkItemRepository is now stateless
-    WorkItemRepository::create(&pool, &project).await.unwrap();
+    ProjectRepository::new(pool.clone())
+        .create(&project)
+        .await
+        .unwrap();
 
     let item_a = create_test_work_item(project.id, user_id);
     let item_b = create_test_work_item(project.id, user_id);

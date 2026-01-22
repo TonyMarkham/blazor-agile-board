@@ -1,4 +1,4 @@
-use pm_core::models::work_item::WorkItem;
+use pm_core::WorkItem;
 use pm_proto::{
     Error as PmProtoError, FieldChange, WebSocketMessage, WorkItem as PmProtoWorkItem,
     WorkItemCreated, WorkItemDeleted, WorkItemUpdated, WorkItemsList,

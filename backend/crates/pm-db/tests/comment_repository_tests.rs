@@ -5,8 +5,7 @@ use common::{
     create_test_work_item,
 };
 
-use pm_db::CommentRepository;
-use pm_db::WorkItemRepository;
+use pm_db::{CommentRepository, ProjectRepository, WorkItemRepository};
 
 use chrono::Utc;
 use googletest::prelude::*;
@@ -21,7 +20,10 @@ async fn given_valid_comment_when_created_then_can_be_found_by_id() {
 
     let project = create_test_project(user_id);
     // WorkItemRepository is now stateless
-    WorkItemRepository::create(&pool, &project).await.unwrap();
+    ProjectRepository::new(pool.clone())
+        .create(&project)
+        .await
+        .unwrap();
 
     let work_item = create_test_work_item(project.id, user_id);
     WorkItemRepository::create(&pool, &work_item).await.unwrap();
@@ -65,7 +67,10 @@ async fn given_existing_comment_when_updated_then_changes_are_persisted() {
 
     let project = create_test_project(user_id);
     // WorkItemRepository is now stateless
-    WorkItemRepository::create(&pool, &project).await.unwrap();
+    ProjectRepository::new(pool.clone())
+        .create(&project)
+        .await
+        .unwrap();
 
     let work_item = create_test_work_item(project.id, user_id);
     WorkItemRepository::create(&pool, &work_item).await.unwrap();
@@ -94,7 +99,10 @@ async fn given_existing_comment_when_soft_deleted_then_not_found_by_id() {
 
     let project = create_test_project(user_id);
     // WorkItemRepository is now stateless
-    WorkItemRepository::create(&pool, &project).await.unwrap();
+    ProjectRepository::new(pool.clone())
+        .create(&project)
+        .await
+        .unwrap();
 
     let work_item = create_test_work_item(project.id, user_id);
     WorkItemRepository::create(&pool, &work_item).await.unwrap();
@@ -121,7 +129,10 @@ async fn given_multiple_comments_on_work_item_when_finding_by_work_item_then_ret
 
     let project = create_test_project(user_id);
     // WorkItemRepository is now stateless
-    WorkItemRepository::create(&pool, &project).await.unwrap();
+    ProjectRepository::new(pool.clone())
+        .create(&project)
+        .await
+        .unwrap();
 
     let work_item = create_test_work_item(project.id, user_id);
     WorkItemRepository::create(&pool, &work_item).await.unwrap();
@@ -156,7 +167,10 @@ async fn given_comments_with_one_deleted_when_finding_by_work_item_then_excludes
 
     let project = create_test_project(user_id);
     // WorkItemRepository is now stateless
-    WorkItemRepository::create(&pool, &project).await.unwrap();
+    ProjectRepository::new(pool.clone())
+        .create(&project)
+        .await
+        .unwrap();
 
     let work_item = create_test_work_item(project.id, user_id);
     WorkItemRepository::create(&pool, &work_item).await.unwrap();
@@ -188,7 +202,10 @@ async fn given_work_item_with_no_comments_when_finding_by_work_item_then_returns
 
     let project = create_test_project(user_id);
     // WorkItemRepository is now stateless
-    WorkItemRepository::create(&pool, &project).await.unwrap();
+    ProjectRepository::new(pool.clone())
+        .create(&project)
+        .await
+        .unwrap();
 
     let work_item = create_test_work_item(project.id, user_id);
     WorkItemRepository::create(&pool, &work_item).await.unwrap();

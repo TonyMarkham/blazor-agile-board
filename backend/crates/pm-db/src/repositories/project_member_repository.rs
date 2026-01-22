@@ -1,6 +1,6 @@
 use crate::error::Result as DbErrorResult;
 
-use pm_core::models::project_member::ProjectMember;
+use pm_core::ProjectMember;
 
 use sqlx::SqlitePool;
 use uuid::Uuid;

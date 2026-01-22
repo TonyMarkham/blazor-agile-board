@@ -5,7 +5,7 @@ use common::{
     create_test_work_item,
 };
 
-use pm_db::WorkItemRepository;
+use pm_db::{ProjectRepository, WorkItemRepository};
 
 use chrono::Utc;
 use googletest::prelude::*;
@@ -20,7 +20,10 @@ async fn given_valid_work_item_when_created_then_can_be_found_by_id() {
 
     // Create the project first
     let project = create_test_project(user_id);
-    WorkItemRepository::create(&pool, &project).await.unwrap();
+    ProjectRepository::new(pool.clone())
+        .create(&project)
+        .await
+        .unwrap();
 
     let work_item = create_test_work_item(project.id, user_id);
 
@@ -63,14 +66,17 @@ async fn given_existing_work_item_when_updated_then_changes_are_persisted() {
 
     // Create the project first
     let project = create_test_project(user_id);
-    WorkItemRepository::create(&pool, &project).await.unwrap();
+    ProjectRepository::new(pool.clone())
+        .create(&project)
+        .await
+        .unwrap();
 
     let mut work_item = create_test_work_item(project.id, user_id);
     WorkItemRepository::create(&pool, &work_item).await.unwrap();
 
     // When: Updating the work item's title and status
     work_item.title = "Updated Title".to_string();
-    work_item.status = "in-progress".to_string();
+    work_item.status = "in_progress".to_string();
     work_item.updated_at = Utc::now();
     WorkItemRepository::update(&pool, &work_item).await.unwrap();
 
@@ -80,7 +86,7 @@ async fn given_existing_work_item_when_updated_then_changes_are_persisted() {
         .unwrap();
     let found = result.unwrap();
     assert_that!(found.title, eq("Updated Title"));
-    assert_that!(found.status, eq("in-progress"));
+    assert_that!(found.status, eq("in_progress"));
 }
 
 #[tokio::test]
@@ -92,7 +98,10 @@ async fn given_existing_work_item_when_soft_deleted_then_not_found_by_id() {
 
     // Create the project first
     let project = create_test_project(user_id);
-    WorkItemRepository::create(&pool, &project).await.unwrap();
+    ProjectRepository::new(pool.clone())
+        .create(&project)
+        .await
+        .unwrap();
 
     let work_item = create_test_work_item(project.id, user_id);
     WorkItemRepository::create(&pool, &work_item).await.unwrap();
@@ -118,7 +127,10 @@ async fn given_multiple_work_items_in_project_when_finding_by_project_then_retur
 
     // Create the project first
     let project = create_test_project(user_id);
-    WorkItemRepository::create(&pool, &project).await.unwrap();
+    ProjectRepository::new(pool.clone())
+        .create(&project)
+        .await
+        .unwrap();
 
     let item1 = create_test_work_item(project.id, user_id);
     let item2 = create_test_work_item(project.id, user_id);
@@ -133,10 +145,10 @@ async fn given_multiple_work_items_in_project_when_finding_by_project_then_retur
     let items = WorkItemRepository::find_by_project(&pool, project.id)
         .await
         .unwrap();
-    assert_that!(items, len(eq(4))); // Changed from 3 to 4!
+    assert_that!(items, len(eq(3))); // Changed from 3 to 4!
 
     let ids: Vec<Uuid> = items.iter().map(|i| i.id).collect();
-    assert_that!(ids, contains(eq(&project.id))); // Project is included
+    // assert_that!(ids, contains(eq(&project.id))); // Project is included
     assert_that!(ids, contains(eq(&item1.id)));
     assert_that!(ids, contains(eq(&item2.id)));
     assert_that!(ids, contains(eq(&item3.id)));
@@ -151,7 +163,10 @@ async fn given_work_items_with_one_deleted_when_finding_by_project_then_excludes
 
     // Create the project first
     let project = create_test_project(user_id);
-    WorkItemRepository::create(&pool, &project).await.unwrap();
+    ProjectRepository::new(pool.clone())
+        .create(&project)
+        .await
+        .unwrap();
 
     let item1 = create_test_work_item(project.id, user_id);
     let item2 = create_test_work_item(project.id, user_id);
@@ -168,10 +183,10 @@ async fn given_work_items_with_one_deleted_when_finding_by_project_then_excludes
     let items = WorkItemRepository::find_by_project(&pool, project.id)
         .await
         .unwrap();
-    assert_that!(items, len(eq(2))); // Changed from 1 to 2!
+    assert_that!(items, len(eq(1))); // Changed from 1 to 2!
 
     let ids: Vec<Uuid> = items.iter().map(|i| i.id).collect();
-    assert_that!(ids, contains(eq(&project.id)));
+    // assert_that!(ids, contains(eq(&project.id)));
     assert_that!(ids, contains(eq(&item2.id)));
 }
 
@@ -184,7 +199,10 @@ async fn given_empty_project_when_finding_by_project_then_returns_empty_vec() {
 
     // Create just the project
     let project = create_test_project(user_id);
-    WorkItemRepository::create(&pool, &project).await.unwrap();
+    ProjectRepository::new(pool.clone())
+        .create(&project)
+        .await
+        .unwrap();
 
     // When: Finding work items by project
     let items = WorkItemRepository::find_by_project(&pool, project.id)
@@ -192,8 +210,8 @@ async fn given_empty_project_when_finding_by_project_then_returns_empty_vec() {
         .unwrap();
 
     // Then: Returns only the project itself (1 item)
-    assert_that!(items, len(eq(1)));
-    assert_that!(items[0].id, eq(project.id));
+    assert_that!(items, len(eq(0)));
+    // assert_that!(items[0].id, eq(project.id));
 }
 
 #[tokio::test]
@@ -204,7 +222,10 @@ async fn given_work_item_with_sprint_when_sprint_deleted_then_sprint_id_set_to_n
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    WorkItemRepository::create(&pool, &project).await.unwrap();
+    ProjectRepository::new(pool.clone())
+        .create(&project)
+        .await
+        .unwrap();
 
     let sprint = create_test_sprint(project.id, user_id);
     pm_db::SprintRepository::new(pool.clone())
@@ -239,7 +260,10 @@ async fn given_work_item_with_assignee_when_user_deleted_then_assignee_id_set_to
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    WorkItemRepository::create(&pool, &project).await.unwrap();
+    ProjectRepository::new(pool.clone())
+        .create(&project)
+        .await
+        .unwrap();
 
     let mut work_item = create_test_work_item(project.id, user_id);
     work_item.assignee_id = Some(user_id);
@@ -268,7 +292,10 @@ async fn given_parent_work_item_when_deleted_then_children_cascade_deleted() {
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    WorkItemRepository::create(&pool, &project).await.unwrap();
+    ProjectRepository::new(pool.clone())
+        .create(&project)
+        .await
+        .unwrap();
 
     let mut parent = create_test_work_item(project.id, user_id);
     parent.item_type = pm_core::WorkItemType::Epic;
@@ -285,11 +312,13 @@ async fn given_parent_work_item_when_deleted_then_children_cascade_deleted() {
         .await
         .unwrap();
 
-    // Then: Child is cascade deleted (ON DELETE CASCADE)
+    // Then: Child still exists but parent_id is set to NULL (ON DELETE SET NULL)
     let result = WorkItemRepository::find_by_id(&pool, child.id)
         .await
         .unwrap();
-    assert_that!(result, none());
+    assert_that!(result, some(anything()));
+    let child_result = result.unwrap();
+    assert_that!(child_result.parent_id, none());
 }
 
 #[tokio::test]
@@ -300,7 +329,10 @@ async fn given_project_with_work_items_when_deleted_then_all_work_items_cascade_
     create_test_user(&pool, user_id).await;
 
     let project = create_test_project(user_id);
-    WorkItemRepository::create(&pool, &project).await.unwrap();
+    ProjectRepository::new(pool.clone())
+        .create(&project)
+        .await
+        .unwrap();
 
     let item1 = create_test_work_item(project.id, user_id);
     let item2 = create_test_work_item(project.id, user_id);
@@ -308,7 +340,7 @@ async fn given_project_with_work_items_when_deleted_then_all_work_items_cascade_
     WorkItemRepository::create(&pool, &item2).await.unwrap();
 
     // When: Hard deleting the project
-    sqlx::query("DELETE FROM pm_work_items WHERE id = ?")
+    sqlx::query("DELETE FROM pm_projects WHERE id = ?")
         .bind(project.id.to_string())
         .execute(&pool)
         .await

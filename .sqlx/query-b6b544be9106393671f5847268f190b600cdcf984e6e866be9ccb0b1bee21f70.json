@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                UPDATE pm_projects\n                SET title = ?, description = ?, key = ?, status = ?,\n                    version = ?, updated_at = ?, updated_by = ?\n                WHERE id = ? AND deleted_at IS NULL\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 8
+    },
+    "nullable": []
+  },
+  "hash": "b6b544be9106393671f5847268f190b600cdcf984e6e866be9ccb0b1bee21f70"
+}

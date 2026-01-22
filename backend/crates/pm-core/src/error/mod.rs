@@ -34,6 +34,12 @@ pub enum CoreError {
         source: uuid::Error,
         location: ErrorLocation,
     },
+
+    #[error("Invalid project status: {value} {location}")]
+    InvalidProjectStatus {
+        value: String,
+        location: ErrorLocation,
+    },
 }
 
 pub type Result<T> = StdResult<T, CoreError>;

@@ -1,17 +1,24 @@
 pub mod error;
-pub mod models;
+mod models;
+
+#[cfg(test)]
+mod tests;
 
 pub use error::{CoreError, Result};
-pub use models::activity_log::ActivityLog;
-pub use models::comment::Comment;
-pub use models::dependency::Dependency;
-pub use models::dependency_type::DependencyType;
-pub use models::llm_content::LlmContext;
-pub use models::llm_content_type::LlmContextType;
-pub use models::project_member::{Permission, ProjectMember};
-pub use models::sprint::Sprint;
-pub use models::sprint_status::SprintStatus;
-pub use models::swim_lane::SwimLane;
-pub use models::time_entry::TimeEntry;
-pub use models::work_item::WorkItem;
-pub use models::work_item_type::WorkItemType;
+pub use models::{
+    activity_log::ActivityLog,
+    comment::Comment,
+    dependency::Dependency,
+    dependency_type::DependencyType,
+    llm_content::LlmContext,
+    llm_content_type::LlmContextType,
+    project::Project,
+    project_member::{Permission, ProjectMember},
+    project_status::ProjectStatus,
+    sprint::Sprint,
+    sprint_status::SprintStatus,
+    swim_lane::SwimLane,
+    time_entry::TimeEntry,
+    work_item::WorkItem,
+    work_item_type::WorkItemType,
+};

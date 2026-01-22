@@ -2,30 +2,24 @@
 
 use chrono::Utc;
 use pm_core::{
-    ActivityLog, Comment, Dependency, DependencyType, Sprint, SprintStatus, SwimLane, TimeEntry,
-    WorkItem, WorkItemType,
+    ActivityLog, Comment, Dependency, DependencyType, Project, ProjectStatus, Sprint, SprintStatus,
+    SwimLane, TimeEntry, WorkItem, WorkItemType,
 };
 use uuid::Uuid;
 
-/// Creates a test Project (which is a WorkItem with type Project)
-pub fn create_test_project(user_id: Uuid) -> WorkItem {
+/// Creates a test Project
+pub fn create_test_project(user_id: Uuid) -> Project {
     let project_id = Uuid::new_v4();
-    WorkItem {
+    let now = Utc::now();
+    Project {
         id: project_id,
-        item_type: WorkItemType::Project,
-        parent_id: None,
-        project_id, // Self-referential for projects
-        position: 0,
         title: "Test Project".to_string(),
         description: Some("Test project description".to_string()),
-        status: "active".to_string(),
-        priority: "medium".to_string(),
-        assignee_id: None,
-        story_points: None,
-        sprint_id: None,
-        version: 0,
-        created_at: Utc::now(),
-        updated_at: Utc::now(),
+        key: "TESTPROJ".to_string(),
+        status: ProjectStatus::Active,
+        version: 1,
+        created_at: now,
+        updated_at: now,
         created_by: user_id,
         updated_by: user_id,
         deleted_at: None,
