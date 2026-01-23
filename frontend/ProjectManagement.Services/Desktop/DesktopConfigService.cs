@@ -1,112 +1,142 @@
-  using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 
-  namespace ProjectManagement.Services.Desktop;
+namespace ProjectManagement.Services.Desktop;
 
-  public sealed class DesktopConfigService : IDesktopConfigService, IAsyncDisposable
-  {
-      private readonly TauriService _tauriService;
-      private readonly ILogger<DesktopConfigService> _logger;
-      private string? _serverStateSubscriptionId;
-      private TaskCompletionSource<bool>? _serverReadyTcs;
+public sealed class DesktopConfigService : IDesktopConfigService, IAsyncDisposable
+{
+    private readonly ITauriService _tauriService;
+    private readonly ILogger<DesktopConfigService> _logger;
+    private string? _serverStateSubscriptionId;
+    private TaskCompletionSource<bool>? _serverReadyTcs;
 
-      // Server state constants
-      private const string ServerStateRunning = "running";
-      private const string ServerStateFailed = "failed";
+    // Server state constants
+    private const string ServerStateRunning = "running";
+    private const string ServerStateFailed = "failed";
 
-      public DesktopConfigService(
-          TauriService tauriService,
-          ILogger<DesktopConfigService> logger)
-      {
-          _tauriService = tauriService;
-          _logger = logger;
-      }
+    public DesktopConfigService(
+        ITauriService tauriService,
+        ILogger<DesktopConfigService> logger)
+    {
+        _tauriService = tauriService;
+        _logger = logger;
+    }
 
-      public async Task<bool> IsDesktopModeAsync()
-      {
-          return await _tauriService.IsDesktopAsync();
-      }
+    public async Task<bool> IsDesktopModeAsync()
+    {
+        return await _tauriService.IsDesktopAsync();
+    }
 
-      public async Task<string> GetWebSocketUrlAsync(CancellationToken ct = default)
-      {
-          return await _tauriService.GetWebSocketUrlAsync(ct);
-      }
+    public async Task<string> GetWebSocketUrlAsync(CancellationToken ct = default)
+    {
+        return await _tauriService.GetWebSocketUrlAsync(ct);
+    }
 
-      public async Task<string> WaitForServerAsync(TimeSpan timeout, CancellationToken ct = default)
-      {
-          using var timeoutCts = new CancellationTokenSource(timeout);
-          using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
+    public async Task<string> WaitForServerAsync(TimeSpan timeout, CancellationToken ct = default)
+    {
+        using var timeoutCts = new CancellationTokenSource(timeout);
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
 
-          _serverReadyTcs = new TaskCompletionSource<bool>(
-              TaskCreationOptions.RunContinuationsAsynchronously);
+        _serverReadyTcs = new TaskCompletionSource<bool>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
 
-          try
-          {
-              // Check current status first
-              var status = await _tauriService.GetServerStatusAsync(linkedCts.Token);
-              if (status.State == ServerStateRunning && status.IsHealthy)
-              {
-                  _logger.LogInformation("Server already running on port {Port}", status.Port);
-                  return status.WebsocketUrl ?? throw new InvalidOperationException("Server running but WebSocket URL is null");
-              }
+        try
+        {
+            // STEP 1: Subscribe to events FIRST (before any status check)
+            // This ensures we don't miss the server-ready event
+            _serverStateSubscriptionId = await _tauriService.SubscribeToServerStateAsync(
+                OnServerStateChangedAsync,
+                linkedCts.Token);
 
-              // Subscribe to state changes
-              _serverStateSubscriptionId = await _tauriService.SubscribeToServerStateAsync(
-                  OnServerStateChangedAsync,
-                  linkedCts.Token);
+            _logger.LogDebug("Subscribed to server state events");
 
-              // Wait for server ready
-              using (linkedCts.Token.Register(() =>
-              {
-                  if (timeoutCts.IsCancellationRequested)
-                      _serverReadyTcs.TrySetException(new TimeoutException("Server startup timed out"));
-                  else
-                      _serverReadyTcs.TrySetCanceled(ct);
-              }))
-              {
-                  await _serverReadyTcs.Task;
+            // STEP 2: Send "I'm ready" ping - get current status
+            // This eliminates the race condition: we're already subscribed,
+            // so if server starts between now and the response, we'll get the event
+            var status = await _tauriService.NotifyReadyAsync(linkedCts.Token);
+            _logger.LogDebug(
+                "Received initial status: State={State}, Port={Port}, Pid={Pid}",
+                status.State, status.Port, status.Pid);
 
-                  // Get the final URL after server is ready
-                  var finalStatus = await _tauriService.GetServerStatusAsync(linkedCts.Token);
-                  return finalStatus.WebsocketUrl ?? throw new InvalidOperationException("Server ready but WebSocket URL is null");
-              }
-          }
-          finally
-          {
-              // Cleanup subscription
-              if (_serverStateSubscriptionId != null)
-              {
-                  await _tauriService.UnsubscribeAsync(_serverStateSubscriptionId);
-                  _serverStateSubscriptionId = null;
-              }
-          }
-      }
+            // STEP 3: Check if server is already running
+            if (status.State == ServerStateRunning && status.IsHealthy && status.WebsocketUrl != null)
+            {
+                _logger.LogInformation(
+                    "Server already running on port {Port} (pid={Pid})",
+                    status.Port, status.Pid);
+                return status.WebsocketUrl;
+            }
 
-      private Task OnServerStateChangedAsync(ServerStateEvent evt)
-      {
-          _logger.LogDebug("Server state changed: {State}", evt.State);
+            // STEP 4: Check for error state
+            if (status.State == ServerStateFailed)
+            {
+                throw new InvalidOperationException(
+                    status.Error ?? "Server failed to start");
+            }
 
-          switch (evt.State)
-          {
-              case ServerStateRunning:
-                  _serverReadyTcs?.TrySetResult(true);
-                  break;
+            // STEP 5: Wait for server-ready event
+            _logger.LogDebug("Server not ready yet (state={State}), waiting for event...", status.State);
 
-              case ServerStateFailed:
-                  var error = new Exception(evt.Error ?? "Server failed to start");
-                  _serverReadyTcs?.TrySetException(error);
-                  break;
-          }
+            using (linkedCts.Token.Register(() =>
+                   {
+                       if (timeoutCts.IsCancellationRequested)
+                           _serverReadyTcs.TrySetException(new TimeoutException("Server startup timed out"));
+                       else
+                           _serverReadyTcs.TrySetCanceled(ct);
+                   }))
+            {
+                await _serverReadyTcs.Task;
 
-          return Task.CompletedTask;
-      }
+                // Get the WebSocket URL from final status
+                var finalStatus = await _tauriService.GetServerStatusAsync(linkedCts.Token);
 
-      public async ValueTask DisposeAsync()
-      {
-          if (_serverStateSubscriptionId != null)
-          {
-              await _tauriService.UnsubscribeAsync(_serverStateSubscriptionId);
-          }
+                if (finalStatus.WebsocketUrl == null)
+                {
+                    throw new InvalidOperationException("Server ready but WebSocket URL is null");
+                }
 
-          await _tauriService.DisposeAsync();
-      }
-  }
+                _logger.LogInformation(
+                    "Server ready on port {Port} (pid={Pid})",
+                    finalStatus.Port, finalStatus.Pid);
+                return finalStatus.WebsocketUrl;
+            }
+        }
+        finally
+        {
+            // Cleanup subscription
+            if (_serverStateSubscriptionId != null)
+            {
+                await _tauriService.UnsubscribeAsync(_serverStateSubscriptionId);
+                _serverStateSubscriptionId = null;
+            }
+        }
+    }
+
+    private Task OnServerStateChangedAsync(ServerStateEvent evt)
+    {
+        _logger.LogDebug("Server state changed: {State}", evt.State);
+
+        switch (evt.State)
+        {
+            case ServerStateRunning:
+                _serverReadyTcs?.TrySetResult(true);
+                break;
+
+            case ServerStateFailed:
+                var error = new Exception(evt.Error ?? "Server failed to start");
+                _serverReadyTcs?.TrySetException(error);
+                break;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_serverStateSubscriptionId != null)
+        {
+            await _tauriService.UnsubscribeAsync(_serverStateSubscriptionId);
+        }
+
+        await _tauriService.DisposeAsync();
+    }
+}

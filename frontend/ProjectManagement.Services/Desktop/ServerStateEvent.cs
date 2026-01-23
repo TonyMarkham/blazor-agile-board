@@ -12,4 +12,5 @@ public sealed record ServerStateEvent
     public HealthInfo? Health { get; init; }
     public string? RecoveryHint { get; init; }
     public DateTime Timestamp { get; init; } = DateTime.UtcNow;
+    public uint? Pid { get; init; }
 }

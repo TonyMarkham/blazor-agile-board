@@ -19,6 +19,11 @@ use tracing::{error, info};
 const PM_SERVER_CONFIG_DIRECTORY_NAME: &str = ".pm";
 const PM_SERVER_CONFIG_FILENAME: &str = "config.toml";
 
+// Tauri event names (must match frontend TauriService constants)
+const EVENT_SERVER_READY: &str = "server-ready";
+const EVENT_SERVER_ERROR: &str = "server-error";
+const EVENT_SERVER_STATE_CHANGED: &str = "server-state-changed";
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -77,11 +82,28 @@ pub fn run() {
                 match manager_clone.start(&app_handle).await {
                     Ok(()) => {
                         info!("Server started successfully");
-                        app_handle.emit("server-ready", ()).ok();
+
+                        // Build full status for frontend
+                        let state = manager_clone.state().await;
+                        let port = manager_clone.port().await;
+                        let ws_url = manager_clone.websocket_url().await;
+                        let health = manager_clone.health().await;
+                        let pid = manager_clone.server_pid().await;
+
+                        let status = commands::build_server_status(
+                            &state,
+                            port,
+                            ws_url,
+                            health.as_ref(),
+                            pid,
+                        );
+
+                        info!("Emitting {EVENT_SERVER_READY} event: port={port:?}, pid={pid:?}");
+                        app_handle.emit(EVENT_SERVER_READY, status).ok();
                     }
                     Err(e) => {
-                        error!("Failed to start server: {}", e);
-                        app_handle.emit("server-error", e.to_string()).ok();
+                        error!("Failed to start server: {e}");
+                        app_handle.emit(EVENT_SERVER_ERROR, e.to_string()).ok();
                     }
                 }
             });
@@ -104,20 +126,25 @@ pub fn run() {
 
                     // Emit to frontend - extract data from state to avoid lock contention
                     let port = match &state {
-                        server::ServerState::Running { port } => Some(*port),
+                        ServerState::Running { port } => Some(*port),
                         _ => None,
                     };
                     let ws_url = port.map(|p| format!("ws://127.0.0.1:{}/ws", p));
 
+                    // Get PID for state events
+                    let pid = manager_for_events.server_pid().await;
+
                     let status = commands::build_server_status(
                         &state, port, ws_url,
                         None, // Health check happens separately, not in state events
+                        pid,
                     );
 
-                    let json = serde_json::to_string(&status)
-                        .unwrap_or_else(|e| format!("{{\"error\": \"{}\"}}", e));
-                    info!("Emitting server-state-changed: {}", json);
-                    app_handle.emit("server-state-changed", status).ok();
+                    info!(
+                        "Emitting {}: state={}",
+                        EVENT_SERVER_STATE_CHANGED, status.state
+                    );
+                    app_handle.emit(EVENT_SERVER_STATE_CHANGED, status).ok();
                 }
             });
 
@@ -133,6 +160,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::get_server_status,
             commands::get_websocket_url,
+            commands::wasm_ready,
             commands::load_user_identity,
             commands::save_user_identity,
             commands::backup_corrupted_user_identity,

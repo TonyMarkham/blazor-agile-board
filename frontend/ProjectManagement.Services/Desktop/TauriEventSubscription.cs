@@ -7,6 +7,9 @@ namespace ProjectManagement.Services.Desktop;
 /// </summary>
 internal sealed class TauriEventSubscription : IAsyncDisposable
 {
+    // JS function name - must match desktop-detection.js
+    private const string JsUnlistenTauri = "unlistenTauri";
+
     private readonly string _subscriptionId;
     private readonly IJSRuntime _js;
     private readonly Action _onDispose;
@@ -30,15 +33,15 @@ internal sealed class TauriEventSubscription : IAsyncDisposable
         if (_disposed) return;
         _disposed = true;
 
-        // Properly await JS cleanup
+        // Use named function instead of eval to avoid TypeLoadException
         try
         {
-            await _js.InvokeVoidAsync(
-                "eval",
-                $"window.__PM_UNLISTENERS__?.['{_subscriptionId}']?.()"
-            );
+            await _js.InvokeAsync<bool>(JsUnlistenTauri, _subscriptionId);
         }
-        catch { /* Best effort cleanup */ }
+        catch
+        {
+            // Best effort cleanup - subscription may already be gone
+        }
 
         _dotNetRef.Dispose();
         _onDispose();

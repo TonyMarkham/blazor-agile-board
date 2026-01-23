@@ -9,7 +9,7 @@
   /// Replaces desktop-interop.js with type-safe C# calls.
   /// Implements proper resource management and graceful degradation.
   /// </summary>
-  public sealed class TauriService : IAsyncDisposable
+  public sealed class TauriService : ITauriService
   {
       private readonly IJSRuntime _js;
       private readonly ILogger<TauriService> _logger;
@@ -20,21 +20,21 @@
 
       // Tauri API paths
       private const string TauriInvokePath = "__TAURI__.core.invoke";
-      private const string TauriDetectionScript = "typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined'";
 
-      // Tauri command names
+      // Tauri command names (must match Rust command function names)
       private const string CommandGetServerStatus = "get_server_status";
       private const string CommandGetWebSocketUrl = "get_websocket_url";
+      private const string CommandWasmReady = "wasm_ready";
       private const string CommandRestartServer = "restart_server";
       private const string CommandExportDiagnostics = "export_diagnostics";
 
-      // Event names
+      // Event names (must match Rust event names in lib.rs)
       private const string EventServerStateChanged = "server-state-changed";
 
-      // JS interop
-      private const string JsUnlistenersGlobal = "__PM_UNLISTENERS__";
-      private const string AssemblyName = "ProjectManagement.Services";
-      private const string HandleEventMethod = "HandleTauriEvent";
+      // JS interop function names (must match desktop-detection.js)
+      private const string JsCheckTauriAvailable = "checkTauriAvailable";
+      private const string JsSetupTauriListener = "setupTauriListener";
+      private const string JsUnlistenTauri = "unlistenTauri";
 
       public TauriService(IJSRuntime js, ILogger<TauriService> logger)
       {
@@ -57,10 +57,8 @@
               if (_isDesktopCached.HasValue)
                   return _isDesktopCached.Value;
 
-              var exists = await _js.InvokeAsync<bool>(
-                  "eval",
-                  TauriDetectionScript
-              );
+              // Use named function instead of eval to avoid TypeLoadException
+              var exists = await _js.InvokeAsync<bool>(JsCheckTauriAvailable);
 
               _isDesktopCached = exists;
               _logger.LogInformation("Desktop mode detected: {IsDesktop}", exists);
@@ -99,6 +97,30 @@
 
           return await InvokeTauriAsync<string>(CommandGetWebSocketUrl, ct);
       }
+      
+      /// <summary>
+      /// Notifies Tauri that WASM is ready and requests current server status.
+      /// This is the second part of the handshake - called AFTER subscribing to events.
+      /// </summary>
+      /// <remarks>
+      /// The handshake protocol:
+      /// 1. WASM subscribes to server-state-changed events
+      /// 2. WASM calls NotifyReadyAsync (this method)
+      /// 3. Tauri responds with current ServerStatus
+      /// 4. If server already running, WASM has the port
+      /// 5. If server still starting, WASM waits for event
+      ///
+      /// This eliminates the race condition where the server-ready event
+      /// fires before WASM subscribes.
+      /// </remarks>
+      public async Task<ServerStatus> NotifyReadyAsync(CancellationToken ct = default)
+      {
+          ThrowIfDisposed();
+          await EnsureDesktopAsync();
+
+          _logger.LogDebug("Sending wasm_ready notification to Tauri");
+          return await InvokeTauriAsync<ServerStatus>(CommandWasmReady, ct);
+      }
 
       /// <summary>
       /// Subscribes to server state change events.
@@ -118,7 +140,7 @@
           try
           {
               await _js.InvokeVoidAsync(
-                  "setupTauriListener",
+                  JsSetupTauriListener,
                   ct,
                   dotNetRef,
                   subscriptionId,

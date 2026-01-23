@@ -42,4 +42,10 @@ public sealed record ServerStatus
     /// </summary>
     [JsonPropertyName("port")]
     public int? Port { get; init; }
+    
+    /// <summary>
+    /// Server process ID (for debugging orphan processes).
+    /// </summary>
+    [JsonPropertyName("pid")]
+    public uint? Pid { get; init; }
 }

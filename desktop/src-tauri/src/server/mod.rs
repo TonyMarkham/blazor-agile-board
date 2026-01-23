@@ -1,17 +1,21 @@
 mod config;
 mod error;
 mod health;
+mod health_info;
 mod lifecycle;
 mod lock;
 mod port;
 mod server_command;
 mod server_state;
+mod server_status;
 
 pub use config::ServerConfig;
 pub use error::{Result as ServerResult, ServerError};
 pub use health::{HealthChecker, HealthStatus};
+pub use health_info::HealthInfo;
 pub use lifecycle::ServerManager;
 pub use lock::LockFile;
 pub use port::PortManager;
 pub use server_command::ServerCommand;
 pub use server_state::ServerState;
+pub use server_status::ServerStatus;

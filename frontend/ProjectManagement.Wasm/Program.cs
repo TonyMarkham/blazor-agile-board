@@ -1,160 +1,85 @@
-  using Microsoft.AspNetCore.Components.Web;
-  using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-  using ProjectManagement.Core.Interfaces;
-  using ProjectManagement.Core.Models;
-  using ProjectManagement.Core.Validation;
-  using ProjectManagement.Core.ViewModels;
-  using ProjectManagement.Services.Desktop;
-  using ProjectManagement.Services.Logging;
-  using ProjectManagement.Services.Resilience;
-  using ProjectManagement.Services.State;
-  using ProjectManagement.Services.WebSocket;
-  using ProjectManagement.Wasm;
-  using Radzen;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using ProjectManagement.Core.Interfaces;
+using ProjectManagement.Core.Models;
+using ProjectManagement.Core.Validation;
+using ProjectManagement.Core.ViewModels;
+using ProjectManagement.Services.Desktop;
+using ProjectManagement.Services.Logging;
+using ProjectManagement.Services.Resilience;
+using ProjectManagement.Services.State;
+using ProjectManagement.Services.WebSocket;
+using ProjectManagement.Wasm;
+using Radzen;
 
-  var builder = WebAssemblyHostBuilder.CreateDefault(args);
-  builder.Services.AddScoped<TauriService>();
-  builder.Services.AddScoped<IDesktopConfigService, DesktopConfigService>();
-  builder.Logging.SetMinimumLevel(LogLevel.Information);
+var builder = WebAssemblyHostBuilder.CreateDefault(args);
+builder.RootComponents.Add<App>("#app");
+builder.RootComponents.Add<HeadOutlet>("head::after");
 
-  // === Phase 1: Detect Desktop Mode ===
+// === Configuration ===
+// WebSocket options - URL will be set dynamically in desktop mode by App.razor
+builder.Services.Configure<WebSocketOptions>(options =>
+{
+    var config = builder.Configuration.GetSection("WebSocket");
+    
+    // Default URL for web mode (desktop mode overrides this dynamically)
+    options.ServerUrl = config["ServerUrl"] ?? "ws://localhost:8000/ws";
+    options.HeartbeatInterval = config.GetValue<TimeSpan?>("HeartbeatInterval") ?? TimeSpan.FromSeconds(30);
+    options.HeartbeatTimeout = config.GetValue<TimeSpan?>("HeartbeatTimeout") ?? TimeSpan.FromSeconds(60);
+    options.RequestTimeout = config.GetValue<TimeSpan?>("RequestTimeout") ?? TimeSpan.FromSeconds(30);
+    options.ReceiveBufferSize = config.GetValue<int?>("ReceiveBufferSize") ?? 8192;
+});
 
-  // Register minimal services for detection
-  builder.Services.AddScoped<IDesktopConfigService, DesktopConfigService>();
-  builder.Logging.SetMinimumLevel(LogLevel.Information);
+builder.Services.Configure<CircuitBreakerOptions>(builder.Configuration.GetSection("CircuitBreaker"));
+builder.Services.Configure<RetryPolicyOptions>(builder.Configuration.GetSection("Retry"));
+builder.Services.Configure<ReconnectionOptions>(builder.Configuration.GetSection("Reconnection"));
 
-  // Build temporary host for desktop detection
-  var tempHost = builder.Build();
-  var desktopConfigService = tempHost.Services.GetRequiredService<IDesktopConfigService>();
-  var logger = tempHost.Services.GetRequiredService<ILogger<Program>>();
+// === Logging ===
+builder.Services.AddLogging(logging =>
+{
+    logging.SetMinimumLevel(LogLevel.Debug);
+    logging.AddProvider(new CorrelationIdLoggerProvider());
+});
 
-  var isDesktopMode = await desktopConfigService.IsDesktopModeAsync();
-  string? serverUrl = null;
+// === Desktop Services ===
+builder.Services.AddScoped<TauriService>();
+builder.Services.AddScoped<ITauriService>(sp => sp.GetRequiredService<TauriService>());
+builder.Services.AddScoped<IDesktopConfigService, DesktopConfigService>();
+builder.Services.AddScoped<UserIdentityService>();
 
-  if (isDesktopMode)
-  {
-      logger.LogInformation("🖥️  Desktop mode detected - waiting for embedded server...");
+// === Validators ===
+builder.Services.AddSingleton<IValidator<CreateWorkItemRequest>, CreateWorkItemRequestValidator>();
+builder.Services.AddSingleton<IValidator<UpdateWorkItemRequest>, UpdateWorkItemRequestValidator>();
 
-      try
-      {
-          // Wait for embedded server to be ready (30 second timeout)
-          serverUrl = await desktopConfigService.WaitForServerAsync(
-              timeout: TimeSpan.FromSeconds(30));
+// === Resilience ===
+builder.Services.AddSingleton<CircuitBreaker>();
+builder.Services.AddSingleton<RetryPolicy>();
+builder.Services.AddSingleton<ReconnectionService>();
 
-          logger.LogInformation("✅ Embedded server ready at: {ServerUrl}", serverUrl);
-      }
-      catch (Exception ex)
-      {
-          logger.LogError(ex, "❌ Failed to connect to embedded server");
-          throw new InvalidOperationException(
-              "Unable to connect to embedded server. Please restart the application.", ex);
-      }
+// === WebSocket ===
+builder.Services.AddSingleton<WebSocketClient>();
+builder.Services.AddSingleton<IWebSocketClient>(sp =>
+{
+    var inner = sp.GetRequiredService<WebSocketClient>();
+    var circuitBreaker = sp.GetRequiredService<CircuitBreaker>();
+    var retryPolicy = sp.GetRequiredService<RetryPolicy>();
+    var wsLogger = sp.GetRequiredService<ILogger<ResilientWebSocketClient>>();
+    
+    return new ResilientWebSocketClient(inner, circuitBreaker, retryPolicy, wsLogger);
+});
 
-      await tempHost.DisposeAsync();
-  }
-  else
-  {
-      logger.LogInformation("🌐 Web mode detected - using config from appsettings.json");
-      await tempHost.DisposeAsync();
-  }
+// === State Management ===
+builder.Services.AddSingleton<IWorkItemStore, WorkItemStore>();
+builder.Services.AddSingleton<ISprintStore, SprintStore>();
+builder.Services.AddSingleton<IProjectStore, ProjectStore>();
+builder.Services.AddSingleton<AppState>();
 
-  // === Phase 2: Build Final Host with Correct Configuration ===
+// === ViewModels ===
+builder.Services.AddScoped<ViewModelFactory>();
 
-  builder = WebAssemblyHostBuilder.CreateDefault(args);
-  builder.RootComponents.Add<App>("#app");
-  builder.RootComponents.Add<HeadOutlet>("head::after");
+// === Radzen ===
+builder.Services.AddRadzenComponents();
 
-  // Configuration
-  builder.Services.Configure<WebSocketOptions>(options =>
-  {
-      var config = builder.Configuration.GetSection("WebSocket");
-
-      if (isDesktopMode && !string.IsNullOrEmpty(serverUrl))
-      {
-          // Desktop mode: use discovered server URL
-          options.ServerUrl = serverUrl;
-          options.HeartbeatInterval = TimeSpan.FromSeconds(15); // Shorter for local server
-          options.HeartbeatTimeout = TimeSpan.FromSeconds(30);
-          logger.LogInformation("Using desktop server URL: {Url}", serverUrl);
-      }
-      else
-      {
-          // Web mode: use config from appsettings.json
-          options.ServerUrl = config["ServerUrl"] ?? "ws://localhost:8000/ws";
-          options.HeartbeatInterval = config.GetValue<TimeSpan>("HeartbeatInterval");
-          options.HeartbeatTimeout = config.GetValue<TimeSpan>("HeartbeatTimeout");
-          options.RequestTimeout = config.GetValue<TimeSpan>("RequestTimeout");
-          options.ReceiveBufferSize = config.GetValue<int>("ReceiveBufferSize");
-      }
-  });
-
-  builder.Services.Configure<CircuitBreakerOptions>(
-      builder.Configuration.GetSection("CircuitBreaker"));
-  builder.Services.Configure<RetryPolicyOptions>(
-      builder.Configuration.GetSection("Retry"));
-  builder.Services.Configure<ReconnectionOptions>(
-      builder.Configuration.GetSection("Reconnection"));
-
-  // Logging
-  builder.Services.AddLogging(logging =>
-  {
-      logging.SetMinimumLevel(LogLevel.Debug);
-      logging.AddProvider(new CorrelationIdLoggerProvider());
-  });
-
-  // Desktop Config Service
-  builder.Services.AddScoped<TauriService>();
-  builder.Services.AddScoped<IDesktopConfigService, DesktopConfigService>();
-  builder.Services.AddScoped<UserIdentityService>();
-
-  // Validators (required by WebSocketClient)
-  builder.Services.AddSingleton<IValidator<CreateWorkItemRequest>, CreateWorkItemRequestValidator>();
-  builder.Services.AddSingleton<IValidator<UpdateWorkItemRequest>, UpdateWorkItemRequestValidator>();
-
-  // Resilience
-  builder.Services.AddSingleton<CircuitBreaker>();
-  builder.Services.AddSingleton<RetryPolicy>();
-  builder.Services.AddSingleton<ReconnectionService>();
-
-  // WebSocket
-  builder.Services.AddSingleton<WebSocketClient>();
-  builder.Services.AddSingleton<IWebSocketClient>(sp =>
-  {
-      var inner = sp.GetRequiredService<WebSocketClient>();
-      var circuitBreaker = sp.GetRequiredService<CircuitBreaker>();
-      var retryPolicy = sp.GetRequiredService<RetryPolicy>();
-      var wsLogger = sp.GetRequiredService<ILogger<ResilientWebSocketClient>>();
-      return new ResilientWebSocketClient(inner, circuitBreaker, retryPolicy, wsLogger);
-  });
-
-  // State Management
-  builder.Services.AddSingleton<IWorkItemStore, WorkItemStore>();
-  builder.Services.AddSingleton<ISprintStore, SprintStore>();
-  builder.Services.AddSingleton<IProjectStore, ProjectStore>();
-  builder.Services.AddSingleton<AppState>();
-
-  // ViewModels
-  builder.Services.AddScoped<ViewModelFactory>();
-
-  // Radzen
-  builder.Services.AddRadzenComponents();
-
-  var app = builder.Build();
-
-  // === Initialize Application State ===
-
-  var appState = app.Services.GetRequiredService<AppState>();
-  var initLogger = app.Services.GetRequiredService<ILogger<Program>>();
-
-  try
-  {
-      await appState.InitializeAsync();
-      logger.LogInformation("✅ Application state initialized");
-  }
-  catch (Exception ex)
-  {
-      initLogger.LogError(ex, "❌ Failed to initialize application state");
-      // App will show connection error UI
-  }
-
-  await app.RunAsync();
+// === Run ===
+var app = builder.Build();
+await app.RunAsync();

@@ -3,73 +3,13 @@
 use crate::identity::{
     backup_corrupted, load, load_result::LoadResult, save, user_identity::UserIdentity,
 };
-use crate::server::{HealthStatus, ServerManager, ServerState};
+use crate::server::{HealthStatus, ServerManager, ServerState, ServerStatus};
 
 use std::sync::Arc;
 
 use log::error;
 use serde::Serialize;
 use tauri::{Manager, State};
-
-/// Server status returned to frontend.
-#[derive(Debug, Clone, Serialize)]
-pub struct ServerStatus {
-    pub state: String,
-    pub port: Option<u16>,
-    pub websocket_url: Option<String>,
-    pub health: Option<HealthInfo>,
-    pub error: Option<String>,
-    pub recovery_hint: Option<String>,
-    pub is_healthy: bool,
-}
-
-/// Health information for frontend display.
-#[derive(Debug, Clone, Serialize)]
-pub struct HealthInfo {
-    pub status: String,
-    pub latency_ms: Option<u64>,
-    pub version: Option<String>,
-}
-
-impl From<&HealthStatus> for HealthInfo {
-    fn from(status: &HealthStatus) -> Self {
-        match status {
-            HealthStatus::Healthy {
-                latency_ms,
-                version,
-            } => HealthInfo {
-                status: "healthy".into(),
-                latency_ms: Some(*latency_ms),
-                version: Some(version.clone()),
-            },
-            HealthStatus::Starting => HealthInfo {
-                status: "starting".into(),
-                latency_ms: None,
-                version: None,
-            },
-            HealthStatus::Unhealthy { last_error, .. } => HealthInfo {
-                status: format!("unhealthy: {}", last_error),
-                latency_ms: None,
-                version: None,
-            },
-            HealthStatus::Crashed { exit_code } => HealthInfo {
-                status: format!("crashed (code: {:?})", exit_code),
-                latency_ms: None,
-                version: None,
-            },
-            HealthStatus::ShuttingDown => HealthInfo {
-                status: "shutting_down".into(),
-                latency_ms: None,
-                version: None,
-            },
-            HealthStatus::Stopped => HealthInfo {
-                status: "stopped".into(),
-                latency_ms: None,
-                version: None,
-            },
-        }
-    }
-}
 
 /// Get current server status.
 ///
@@ -82,8 +22,15 @@ pub async fn get_server_status(
     let port = manager.port().await;
     let ws_url = manager.websocket_url().await;
     let health = manager.health().await;
+    let pid = manager.server_pid().await;
 
-    Ok(build_server_status(&state, port, ws_url, health.as_ref()))
+    Ok(build_server_status(
+        &state,
+        port,
+        ws_url,
+        health.as_ref(),
+        pid,
+    ))
 }
 
 /// Get WebSocket URL for frontend connection.
@@ -93,6 +40,34 @@ pub async fn get_websocket_url(manager: State<'_, Arc<ServerManager>>) -> Result
         .websocket_url()
         .await
         .ok_or_else(|| "Server not running".into())
+}
+
+/// Called by WASM after it subscribes to events.
+/// Returns current server status - enables race-free startup handshake.
+///
+/// The handshake protocol:
+/// 1. WASM subscribes to server-state-changed events
+/// 2. WASM calls wasm_ready (this command)
+/// 3. Tauri responds with current ServerStatus
+/// 4. If server already running, WASM has the port
+/// 5. If server still starting, WASM waits for event
+#[tauri::command]
+pub async fn wasm_ready(manager: State<'_, Arc<ServerManager>>) -> Result<ServerStatus, String> {
+    tracing::info!("WASM ready notification received");
+
+    let state = manager.state().await;
+    let port = manager.port().await;
+    let ws_url = manager.websocket_url().await;
+    let health = manager.health().await;
+    let pid = manager.server_pid().await;
+
+    Ok(build_server_status(
+        &state,
+        port,
+        ws_url,
+        health.as_ref(),
+        pid,
+    ))
 }
 
 /// Manually restart the server.
@@ -138,7 +113,13 @@ pub async fn export_diagnostics(
         .map_err(|e| e.to_string())?;
 
     // Add server status
-    let status = get_server_status(manager).await?;
+    let state = manager.state().await;
+    let port = manager.port().await;
+    let ws_url = manager.websocket_url().await;
+    let health = manager.health().await;
+    let pid = manager.server_pid().await;
+    let status = build_server_status(&state, port, ws_url, health.as_ref(), pid);
+
     let status_json = serde_json::to_string_pretty(&status).unwrap();
     zip.start_file("server_status.json", options)
         .map_err(|e| e.to_string())?;
@@ -245,6 +226,7 @@ pub fn build_server_status(
     port: Option<u16>,
     ws_url: Option<String>,
     health: Option<&HealthStatus>,
+    pid: Option<u32>,
 ) -> ServerStatus {
     let (state_str, error, recovery_hint) = match state {
         ServerState::Stopped => ("stopped".into(), None, None),
@@ -272,5 +254,6 @@ pub fn build_server_status(
         error,
         recovery_hint,
         is_healthy,
+        pid,
     }
 }

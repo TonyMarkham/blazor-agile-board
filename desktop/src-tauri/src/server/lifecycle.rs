@@ -451,6 +451,11 @@ impl ServerManager {
         }
     }
 
+    /// Get server process PID (if running).
+    pub async fn server_pid(&self) -> Option<u32> {
+        self.process.lock().await.as_ref().map(|child| child.pid())
+    }
+
     /// Stop the server gracefully.
     pub async fn stop(&self) -> ServerResult<()> {
         self.shutdown_requested.store(true, Ordering::SeqCst);
