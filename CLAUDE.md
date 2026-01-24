@@ -35,6 +35,48 @@ backend/
 └── pm-server/          # Main binary
 ```
 
+**CRITICAL: Cargo Workspace Architecture**
+
+This project uses a **Cargo workspace** with centralized dependency management:
+
+1. **All dependencies are defined ONCE in the root `Cargo.toml`**:
+   - External crates go in `[workspace.dependencies]` with version numbers
+   - Internal workspace crates also listed in `[workspace.dependencies]` with paths
+   - Example from root `Cargo.toml`:
+     ```toml
+     [workspace.dependencies]
+     axum = { version = "0.8.8", features = ["ws"] }
+     sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "sqlite", "uuid", "chrono"] }
+     pm-core = { path = "backend/crates/pm-core" }
+     pm-db = { path = "backend/crates/pm-db" }
+     ```
+
+2. **Member crates reference dependencies WITHOUT version numbers**:
+   - In `backend/crates/pm-db/Cargo.toml`:
+     ```toml
+     [dependencies]
+     sqlx = { workspace = true }
+     uuid = { workspace = true }
+     pm-core = { workspace = true }
+     ```
+   - Note: Uses `{ workspace = true }` syntax, NOT version numbers
+
+3. **NEVER add dependencies directly to member crate `Cargo.toml` files with version numbers**:
+   - ❌ WRONG: `sqlx = "0.8.6"` in `backend/crates/pm-db/Cargo.toml`
+   - ❌ WRONG: `pm-core = { path = "../pm-core" }` in a member crate
+   - ✅ CORRECT: Add to root `Cargo.toml` `[workspace.dependencies]`, then reference with `{ workspace = true }`
+
+4. **When adding a new dependency:**
+   - Step 1: Add it to root `Cargo.toml` under `[workspace.dependencies]` with version/features
+   - Step 2: Reference it in the member crate's `Cargo.toml` with `{ workspace = true }`
+   - Step 3: Never specify versions or paths in member crates
+
+5. **Benefits of this pattern**:
+   - All crates use identical dependency versions (no version conflicts)
+   - Single source of truth for all dependencies
+   - Easier to audit and upgrade dependencies across the entire workspace
+   - Enforces consistent feature flags across the workspace
+
 **Key Backend Concepts:**
 - `TenantConnectionManager`: Manages per-tenant SQLite connection pools with lazy loading
 - Repository pattern: Each entity (WorkItem, Sprint, Comment, etc.) has a dedicated repository in `pm-db/src/repositories/`
@@ -82,20 +124,193 @@ See `docs/database-schema.md` for complete schema with indexes and foreign key r
 
 ## Development Commands
 
-**Backend (Rust):**
-- No code exists yet. Backend will be created in Session 10.
-- Once created:
-  - Build: `cd backend && cargo build --workspace`
-  - Test: `cargo test --workspace`
-  - Run: `cargo run --bin pm-server`
-  - Migrations: Use SQLx CLI (`sqlx migrate run --database-url <tenant_db_url>`)
+**IMPORTANT: Use `just` for all build tasks.** All commands are defined in the `justfile` at the repository root.
 
-**Frontend (Blazor):**
-- No code exists yet. Frontend will be created in Session 30.
-- Once created:
-  - Build: `dotnet build frontend/ProjectManagement.sln`
-  - Test: `dotnet test`
-  - Run standalone: `dotnet run --project frontend/ProjectManagement.Wasm`
+Run `just help` to see all available commands.
+
+### Quick Start
+
+```bash
+# First time setup
+just restore          # Restore all dependencies (frontend + backend)
+just check            # Restore + build + test everything
+
+# Development workflow
+just dev              # Build and run Tauri desktop app
+just test             # Run all tests (backend + frontend)
+just clean            # Clean all build artifacts
+```
+
+### Frontend (Blazor/.NET)
+
+**Solution-level commands (work on all projects):**
+
+- **Restore packages**: `just restore-frontend` (always run first after pulling changes)
+- **Build all**: `just build-frontend` (Debug) or `just build-frontend-release` (Release)
+- **Test all**: `just test-frontend`
+- **Test verbose**: `just test-frontend-verbose` (detailed test output)
+- **Test coverage**: `just test-frontend-coverage` (outputs to `./coverage/`)
+- **Clean all**: `just clean-frontend`
+- **Full check**: `just check-frontend` (restore → build → test)
+
+**Individual project commands:**
+
+- **Build one project**: `just build-core`, `just build-services`, `just build-components`, `just build-wasm`
+  - Optional config parameter: `just build-core Release`
+- **Publish WASM**: `just publish-wasm` (Debug) or `just publish-wasm Release`
+- **Watch mode**: `just watch-core`, `just watch-services`, `just watch-components`, `just watch-wasm`
+  - Auto-rebuilds project on file changes
+
+**Test commands:**
+
+- **Run one test project**: `just test-core-only`, `just test-services-only`, `just test-components-only`
+- **Filter tests**: `just test-filter "Converters"` (matches namespace/class/method)
+- **List tests**: `just list-tests` (shows all test names without running)
+- **Watch tests**: `just watch-test-core`, `just watch-test-services`, `just watch-test-components`
+  - Auto-runs tests on file changes (TDD workflow)
+
+**Test Examples:**
+```bash
+# Run only validator tests
+just test-filter "Validation"
+
+# Run only property-based tests
+just test-filter "PropertyTests"
+
+# Run only a specific test class
+just test-filter "ProtoConverterTests"
+
+# TDD workflow - watch and auto-test on save
+just watch-test-core
+```
+
+**Test Project Structure:**
+- `ProjectManagement.Core.Tests`: Converters, validators, property-based tests (FsCheck)
+- `ProjectManagement.Services.Tests`: Service layer, mocking (Moq), resilience tests
+- `ProjectManagement.Components.Tests`: Blazor component tests (bUnit), ViewModels
+
+All tests use xUnit with FluentAssertions.
+
+### Backend (Rust)
+
+**Workspace-level commands (work on all packages):**
+
+- **Restore dependencies**: `just restore-backend` (fetch all cargo dependencies)
+- **Check**: `just check-backend` (fast compile check without codegen)
+- **Clippy**: `just clippy-backend` (lint with clippy, fails on warnings)
+- **Build all**: `just build-backend` (Debug) or `just build-backend-release` (Release)
+- **Test all**: `just test-backend` or `just test-backend-verbose` (with output)
+- **Clean all**: `just clean-backend`
+- **Full check**: `just check-backend-full` (check → clippy → test)
+
+**Individual package commands:**
+
+Packages: `server`, `core`, `db`, `auth`, `proto`, `ws`, `config`
+
+- **Check one package**: `just check-rust-<package>`
+  - Example: `just check-rust-db`
+- **Clippy one package**: `just clippy-rust-<package>`
+  - Example: `just clippy-rust-auth`
+- **Build one package**: `just build-rust-<package>` or `just build-rust-<package>-release`
+  - Example: `just build-rust-server`, `just build-rust-core-release`
+- **Test one package**: `just test-rust-<package>`
+  - Example: `just test-rust-ws`
+- **Watch one package**: `just watch-rust-<package>` (auto-check on changes)
+  - Example: `just watch-rust-db`
+- **Watch test**: `just watch-test-rust-<package>` (auto-test on changes)
+  - Example: `just watch-test-rust-core`
+
+**Common workflows:**
+
+```bash
+# Quick syntax check before committing
+just check-backend
+
+# Run clippy on the whole workspace
+just clippy-backend
+
+# TDD workflow - watch and auto-test on save
+just watch-test-rust-db
+
+# Work on one package with fast feedback
+just watch-rust-auth
+
+# Build and run the server
+just build-rust-server
+cargo run --bin pm-server  # after just setup-config
+```
+
+**Database migrations:**
+- Use SQLx CLI: `sqlx migrate run --database-url <tenant_db_url>`
+
+**Rust Package Structure:**
+- `pm-server`: Main binary, Axum HTTP server
+- `pm-core`: Domain models and business logic
+- `pm-db`: SQLx repositories and database layer
+- `pm-auth`: JWT validation and tenant extraction
+- `pm-proto`: Protobuf message definitions
+- `pm-ws`: WebSocket server implementation
+- `pm-config`: Configuration loading and validation
+
+### Combined Workflows
+
+- **Full check**: `just check` (restore + check + clippy + test everything)
+- **Quick check**: `just check-all` (fast compile check for all code)
+- **Lint**: `just lint` (run clippy on Rust code)
+- **Development build**: `just build-dev` (parallel build of backend + frontend)
+- **Production build**: `just build-release`
+- **Run Tauri desktop**: `just dev`
+- **Run all tests**: `just test` (backend + frontend)
+- **Clean everything**: `just clean`
+- **Restore all**: `just restore` (frontend NuGet + backend cargo)
+
+### IMPORTANT Build Notes
+
+**C# Frontend:**
+- The solution file is `frontend/ProjectManagement.slnx` (XML format, not `.sln`)
+- **Always run `just restore-frontend` before building after pulling changes**
+- Use `dotnet build` for compilation checks, `dotnet publish` for deployable output
+- The WASM project publishes to `desktop/frontend/` by default (configured in `.csproj`)
+- Protobuf files (`proto/messages.proto`) are compiled into `ProjectManagement.Core` automatically
+- All projects follow standard .NET conventions: `bin/`, `obj/`, Debug/Release configs
+- Test commands are prefixed with `test-cs-` to distinguish from Rust tests
+
+**Rust Backend:**
+- Workspace uses Cargo workspace with 7 packages (see Rust Package Structure above)
+- **Always run `just restore-backend` or `just restore` after pulling changes**
+- Use `cargo check` for fast syntax validation, `cargo build` for full compilation
+- Clippy is configured to fail on warnings (`-D warnings`)
+- All package names use `pm-*` prefix except the main `pm-server` binary
+- Test commands are prefixed with `test-rust-` to distinguish from C# tests
+- Individual package commands use pattern: `<action>-rust-<package>`
+
+**All commands:**
+- All project paths and configuration are defined as variables at the top of `justfile`
+- Use `just help` to see all available commands
+- Commands are organized by technology (C#/Rust) and scope (workspace/individual)
+
+### Common Issues
+
+**C# Frontend:**
+- **"Package not found"**: Run `just restore-frontend`
+- **"Project not found"**: Ensure project name matches directory name exactly
+- **"proto file not found"**: Ensure `proto/messages.proto` exists
+- **Tests fail to run**: Ensure `just restore-frontend` was run first
+- **Want to work on one project**: Use `just watch-cs-<project>` (e.g., `just watch-cs-services`)
+
+**Rust Backend:**
+- **COMMON MISTAKE: Adding dependencies with version numbers to member crates**: Always add dependencies to root `Cargo.toml` `[workspace.dependencies]` first, then reference with `{ workspace = true }` in member crates. NEVER put version numbers in member crate `Cargo.toml` files.
+- **"Could not find crate"**: Run `just restore-backend` or `just restore`
+- **Clippy warnings**: Fix all warnings before committing (configured with `-D warnings`)
+- **"Cannot find package"**: Check package name uses `pm-*` prefix (e.g., `pm-core` not `core`)
+- **Want to work on one package**: Use `just watch-rust-<package>` (e.g., `just watch-rust-db`)
+- **Slow builds**: Use `just check-rust-<package>` for fast syntax validation
+- **Dependency version conflicts**: Check that all workspace members use `{ workspace = true }` and versions are only in root `Cargo.toml`
+
+**General:**
+- **Build fails after git pull**: Run `just restore` then `just build-dev`
+- **Don't know what command to use**: Run `just help` to see all available commands
+- **Want fast feedback**: Use watch commands for auto-rebuild/test on file changes
 
 ## Implementation Plan
 
@@ -139,6 +354,7 @@ See `docs/llm-integration-guide.md` for LLM query patterns and examples.
 ## Code Conventions
 
 **Rust:**
+- **CRITICAL: Use workspace dependencies** - All dependencies defined in root `Cargo.toml` `[workspace.dependencies]`, member crates reference with `{ workspace = true }` syntax. NEVER add version numbers to member crates.
 - Use `sqlx::query_as!` macro for compile-time SQL validation
 - Repository methods return `Result<T, DbError>` for consistent error handling
 - UUID type: Use `uuid::Uuid` in Rust models, stored as TEXT in SQLite
@@ -190,9 +406,10 @@ All architectural documentation lives in `docs/`:
 
 ## Notes for Future Claude Instances
 
-- **No code exists yet**: This is purely planning phase. Backend starts in Session 10, frontend in Session 30.
-- **Token budgets matter**: Sessions are designed to fit within 100k token limits. Don't try to build everything at once.
-- **Follow the session plan**: `docs/implementation-plan-revised.md` has the roadmap. Build incrementally.
+- **CRITICAL: Cargo workspace dependencies**: This project uses centralized dependency management. ALL dependencies must be defined in the root `Cargo.toml` `[workspace.dependencies]` section. Member crates reference them with `{ workspace = true }` syntax. NEVER add version numbers to member crate `Cargo.toml` files. This is a frequent mistake - always check the root `Cargo.toml` first.
+- **Token budgets matter**: Sessions are designed to fit within 50k token limits. Don't try to build everything at once.
+- **Follow the session plan**: `docs/implementation-plan-v2.md` has the roadmap. Build incrementally.
 - **WebSocket is not optional**: This is a WebSocket-first architecture. REST API is secondary (Session 60).
-- **Test as you build**: Each session includes integration tests. Don't skip testing.
-- **Refer to docs**: Don't guess at schema or protocol. All decisions are documented in `docs/`.
+- **Test as you build**: Each session includes unit and integration tests. Don't skip testing.
+- **Refer to docs**: Don't guess at schema or protocol. All decisions are documented in `docs/` and `docs/adr`/.
+- **Use justfile commands**: All build commands are defined in `justfile`. Use `just help` to see available commands. Never run raw cargo/dotnet commands when a justfile command exists.
