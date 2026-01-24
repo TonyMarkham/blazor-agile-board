@@ -155,33 +155,33 @@ just clean            # Clean all build artifacts
 
 **Individual project commands:**
 
-- **Build one project**: `just build-core`, `just build-services`, `just build-components`, `just build-wasm`
-  - Optional config parameter: `just build-core Release`
+- **Build one project**: `just build-cs-core`, `just build-cs-services`, `just build-cs-components`, `just build-cs-wasm`
+  - Optional config parameter: `just build-cs-core Release`
 - **Publish WASM**: `just publish-wasm` (Debug) or `just publish-wasm Release`
-- **Watch mode**: `just watch-core`, `just watch-services`, `just watch-components`, `just watch-wasm`
+- **Watch mode**: `just watch-cs-core`, `just watch-cs-services`, `just watch-cs-components`, `just watch-cs-wasm`
   - Auto-rebuilds project on file changes
 
 **Test commands:**
 
-- **Run one test project**: `just test-core-only`, `just test-services-only`, `just test-components-only`
-- **Filter tests**: `just test-filter "Converters"` (matches namespace/class/method)
-- **List tests**: `just list-tests` (shows all test names without running)
-- **Watch tests**: `just watch-test-core`, `just watch-test-services`, `just watch-test-components`
+- **Run one test project**: `just test-cs-core`, `just test-cs-services`, `just test-cs-components`
+- **Filter tests**: `just test-cs-filter "Converters"` (matches namespace/class/method)
+- **List tests**: `just list-tests-cs` (shows all test names without running)
+- **Watch tests**: `just watch-test-cs-core`, `just watch-test-cs-services`, `just watch-test-cs-components`
   - Auto-runs tests on file changes (TDD workflow)
 
 **Test Examples:**
 ```bash
 # Run only validator tests
-just test-filter "Validation"
+just test-cs-filter "Validation"
 
 # Run only property-based tests
-just test-filter "PropertyTests"
+just test-cs-filter "PropertyTests"
 
 # Run only a specific test class
-just test-filter "ProtoConverterTests"
+just test-cs-filter "ProtoConverterTests"
 
 # TDD workflow - watch and auto-test on save
-just watch-test-core
+just watch-test-cs-core
 ```
 
 **Test Project Structure:**
@@ -207,18 +207,18 @@ All tests use xUnit with FluentAssertions.
 
 Packages: `server`, `core`, `db`, `auth`, `proto`, `ws`, `config`
 
-- **Check one package**: `just check-rust-<package>`
-  - Example: `just check-rust-db`
-- **Clippy one package**: `just clippy-rust-<package>`
-  - Example: `just clippy-rust-auth`
-- **Build one package**: `just build-rust-<package>` or `just build-rust-<package>-release`
-  - Example: `just build-rust-server`, `just build-rust-core-release`
-- **Test one package**: `just test-rust-<package>`
-  - Example: `just test-rust-ws`
-- **Watch one package**: `just watch-rust-<package>` (auto-check on changes)
-  - Example: `just watch-rust-db`
-- **Watch test**: `just watch-test-rust-<package>` (auto-test on changes)
-  - Example: `just watch-test-rust-core`
+- **Check one package**: `just check-rs-<package>`
+  - Example: `just check-rs-db`
+- **Clippy one package**: `just clippy-rs-<package>`
+  - Example: `just clippy-rs-auth`
+- **Build one package**: `just build-rs-<package>` or `just build-rs-<package>-release`
+  - Example: `just build-rs-server`, `just build-rs-core-release`
+- **Test one package**: `just test-rs-<package>`
+  - Example: `just test-rs-ws`
+- **Watch one package**: `just watch-rs-<package>` (auto-check on changes)
+  - Example: `just watch-rs-db`
+- **Watch test**: `just watch-test-rs-<package>` (auto-test on changes)
+  - Example: `just watch-test-rs-core`
 
 **Common workflows:**
 
@@ -230,13 +230,13 @@ just check-backend
 just clippy-backend
 
 # TDD workflow - watch and auto-test on save
-just watch-test-rust-db
+just watch-test-rs-db
 
 # Work on one package with fast feedback
-just watch-rust-auth
+just watch-rs-auth
 
 # Build and run the server
-just build-rust-server
+just build-rs-server
 cargo run --bin pm-server  # after just setup-config
 ```
 
@@ -281,8 +281,8 @@ cargo run --bin pm-server  # after just setup-config
 - Use `cargo check` for fast syntax validation, `cargo build` for full compilation
 - Clippy is configured to fail on warnings (`-D warnings`)
 - All package names use `pm-*` prefix except the main `pm-server` binary
-- Test commands are prefixed with `test-rust-` to distinguish from C# tests
-- Individual package commands use pattern: `<action>-rust-<package>`
+- Test commands are prefixed with `test-rs-` to distinguish from C# tests
+- Individual package commands use pattern: `<action>-rs-<package>`
 
 **All commands:**
 - All project paths and configuration are defined as variables at the top of `justfile`
@@ -303,8 +303,8 @@ cargo run --bin pm-server  # after just setup-config
 - **"Could not find crate"**: Run `just restore-backend` or `just restore`
 - **Clippy warnings**: Fix all warnings before committing (configured with `-D warnings`)
 - **"Cannot find package"**: Check package name uses `pm-*` prefix (e.g., `pm-core` not `core`)
-- **Want to work on one package**: Use `just watch-rust-<package>` (e.g., `just watch-rust-db`)
-- **Slow builds**: Use `just check-rust-<package>` for fast syntax validation
+- **Want to work on one package**: Use `just watch-rs-<package>` (e.g., `just watch-rs-db`)
+- **Slow builds**: Use `just check-rs-<package>` for fast syntax validation
 - **Dependency version conflicts**: Check that all workspace members use `{ workspace = true }` and versions are only in root `Cargo.toml`
 
 **General:**

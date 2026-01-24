@@ -29,7 +29,6 @@ rust_auth := "pm-auth"
 rust_proto := "pm-proto"
 rust_ws := "pm-ws"
 rust_config := "pm-config"
-rust_tauri := "desktop"
 
 # === Build Configurations ===
 config_debug := "Debug"
@@ -210,157 +209,157 @@ check-backend-full:
 # === Rust Individual Package Commands ===
 
 # Check specific package
-check-rust-server:
+check-rs-server:
     cargo check -p {{rust_server}} {{cargo_all_targets}}
 
-check-rust-core:
+check-rs-core:
     cargo check -p {{rust_core}} {{cargo_all_targets}}
 
-check-rust-db:
+check-rs-db:
     cargo check -p {{rust_db}} {{cargo_all_targets}}
 
-check-rust-auth:
+check-rs-auth:
     cargo check -p {{rust_auth}} {{cargo_all_targets}}
 
-check-rust-proto:
+check-rs-proto:
     cargo check -p {{rust_proto}} {{cargo_all_targets}}
 
-check-rust-ws:
+check-rs-ws:
     cargo check -p {{rust_ws}} {{cargo_all_targets}}
 
-check-rust-config:
+check-rs-config:
     cargo check -p {{rust_config}} {{cargo_all_targets}}
 
 # Clippy specific package
-clippy-rust-server:
+clippy-rs-server:
     cargo clippy -p {{rust_server}} {{cargo_all_targets}} {{cargo_all_features}} -- -D warnings
 
-clippy-rust-core:
+clippy-rs-core:
     cargo clippy -p {{rust_core}} {{cargo_all_targets}} {{cargo_all_features}} -- -D warnings
 
-clippy-rust-db:
+clippy-rs-db:
     cargo clippy -p {{rust_db}} {{cargo_all_targets}} {{cargo_all_features}} -- -D warnings
 
-clippy-rust-auth:
+clippy-rs-auth:
     cargo clippy -p {{rust_auth}} {{cargo_all_targets}} {{cargo_all_features}} -- -D warnings
 
-clippy-rust-proto:
+clippy-rs-proto:
     cargo clippy -p {{rust_proto}} {{cargo_all_targets}} {{cargo_all_features}} -- -D warnings
 
-clippy-rust-ws:
+clippy-rs-ws:
     cargo clippy -p {{rust_ws}} {{cargo_all_targets}} {{cargo_all_features}} -- -D warnings
 
-clippy-rust-config:
+clippy-rs-config:
     cargo clippy -p {{rust_config}} {{cargo_all_targets}} {{cargo_all_features}} -- -D warnings
 
 # Build specific package (debug)
-build-rust-server:
+build-rs-server:
     cargo build -p {{rust_server}}
 
-build-rust-core:
+build-rs-core:
     cargo build -p {{rust_core}}
 
-build-rust-db:
+build-rs-db:
     cargo build -p {{rust_db}}
 
-build-rust-auth:
+build-rs-auth:
     cargo build -p {{rust_auth}}
 
-build-rust-proto:
+build-rs-proto:
     cargo build -p {{rust_proto}}
 
-build-rust-ws:
+build-rs-ws:
     cargo build -p {{rust_ws}}
 
-build-rust-config:
+build-rs-config:
     cargo build -p {{rust_config}}
 
 # Build specific package (release)
-build-rust-server-release:
+build-rs-server-release:
     cargo build -p {{rust_server}} {{cargo_release}}
 
-build-rust-core-release:
+build-rs-core-release:
     cargo build -p {{rust_core}} {{cargo_release}}
 
-build-rust-db-release:
+build-rs-db-release:
     cargo build -p {{rust_db}} {{cargo_release}}
 
-build-rust-auth-release:
+build-rs-auth-release:
     cargo build -p {{rust_auth}} {{cargo_release}}
 
-build-rust-proto-release:
+build-rs-proto-release:
     cargo build -p {{rust_proto}} {{cargo_release}}
 
-build-rust-ws-release:
+build-rs-ws-release:
     cargo build -p {{rust_ws}} {{cargo_release}}
 
-build-rust-config-release:
+build-rs-config-release:
     cargo build -p {{rust_config}} {{cargo_release}}
 
 # Test specific package
-test-rust-server:
+test-rs-server:
     cargo test -p {{rust_server}}
 
-test-rust-core:
+test-rs-core:
     cargo test -p {{rust_core}}
 
-test-rust-db:
+test-rs-db:
     cargo test -p {{rust_db}}
 
-test-rust-auth:
+test-rs-auth:
     cargo test -p {{rust_auth}}
 
-test-rust-proto:
+test-rs-proto:
     cargo test -p {{rust_proto}}
 
-test-rust-ws:
+test-rs-ws:
     cargo test -p {{rust_ws}}
 
-test-rust-config:
+test-rs-config:
     cargo test -p {{rust_config}}
 
 # Watch mode - auto-rebuild on file changes
-watch-rust-server:
+watch-rs-server:
     cargo watch -x 'check -p {{rust_server}}'
 
-watch-rust-core:
+watch-rs-core:
     cargo watch -x 'check -p {{rust_core}}'
 
-watch-rust-db:
+watch-rs-db:
     cargo watch -x 'check -p {{rust_db}}'
 
-watch-rust-auth:
+watch-rs-auth:
     cargo watch -x 'check -p {{rust_auth}}'
 
-watch-rust-proto:
+watch-rs-proto:
     cargo watch -x 'check -p {{rust_proto}}'
 
-watch-rust-ws:
+watch-rs-ws:
     cargo watch -x 'check -p {{rust_ws}}'
 
-watch-rust-config:
+watch-rs-config:
     cargo watch -x 'check -p {{rust_config}}'
 
 # Watch mode - auto-test on file changes
-watch-test-rust-server:
+watch-test-rs-server:
     cargo watch -x 'test -p {{rust_server}}'
 
-watch-test-rust-core:
+watch-test-rs-core:
     cargo watch -x 'test -p {{rust_core}}'
 
-watch-test-rust-db:
+watch-test-rs-db:
     cargo watch -x 'test -p {{rust_db}}'
 
-watch-test-rust-auth:
+watch-test-rs-auth:
     cargo watch -x 'test -p {{rust_auth}}'
 
-watch-test-rust-proto:
+watch-test-rs-proto:
     cargo watch -x 'test -p {{rust_proto}}'
 
-watch-test-rust-ws:
+watch-test-rs-ws:
     cargo watch -x 'test -p {{rust_ws}}'
 
-watch-test-rust-config:
+watch-test-rs-config:
     cargo watch -x 'test -p {{rust_config}}'
 
 # ============================================================================
@@ -421,12 +420,12 @@ check:
 # Run development build then start Tauri
 dev:
     just build-dev
-    cd {{desktop_dir}} && cargo tauri dev
+    cargo tauri dev
 
 # Full production build with Tauri
 build:
     just build-release
-    cd {{desktop_dir}} && cargo tauri build
+    cargo tauri build
 
 # ============================================================================
 # Utility Commands
@@ -442,6 +441,40 @@ setup-config:
         echo "{{msg_config_exists}}"; \
     fi
 
-# List all available commands
-help:
-    @just --list
+# Show this help message
+@help:
+    echo "╔════════════════════════════════════════════════════════════════╗"
+    echo "║           Blazor Agile Board - Development Tasks              ║"
+    echo "╚════════════════════════════════════════════════════════════════╝"
+    echo ""
+    echo "📦 Quick Start:"
+    echo "  just setup-config      - Copy example config (first time only)"
+    echo "  just restore           - Install all dependencies"
+    echo "  just check             - Full validation (restore + check + lint + test)"
+    echo "  just dev               - Run desktop app in development mode"
+    echo ""
+    echo "🎨 Frontend (C# / Blazor):"
+    echo "  just build-frontend            - Build all C# projects (Debug)"
+    echo "  just build-frontend-release    - Build all C# projects (Release)"
+    echo "  just publish-wasm              - Publish WASM project"
+    echo "  just test-frontend             - Run all frontend tests"
+    echo "  just test-cs-filter 'MyTest'   - Run tests matching filter"
+    echo "  just list-tests-cs             - List all available tests"
+    echo "  just watch-cs-components       - Auto-rebuild on file changes"
+    echo ""
+    echo "⚙️  Backend (Rust):"
+    echo "  just build-backend             - Build all Rust packages (Debug)"
+    echo "  just build-backend-release     - Build all Rust packages (Release)"
+    echo "  just check-backend             - Fast compile check (no codegen)"
+    echo "  just lint                      - Run clippy on all Rust code"
+    echo "  just test-backend              - Run all backend tests"
+    echo "  just watch-rs-db               - Auto-check on file changes"
+    echo ""
+    echo "🚀 Production:"
+    echo "  just build-release             - Build backend + frontend (Release)"
+    echo "  just build                     - Full production Tauri build"
+    echo ""
+    echo "🧹 Maintenance:"
+    echo "  just clean                     - Clean all build artifacts"
+    echo ""
+    echo "📋 Full command list: just --list"
