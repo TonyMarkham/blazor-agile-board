@@ -88,9 +88,9 @@ I have staged all files, please commit without a byline.
 
 ### Init
 ```txt
-Read `CRITICAL_OPERATING_CONSTRAINTS.md`, `docs/session-plans/43-Session-Plan.md`, `docs/session-plans/42-Session-Plan-Overview.md` and `docs/implementation-plan-v2.md`.
+Read `CRITICAL_OPERATING_CONSTRAINTS.md`, `docs/session-plans/44-Session-Plan.md` and `docs/implementation-plan-v2.md`.
 
-Please audit `docs/session-plans/43-Session-Plan.md` and cross reference it's contents against the current state of the project to avoid making poor assumptions.
+Please audit `docs/session-plans/44-Session-Plan.md` and cross reference it's contents against the current state of the project to avoid making poor assumptions.
 
 I want you to teach me by presenting me with bite-sized chunks for me to write/edit keeping the commentary separate from the code snippets to make the code snippets easier for me to follow
 ```
