@@ -162,11 +162,12 @@ else
     public Guid WorkItemId { get; set; }
 
     private WorkItemViewModel? _workItem;
-    private WorkItemViewModel? _project;
+    private ProjectViewModel? _project;
     private SprintViewModel? _sprint;
     private List<WorkItemViewModel> _children = new();
     private bool _loading = true;
     private bool _isConnected = true;
+    private bool _deleting = false;
 
     protected override void OnInitialized()
     {
@@ -199,8 +200,7 @@ else
             _workItem = ViewModelFactory.Create(workItem);
 
             // Load project
-            var project = AppState.WorkItems.GetById(_workItem.ProjectId);
-            _project = project is not null ? ViewModelFactory.Create(project) : null;
+            _project = AppState.Projects.GetById(_workItem.ProjectId);
 
             // Load sprint if assigned
             if (_workItem.SprintId.HasValue)
@@ -263,26 +263,27 @@ else
 
         if (confirmed == true)
         {
+            // Save these before deleting (we'll need them after)
+            var projectId = _workItem.ProjectId;
+            var title = _workItem.Title;
+
             try
             {
+                _deleting = true;
+
                 await AppState.WorkItems.DeleteAsync(_workItem.Id);
                 NotificationService.Notify(
                     NotificationSeverity.Success,
                     "Deleted",
-                    $"\"{_workItem.Title}\" has been deleted");
+                    $"\"{title}\" has been deleted");
 
-                // Navigate back to project or home
-                if (_project is not null)
-                {
-                    NavigationManager.NavigateTo($"/project/{_project.Id}");
-                }
-                else
-                {
-                    NavigationManager.NavigateTo("/");
-                }
+                // Navigate back to project
+                NavigationManager.NavigateTo($"/project/{projectId}");
             }
             catch (Exception ex)
             {
+                _deleting = false; // ← ADD THIS LINE - reset flag if delete fails
+
                 NotificationService.Notify(
                     NotificationSeverity.Error,
                     "Error",
@@ -342,7 +343,11 @@ else
 
     private void HandleStateChanged()
     {
-        _ = LoadWorkItemAsync();
+        // Don't reload if we're in the middle of deleting (about to navigate away)
+        if (!_deleting)
+        {
+            _ = LoadWorkItemAsync();
+        }
     }
 
     private void HandleConnectionChanged(ConnectionState state)

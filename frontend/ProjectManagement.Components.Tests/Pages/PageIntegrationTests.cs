@@ -284,7 +284,7 @@ public class PageIntegrationTests : BunitContext
         var project = CreateProject("My Project") with { Id = projectId };
 
         _workItemStoreMock.Setup(s => s.GetById(workItemId)).Returns(workItem);
-        _workItemStoreMock.Setup(s => s.GetById(projectId)).Returns(project);
+        _projectStoreMock.Setup(s => s.GetById(projectId)).Returns(CreateProjectViewModel("My Project", projectId));
         _workItemStoreMock.Setup(s => s.GetChildren(workItemId)).Returns(Array.Empty<WorkItem>());
 
         // Act

@@ -288,14 +288,86 @@ public sealed class WebSocketClient : IWebSocketClient
         return ProtoConverter.ToDomain(response.WorkItemCreated.WorkItem);
     }
 
-    public Task<WorkItem> UpdateWorkItemAsync(UpdateWorkItemRequest request, CancellationToken ct = default)
+    public async Task<WorkItem> UpdateWorkItemAsync(UpdateWorkItemRequest request, CancellationToken ct = default)
     {
-        throw new NotImplementedException();
+        ThrowIfDisposed();
+        EnsureConnected();
+
+        // Validate using injected validator
+        _updateValidator.Validate(request).ThrowIfInvalid();
+
+        var message = new Pm.WebSocketMessage
+        {
+            MessageId = Guid.NewGuid().ToString(),
+            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            UpdateWorkItemRequest = new Pm.UpdateWorkItemRequest
+            {
+                WorkItemId = request.WorkItemId.ToString(),
+                ExpectedVersion = request.ExpectedVersion
+            }
+        };
+
+        // Only set fields that are being updated
+        if (!string.IsNullOrEmpty(request.Title))
+            message.UpdateWorkItemRequest.Title = request.Title;
+        if (!string.IsNullOrEmpty(request.Description))
+            message.UpdateWorkItemRequest.Description = request.Description;
+        if (!string.IsNullOrEmpty(request.Status))
+            message.UpdateWorkItemRequest.Status = request.Status;
+        if (!string.IsNullOrEmpty(request.Priority))
+            message.UpdateWorkItemRequest.Priority = request.Priority;
+        if (request.AssigneeId != null)
+            message.UpdateWorkItemRequest.AssigneeId = request.AssigneeId.ToString() ?? string.Empty;
+        if (request.SprintId != null)
+            message.UpdateWorkItemRequest.SprintId = request.SprintId.ToString() ?? string.Empty;
+        if (request.Position.HasValue)
+            message.UpdateWorkItemRequest.Position = request.Position.Value;
+        if (request.StoryPoints.HasValue)
+            message.UpdateWorkItemRequest.StoryPoints = request.StoryPoints.Value;
+
+        var response = await SendRequestAsync(message, ct);
+
+        if (response.PayloadCase == Pm.WebSocketMessage.PayloadOneofCase.Error)
+            throw new ServerRejectedException(
+                response.Error.Code,
+                response.Error.Message,
+                response.Error.Field);
+
+        if (response.PayloadCase != Pm.WebSocketMessage.PayloadOneofCase.WorkItemUpdated)
+            throw new InvalidOperationException(
+                $"Unexpected response type: {response.PayloadCase}");
+
+        return ProtoConverter.ToDomain(response.WorkItemUpdated.WorkItem);
     }
 
-    public Task DeleteWorkItemAsync(Guid workItemId, CancellationToken ct = default)
+    public async Task DeleteWorkItemAsync(Guid workItemId, CancellationToken ct = default)
     {
-        throw new NotImplementedException();
+        ThrowIfDisposed();
+        EnsureConnected();
+
+        var message = new Pm.WebSocketMessage
+        {
+            MessageId = Guid.NewGuid().ToString(),
+            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            DeleteWorkItemRequest = new Pm.DeleteWorkItemRequest
+            {
+                WorkItemId = workItemId.ToString()
+            }
+        };
+
+        var response = await SendRequestAsync(message, ct);
+
+        if (response.PayloadCase == Pm.WebSocketMessage.PayloadOneofCase.Error)
+            throw new ServerRejectedException(
+                response.Error.Code,
+                response.Error.Message,
+                response.Error.Field);
+
+        if (response.PayloadCase != Pm.WebSocketMessage.PayloadOneofCase.WorkItemDeleted)
+            throw new InvalidOperationException(
+                $"Unexpected response type: {response.PayloadCase}");
+
+        // Delete successful - no return value needed
     }
 
     public async Task<IReadOnlyList<WorkItem>> GetWorkItemsAsync(Guid projectId, DateTime? since = null,

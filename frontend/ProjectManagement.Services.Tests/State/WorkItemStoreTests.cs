@@ -108,6 +108,7 @@
           var request = new UpdateWorkItemRequest
           {
               WorkItemId = workItemId,
+              ExpectedVersion = 1,
               Title = "Updated Title"
           };
 
@@ -149,6 +150,7 @@
           var request = new UpdateWorkItemRequest
           {
               WorkItemId = workItemId,
+              ExpectedVersion = 1,
               Title = "Updated Title"
           };
 

@@ -3,7 +3,7 @@ namespace ProjectManagement.Core.Models;
 public sealed record UpdateWorkItemRequest
 {
     public required Guid WorkItemId { get; init; }
-    public int? ExpectedVersion { get; init; }
+    public required int ExpectedVersion { get; init; }
     public string? Title { get; init; }
     public string? Description { get; init; }
     public string? Status { get; init; }

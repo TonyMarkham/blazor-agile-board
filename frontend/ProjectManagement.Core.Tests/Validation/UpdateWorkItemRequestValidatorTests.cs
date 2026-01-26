@@ -15,6 +15,7 @@
           var request = new UpdateWorkItemRequest
           {
               WorkItemId = Guid.NewGuid(),
+              ExpectedVersion = 1,
               Title = "Updated Title"
           };
 
@@ -29,6 +30,7 @@
           var request = new UpdateWorkItemRequest
           {
               WorkItemId = Guid.Empty,
+              ExpectedVersion = 1,
               Title = "Updated Title"
           };
 
@@ -44,6 +46,7 @@
           var request = new UpdateWorkItemRequest
           {
               WorkItemId = Guid.NewGuid(),
+              ExpectedVersion = 1,
               Title = ""
           };
 
@@ -59,6 +62,7 @@
           var request = new UpdateWorkItemRequest
           {
               WorkItemId = Guid.NewGuid(),
+              ExpectedVersion = 1,
               Title = new string('x', 201)
           };
 
@@ -74,6 +78,7 @@
           var request = new UpdateWorkItemRequest
           {
               WorkItemId = Guid.NewGuid(),
+              ExpectedVersion = 1,
               Description = new string('x', 10001)
           };
 
@@ -89,6 +94,7 @@
           var request = new UpdateWorkItemRequest
           {
               WorkItemId = Guid.NewGuid(),
+              ExpectedVersion = 1,
               Title = null
           };
 
