@@ -9,16 +9,14 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum WorkItemType {
-    Project,
-    Epic,
-    Story,
-    Task,
+    Epic = 2,
+    Story = 3,
+    Task = 4,
 }
 
 impl WorkItemType {
     pub fn as_str(&self) -> &str {
         match self {
-            Self::Project => "project",
             Self::Epic => "epic",
             Self::Story => "story",
             Self::Task => "task",
@@ -32,7 +30,6 @@ impl FromStr for WorkItemType {
     #[track_caller]
     fn from_str(s: &str) -> CoreErrorResult<Self> {
         match s {
-            "project" => Ok(Self::Project),
             "epic" => Ok(Self::Epic),
             "story" => Ok(Self::Story),
             "task" => Ok(Self::Task),
@@ -47,7 +44,6 @@ impl FromStr for WorkItemType {
 impl From<WorkItemType> for i32 {
     fn from(item_type: WorkItemType) -> Self {
         match item_type {
-            WorkItemType::Project => 1,
             WorkItemType::Epic => 2,
             WorkItemType::Story => 3,
             WorkItemType::Task => 4,
@@ -58,11 +54,10 @@ impl From<WorkItemType> for i32 {
 impl From<i32> for WorkItemType {
     fn from(value: i32) -> Self {
         match value {
-            1 => WorkItemType::Project,
             2 => WorkItemType::Epic,
             3 => WorkItemType::Story,
             4 => WorkItemType::Task,
-            _ => WorkItemType::Project, // Default to Project for unknown values
+            _ => WorkItemType::Epic, // Default to Epic for unknown values
         }
     }
 }

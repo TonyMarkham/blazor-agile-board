@@ -10,8 +10,7 @@ use sqlx::SqlitePool;
 use uuid::Uuid;
 
 /// Valid parent-child relationships:
-/// - Project: no parent
-/// - Epic: parent must be Project
+/// - Epic: no parent (parent_id should be NULL)
 /// - Story: parent must be Epic
 /// - Task: parent must be Story
 ///
@@ -35,9 +34,7 @@ pub async fn validate_hierarchy(
 
     let valid = matches!(
         (parent.item_type.clone(), child_type.clone()),
-        (WorkItemType::Project, WorkItemType::Epic)
-            | (WorkItemType::Epic, WorkItemType::Story)
-            | (WorkItemType::Story, WorkItemType::Task)
+        (WorkItemType::Epic, WorkItemType::Story) | (WorkItemType::Story, WorkItemType::Task)
     );
 
     if !valid {

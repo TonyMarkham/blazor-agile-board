@@ -289,7 +289,11 @@
     {
         var result = await DialogService.OpenAsync<WorkItemDialog>(
             "Create Work Item",
-            new Dictionary<string, object> { { "ProjectId", ProjectId } },
+            new Dictionary<string, object>
+            {
+                { "ProjectId", ProjectId },
+                { "ParentId", ProjectId }
+            },
             new DialogOptions { Width = "600px" });
 
         if (result is true)

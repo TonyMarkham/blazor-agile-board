@@ -60,6 +60,8 @@ pub async fn dispatch(msg: WebSocketMessage, ctx: HandlerContext) -> WebSocketMe
 
 async fn dispatch_inner(msg: WebSocketMessage, ctx: HandlerContext) -> WebSocketMessage {
     let message_id = msg.message_id.clone();
+    let handler_name = payload_to_handler_name(&msg.payload);
+    let log_prefix = ctx.log_prefix();
 
     let result = match msg.payload {
         // Work Item handlers
@@ -106,7 +108,17 @@ async fn dispatch_inner(msg: WebSocketMessage, ctx: HandlerContext) -> WebSocket
 
     match result {
         Ok(response) => response,
-        Err(e) => build_error_response(&message_id, e.to_proto_error()),
+        Err(e) => {
+            let proto_error = e.to_proto_error();
+            log::warn!(
+                "{} Handler {} failed: {} (code: {})",
+                log_prefix, // Change from ctx.log_prefix() to log_prefix
+                handler_name,
+                e,
+                proto_error.code
+            );
+            build_error_response(&message_id, proto_error)
+        }
     }
 }
 

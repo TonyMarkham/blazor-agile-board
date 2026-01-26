@@ -16,8 +16,30 @@
                         TextProperty="Text"
                         ValueProperty="Value"
                         Disabled="@_isEdit"
-                        Style="width: 100%;" />
+                        Style="width: 100%;"
+                        Change="@(_ => HandleTypeChanged())" />
     </RadzenFormField>
+    
+    @* Parent Selection (for Story/Task) *@
+    @if (!_isEdit && (_itemType == WorkItemType.Story || _itemType == WorkItemType.Task))
+    {
+        <RadzenFormField Text="@GetParentFieldLabel()" Style="width: 100%;">
+            <RadzenDropDown @bind-Value="_selectedParentId"
+                            TValue="Guid?"
+                            Data="@_availableParents"
+                            TextProperty="Title"
+                            ValueProperty="Id"
+                            Placeholder="@GetParentPlaceholder()"
+                            Style="width: 100%;" />
+        </RadzenFormField>
+        @if (_errors.TryGetValue("Parent", out var parentError))
+        {
+            <RadzenText TextStyle="TextStyle.Caption"
+                        Style="color: var(--rz-danger);">
+                @parentError
+            </RadzenText>
+        }
+    }
 
     @* Title *@
     <div>
@@ -139,17 +161,15 @@
 </RadzenStack>
 
 @code {
-    [Parameter]
-    public WorkItemViewModel? WorkItem { get; set; }
+    [Parameter] public WorkItemViewModel? WorkItem { get; set; }
 
-    [Parameter]
-    public Guid ProjectId { get; set; }
+    [Parameter] public Guid ProjectId { get; set; }
 
-    [Parameter]
-    public Guid? ParentId { get; set; }
+    [Parameter] public Guid? ParentId { get; set; }
+    private Guid? _selectedParentId;
+    private List<WorkItem> _availableParents = new();
 
-    [Parameter]
-    public WorkItemType DefaultItemType { get; set; } = WorkItemType.Story;
+    [Parameter] public WorkItemType DefaultItemType { get; set; } = WorkItemType.Story;
 
     // State
     private bool _isEdit => WorkItem is not null;
@@ -222,6 +242,8 @@
         else
         {
             _itemType = DefaultItemType;
+            _selectedParentId = ParentId;
+            LoadAvailableParents();
         }
 
         _sprints = AppState.Sprints.GetByProject(ProjectId);
@@ -269,6 +291,14 @@
         {
             _errors["Title"] = "Title must be 200 characters or less";
         }
+        
+        // Validate parent selection
+        if (!_isEdit && (_itemType == WorkItemType.Story || _itemType == WorkItemType.Task) && !_selectedParentId.HasValue)
+        {
+            _errors["Parent"] = _itemType == WorkItemType.Story
+                ? "Please select an Epic parent"
+                : "Please select a Story parent";
+        }
 
         return _errors.Count == 0;
     }
@@ -279,12 +309,12 @@
 
         if (!Validate())
         {
-            await InvokeAsync(StateHasChanged);  // Line 282
+            await InvokeAsync(StateHasChanged); // Line 282
             return;
         }
 
         _saving = true;
-        await InvokeAsync(StateHasChanged);  // Line 287
+        await InvokeAsync(StateHasChanged); // Line 287
 
         try
         {
@@ -305,6 +335,7 @@
         }
         catch (Exception ex)
         {
+            Console.Error.WriteLine($"[WorkItemDialog] Error creating/updating work item: {ex}");
             NotificationService.Notify(
                 NotificationSeverity.Error,
                 "Error",
@@ -314,7 +345,7 @@
         finally
         {
             _saving = false;
-            await InvokeAsync(StateHasChanged);  // Line 317
+            await InvokeAsync(StateHasChanged); // Line 317
         }
     }
 
@@ -326,7 +357,7 @@
             ItemType = _itemType,
             Title = _title,
             Description = _description,
-            ParentId = ParentId,
+            ParentId = _selectedParentId ?? ParentId,
             Status = _status,
             StoryPoints = _storyPoints,
             SprintId = _sprintId
@@ -483,5 +514,51 @@
     public void Dispose()
     {
         AppState.OnConnectionStateChanged -= HandleConnectionChanged;
+    }
+
+    private string GetParentFieldLabel()
+    {
+        return _itemType switch
+        {
+            WorkItemType.Story => "Epic",
+            WorkItemType.Task => "Story",
+            _ => "Parent"
+        };
+    }
+
+    private string GetParentPlaceholder()
+    {
+        return _itemType switch
+        {
+            WorkItemType.Story => "Select an Epic",
+            WorkItemType.Task => "Select a Story",
+            _ => "Select a parent"
+        };
+    }
+
+    private void LoadAvailableParents()
+    {
+        if (_itemType == WorkItemType.Story)
+        {
+            _availableParents = AppState.WorkItems.GetByProject(ProjectId)
+                .Where(w => w.ItemType == WorkItemType.Epic && w.DeletedAt == null)
+                .ToList();
+        }
+        else if (_itemType == WorkItemType.Task)
+        {
+            _availableParents = AppState.WorkItems.GetByProject(ProjectId)
+                .Where(w => w.ItemType == WorkItemType.Story && w.DeletedAt == null)
+                .ToList();
+        }
+        else
+        {
+            _availableParents.Clear();
+        }
+    }
+
+    private void HandleTypeChanged()
+    {
+        _selectedParentId = null;
+        LoadAvailableParents();
     }
 }

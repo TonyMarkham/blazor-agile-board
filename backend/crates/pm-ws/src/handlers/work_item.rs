@@ -25,7 +25,6 @@ use uuid::Uuid;
 /// Convert proto WorkItemType (i32) to domain WorkItemType
 fn proto_to_domain_item_type(proto_type: i32) -> Result<WorkItemType, WsError> {
     match proto_type {
-        x if x == ProtoWorkItemType::Project as i32 => Ok(WorkItemType::Project),
         x if x == ProtoWorkItemType::Epic as i32 => Ok(WorkItemType::Epic),
         x if x == ProtoWorkItemType::Story as i32 => Ok(WorkItemType::Story),
         x if x == ProtoWorkItemType::Task as i32 => Ok(WorkItemType::Task),
@@ -90,28 +89,12 @@ pub async fn handle_create(
     .await?;
 
     // 6. Validate hierarchy rules
-    match (&item_type, parent_id) {
-        (WorkItemType::Project, None) => {}
-        (WorkItemType::Project, Some(_)) => {
-            return Err(WsError::ValidationError {
-                message: "Projects cannot have a parent".to_string(),
-                field: Some("parent_id".to_string()),
-                location: ErrorLocation::from(Location::caller()),
-            });
-        }
-        (_, None) => {
-            return Err(WsError::ValidationError {
-                message: format!("{:?} must have a parent_id", item_type),
-                field: Some("parent_id".to_string()),
-                location: ErrorLocation::from(Location::caller()),
-            });
-        }
-        (_, Some(pid)) => {
-            db_read(&ctx, "validate_hierarchy", || async {
-                validate_hierarchy(&ctx.pool, item_type.clone(), pid).await
-            })
-            .await?;
-        }
+    // If parent_id is provided, validate it points to correct type
+    if let Some(pid) = parent_id {
+        db_read(&ctx, "validate_hierarchy", || async {
+            validate_hierarchy(&ctx.pool, item_type.clone(), pid).await
+        })
+        .await?;
     }
 
     // 7. Get next position

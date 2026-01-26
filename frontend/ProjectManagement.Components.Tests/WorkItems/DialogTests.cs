@@ -355,6 +355,8 @@ public class DialogTests : BunitContext
         var projectStore = new Mock<IProjectStore>();
         sprintStore.Setup(s => s.GetByProject(It.IsAny<Guid>()))
             .Returns(Array.Empty<Sprint>());
+        workItemStore.Setup(w => w.GetByProject(It.IsAny<Guid>()))
+            .Returns(Array.Empty<WorkItem>());
 
         var appState = new AppState(
             Mock.Of<IWebSocketClient>(),

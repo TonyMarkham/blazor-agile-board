@@ -29,7 +29,6 @@ message Project {
 
 enum WorkItemType {
   WORK_ITEM_TYPE_UNSPECIFIED = 0;
-  PROJECT = 1;
   EPIC = 2;
   STORY = 3;
   TASK = 4;
