@@ -63,6 +63,7 @@ bld/
 
 # Application data directory (desktop mode)
 .pm/
+.server
 
 # OS files
 .DS_Store

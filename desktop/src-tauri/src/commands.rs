@@ -8,8 +8,7 @@ use crate::server::{HealthStatus, ServerManager, ServerState, ServerStatus};
 use std::sync::Arc;
 
 use log::error;
-use serde::Serialize;
-use tauri::{Manager, State};
+use tauri::{Emitter, Manager, State};
 
 /// Get current server status.
 ///
@@ -52,7 +51,10 @@ pub async fn get_websocket_url(manager: State<'_, Arc<ServerManager>>) -> Result
 /// 4. If server already running, WASM has the port
 /// 5. If server still starting, WASM waits for event
 #[tauri::command]
-pub async fn wasm_ready(manager: State<'_, Arc<ServerManager>>) -> Result<ServerStatus, String> {
+pub async fn wasm_ready(
+    app: tauri::AppHandle,
+    manager: State<'_, Arc<ServerManager>>,
+) -> Result<ServerStatus, String> {
     tracing::info!("WASM ready notification received");
 
     let state = manager.state().await;
@@ -61,13 +63,15 @@ pub async fn wasm_ready(manager: State<'_, Arc<ServerManager>>) -> Result<Server
     let health = manager.health().await;
     let pid = manager.server_pid().await;
 
-    Ok(build_server_status(
-        &state,
-        port,
-        ws_url,
-        health.as_ref(),
-        pid,
-    ))
+    let status = build_server_status(&state, port, ws_url, health.as_ref(), pid);
+
+    // Re-emit server-ready if already running (handles race condition)
+    if matches!(state, ServerState::Running { .. }) && port.is_some() {
+        tracing::info!("Server already running, re-emitting server-ready event");
+        app.emit("server-state-changed", &status).ok();
+    }
+
+    Ok(status)
 }
 
 /// Manually restart the server.
@@ -243,8 +247,8 @@ pub fn build_server_status(
         ),
     };
 
-    let is_healthy = state_str == "running"
-        && health.map_or(false, |h| matches!(h, HealthStatus::Healthy { .. }));
+    let is_healthy =
+        state_str == "running" && health.is_some_and(|h| matches!(h, HealthStatus::Healthy { .. }));
 
     ServerStatus {
         state: state_str,
@@ -256,4 +260,32 @@ pub fn build_server_status(
         is_healthy,
         pid,
     }
+}
+
+/// Quit the application with proper server shutdown.
+///
+/// This command always exits the app. If server shutdown fails,
+/// the error is logged but exit proceeds - users must always be
+/// able to quit their application.
+#[tauri::command]
+pub async fn quit_app(
+    app: tauri::AppHandle,
+    manager: State<'_, Arc<ServerManager>>,
+) -> Result<(), String> {
+    tracing::info!("quit_app command called");
+
+    // Attempt graceful shutdown - log failure but don't block quit
+    if let Err(e) = manager.stop().await {
+        tracing::warn!(
+            "Server shutdown failed during quit (proceeding with exit): {}",
+            e
+        );
+    } else {
+        tracing::info!("Server stopped successfully via quit_app");
+    }
+
+    app.exit(0);
+
+    // Unreachable after exit(), but required for return type
+    Ok(())
 }

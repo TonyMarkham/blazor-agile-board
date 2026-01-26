@@ -1,5 +1,5 @@
 use crate::commands::build_server_status;
-use crate::server::{HealthInfo, HealthStatus, ServerState};
+use crate::server::{HealthStatus, ServerState, health_info::HealthInfo};
 
 #[test]
 fn test_build_server_status_running_with_pid() {

@@ -4,7 +4,7 @@
 frontend_dir := "frontend"
 backend_dir := "backend"
 desktop_dir := "desktop"
-config_dir := ".pm"
+config_dir := ".server"
 coverage_dir := "./coverage"
 
 # === Solution File ===
@@ -431,7 +431,7 @@ build:
 # Utility Commands
 # ============================================================================
 
-# Copy example config to .pm directory if it doesn't exist
+# Copy example config to .server directory if it doesn't exist
 setup-config:
     mkdir -p {{config_dir}}
     @if [ ! -f {{config_file}} ]; then \

@@ -11,58 +11,126 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::time::{Duration, Instant};
 
+use error_location::ErrorLocation;
 use tauri::async_runtime::Mutex;
-use tauri_plugin_shell::ShellExt;
-use tauri_plugin_shell::process::CommandChild;
 use tokio::sync::{mpsc, watch};
 use tracing::{error, info, warn};
 
 /// Manages the pm-server process lifecycle.
 ///
 /// Responsibilities:
-/// - Start server process as Tauri sidecar
+/// - Start server process as standalone detached process
 /// - Monitor health and trigger restarts
 /// - Handle graceful shutdown
 /// - Maintain lock file
 pub struct ServerManager {
     config: ServerConfig,
-    data_dir: PathBuf,
-    process: Arc<Mutex<Option<CommandChild>>>,
+    server_dir: PathBuf,
+    tauri_dir: PathBuf,
+    server_pid: Arc<Mutex<Option<u32>>>,
     health_checker: Arc<Mutex<Option<HealthChecker>>>,
     lock_file: Arc<Mutex<Option<LockFile>>>,
     state_tx: watch::Sender<ServerState>,
     state_rx: watch::Receiver<ServerState>,
     restart_count: Arc<AtomicU32>,
-    restart_window_start: Arc<Mutex<Option<Instant>>>,
     shutdown_requested: Arc<AtomicBool>,
     actual_port: Arc<Mutex<Option<u16>>>,
     command_tx: mpsc::Sender<ServerCommand>,
     command_rx: Arc<Mutex<mpsc::Receiver<ServerCommand>>>,
-    ready_signal_tx: Arc<Mutex<Option<tokio::sync::oneshot::Sender<()>>>>,
 }
 
 impl ServerManager {
     /// Create a new server manager.
-    pub fn new(data_dir: PathBuf, config: ServerConfig) -> Self {
+    pub fn new(server_dir: PathBuf, tauri_dir: PathBuf, config: ServerConfig) -> Self {
         let (state_tx, state_rx) = watch::channel(ServerState::Stopped);
         let (command_tx, command_rx) = mpsc::channel(16);
 
         Self {
             config,
-            data_dir,
-            process: Arc::new(Mutex::new(None)),
+            server_dir,
+            tauri_dir,
+            server_pid: Arc::new(Mutex::new(None)),
             health_checker: Arc::new(Mutex::new(None)),
             lock_file: Arc::new(Mutex::new(None)),
             state_tx,
             state_rx,
             restart_count: Arc::new(AtomicU32::new(0)),
-            restart_window_start: Arc::new(Mutex::new(None)),
             shutdown_requested: Arc::new(AtomicBool::new(false)),
             actual_port: Arc::new(Mutex::new(None)),
             command_tx,
             command_rx: Arc::new(Mutex::new(command_rx)),
-            ready_signal_tx: Arc::new(Mutex::new(None)),
         }
+    }
+
+    /// Find the pm-server binary in development or bundled locations.
+    fn find_server_binary(&self) -> ServerResult<PathBuf> {
+        // 1. Environment variable override (development/testing)
+        if let Ok(path) = std::env::var("PM_SERVER_BIN") {
+            let path = PathBuf::from(path);
+            if path.exists() {
+                info!("Using pm-server from PM_SERVER_BIN: {}", path.display());
+                return Ok(path);
+            }
+            warn!(
+                "PM_SERVER_BIN set but path doesn't exist: {}",
+                path.display()
+            );
+        }
+
+        // 2. Bundled location (production) - next to Tauri executable
+        if let Ok(exe) = std::env::current_exe()
+            && let Some(exe_dir) = exe.parent()
+        {
+            let bundled = exe_dir.join("pm-server");
+            if bundled.exists() {
+                info!("Using bundled pm-server: {}", bundled.display());
+                return Ok(bundled);
+            }
+        }
+
+        // 3. Development: walk up to find workspace root
+        if let Ok(exe) = std::env::current_exe() {
+            let mut current = exe.parent();
+            while let Some(dir) = current {
+                let cargo_toml = dir.join("Cargo.toml");
+                if cargo_toml.exists()
+                    && let Ok(content) = std::fs::read_to_string(&cargo_toml)
+                    && content.contains("[workspace]")
+                {
+                    // Found workspace root
+                    for profile in ["release", "debug"] {
+                        let bin = dir.join("target").join(profile).join("pm-server");
+                        if bin.exists() {
+                            info!("Using development pm-server: {}", bin.display());
+                            return Ok(bin);
+                        }
+                    }
+                }
+                current = dir.parent();
+            }
+        }
+
+        // 4. System PATH fallback
+        if let Ok(output) = std::process::Command::new("which")
+            .arg("pm-server")
+            .output()
+            && output.status.success()
+        {
+            let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if !path.is_empty() {
+                info!("Using pm-server from PATH: {}", path);
+                return Ok(PathBuf::from(path));
+            }
+        }
+
+        Err(ServerError::ProcessSpawn {
+            source: std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "pm-server binary not found. Set PM_SERVER_BIN or ensure it's built.",
+            )
+            .into(),
+            location: ErrorLocation::from(Location::caller()),
+        })
     }
 
     /// Start the server and wait for it to be ready.
@@ -82,7 +150,7 @@ impl ServerManager {
         info!("Using port {port}");
 
         // Acquire lock file
-        let lock = LockFile::acquire(&self.data_dir, port)?;
+        let lock = LockFile::acquire(&self.server_dir, port)?;
         *self.lock_file.lock().await = Some(lock);
 
         // Spawn the server process and get ready signal receiver
@@ -106,13 +174,13 @@ impl ServerManager {
             Ok(Err(_)) => {
                 return Err(ServerError::StartupFailed {
                     message: "Ready signal channel closed unexpectedly".into(),
-                    location: error_location::ErrorLocation::from(Location::caller()),
+                    location: ErrorLocation::from(Location::caller()),
                 });
             }
             Err(_) => {
                 return Err(ServerError::StartupTimeout {
                     timeout_secs,
-                    location: error_location::ErrorLocation::from(Location::caller()),
+                    location: ErrorLocation::from(Location::caller()),
                 });
             }
         }
@@ -146,81 +214,107 @@ impl ServerManager {
         Ok(())
     }
 
-    /// Spawn the pm-server sidecar process.
+    /// Spawn pm-server as a standalone detached process.
     async fn spawn_process(
         &self,
-        app: &tauri::AppHandle,
+        _app: &tauri::AppHandle,
         port: u16,
     ) -> ServerResult<tokio::sync::oneshot::Receiver<()>> {
         info!(
-            "Spawning pm-server with PM_CONFIG_DIR={}",
-            self.data_dir.display()
+            "Spawning standalone pm-server with PM_CONFIG_DIR={}",
+            self.server_dir.display()
         );
 
-        // CREATE THE CHANNEL HERE
-        let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
-        *self.ready_signal_tx.lock().await = Some(ready_tx);
+        // Find pm-server binary
+        let server_binary = self.find_server_binary()?;
+        info!("Using pm-server at: {}", server_binary.display());
 
-        let sidecar = app
-            .shell()
-            .sidecar("pm-server")
-            .map_err(|e| ServerError::ProcessSpawn {
-                source: e,
-                location: error_location::ErrorLocation::from(Location::caller()),
-            })?
-            .env("PM_CONFIG_DIR", self.data_dir.to_str().unwrap())
+        // Prepare log file path (in server_dir/logs/)
+        let log_file = self
+            .server_dir
+            .join(&self.config.logging.directory)
+            .join("pm-server.log");
+
+        // Ensure logs directory exists
+        if let Some(log_dir) = log_file.parent() {
+            std::fs::create_dir_all(log_dir).map_err(|e| ServerError::ProcessSpawn {
+                source: std::io::Error::other(format!("Failed to create logs directory: {e}"))
+                    .into(),
+                location: ErrorLocation::from(Location::caller()),
+            })?;
+        }
+
+        // Spawn as detached process
+        let mut cmd = std::process::Command::new(&server_binary);
+        cmd.env("PM_CONFIG_DIR", self.server_dir.to_str().unwrap())
             .env("PM_SERVER_PORT", port.to_string())
             .env("PM_SERVER_HOST", &self.config.server.host)
             .env("PM_LOG_LEVEL", &self.config.logging.level)
+            .env("PM_LOG_FILE", log_file.to_str().unwrap())
+            .env(
+                "PM_IDLE_SHUTDOWN_SECS",
+                self.config.connection.idle_shutdown_secs.to_string(),
+            )
             .env("PM_AUTH_ENABLED", "false"); // Desktop mode = no auth
 
-        let (mut rx, child) = sidecar.spawn().map_err(|e| ServerError::ProcessSpawn {
-            source: e,
-            location: error_location::ErrorLocation::from(Location::caller()),
+        // Detach on Unix
+        #[cfg(unix)]
+        {
+            use std::os::unix::process::CommandExt;
+            unsafe {
+                cmd.pre_exec(|| {
+                    libc::setsid();
+                    Ok(())
+                });
+            }
+        }
+
+        // Close stdio - server logs to file via PM_LOG_FILE
+        cmd.stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null());
+
+        let child = cmd.spawn().map_err(|e| ServerError::ProcessSpawn {
+            source: std::io::Error::other(format!("Failed to spawn pm-server: {}", e)).into(),
+            location: ErrorLocation::from(Location::caller()),
         })?;
 
-        // Handle process output in background task
-        let _data_dir = self.data_dir.clone();
-        let ready_signal_tx = self.ready_signal_tx.clone();
-        tauri::async_runtime::spawn(async move {
-            use tauri_plugin_shell::process::CommandEvent;
+        let pid = child.id();
+        info!("Spawned standalone pm-server with PID: {}", pid);
 
-            while let Some(event) = rx.recv().await {
-                match event {
-                    CommandEvent::Stdout(line) => {
-                        let msg = String::from_utf8_lossy(&line);
-                        info!("pm-server: {msg}");
+        // Store PID for tracking
+        *self.server_pid.lock().await = Some(pid);
 
-                        // Signal readiness when server announces it
-                        if msg.contains("Server ready to accept connections")
-                            && let Some(tx) = ready_signal_tx.lock().await.take()
-                        {
-                            let _ = tx.send(());
-                        }
+        // Don't store child handle - it's detached
+        drop(child);
+
+        // Create channel and poll /ready endpoint
+        let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
+        let ready_port = port;
+
+        tokio::spawn(async move {
+            let timeout = Duration::from_secs(30);
+            let start = Instant::now();
+
+            while start.elapsed() < timeout {
+                tokio::time::sleep(Duration::from_millis(200)).await;
+
+                if let Ok(client) = reqwest::Client::builder()
+                    .timeout(Duration::from_millis(1000))
+                    .build()
+                {
+                    let url = format!("http://127.0.0.1:{}/ready", ready_port);
+                    if let Ok(response) = client.get(&url).send().await
+                        && response.status().is_success()
+                    {
+                        info!("Server readiness check passed");
+                        let _ = ready_tx.send(());
+                        return;
                     }
-                    CommandEvent::Stderr(line) => {
-                        let msg = String::from_utf8_lossy(&line);
-                        if msg.contains("ERROR") || msg.contains("WARN") {
-                            warn!("pm-server: {msg}");
-                        } else {
-                            info!("pm-server: {msg}");
-                        }
-                    }
-                    CommandEvent::Error(e) => {
-                        error!("pm-server error: {e}");
-                    }
-                    CommandEvent::Terminated(payload) => {
-                        info!(
-                            "pm-server terminated with code {:?}, signal {:?}",
-                            payload.code, payload.signal
-                        );
-                    }
-                    _ => {}
                 }
             }
+            warn!("Server readiness check timed out after 30s");
         });
-
-        *self.process.lock().await = Some(child);
 
         Ok(ready_rx)
     }
@@ -279,18 +373,28 @@ impl ServerManager {
     }
 
     /// Start command handler that processes restart requests.
-    fn start_command_handler(&self, app: tauri::AppHandle) {
+    fn start_command_handler(&self, _app: tauri::AppHandle) {
         let command_rx = self.command_rx.clone();
-        let process = self.process.clone();
+        let server_pid = self.server_pid.clone();
         let health_checker = self.health_checker.clone();
         let state_tx = self.state_tx.clone();
         let config = self.config.clone();
-        let data_dir = self.data_dir.clone();
+        let server_dir = self.server_dir.clone();
         let actual_port = self.actual_port.clone();
         let shutdown_requested = self.shutdown_requested.clone();
+        let manager_find_binary = self.find_server_binary();
 
         tauri::async_runtime::spawn(async move {
             let mut rx = command_rx.lock().await;
+
+            // Get binary path once at start
+            let server_binary = match manager_find_binary {
+                Ok(path) => path,
+                Err(e) => {
+                    error!("Failed to find server binary for restarts: {e}");
+                    return;
+                }
+            };
 
             while let Some(cmd) = rx.recv().await {
                 if shutdown_requested.load(Ordering::SeqCst) {
@@ -302,11 +406,24 @@ impl ServerManager {
                         info!("Processing restart request, attempt {attempt}");
                         let _ = state_tx.send(ServerState::Restarting { attempt });
 
-                        // Kill existing process
+                        // Kill existing process by PID
                         {
-                            let mut proc_guard = process.lock().await;
-                            if let Some(child) = proc_guard.take() {
-                                child.kill().ok();
+                            let pid_guard = server_pid.lock().await;
+                            if let Some(pid) = *pid_guard {
+                                #[cfg(unix)]
+                                {
+                                    use nix::sys::signal::{Signal, kill};
+                                    use nix::unistd::Pid;
+                                    kill(Pid::from_raw(pid as i32), Signal::SIGKILL).ok();
+                                }
+
+                                #[cfg(windows)]
+                                {
+                                    std::process::Command::new("taskkill")
+                                        .args(["/F", "/PID", &pid.to_string()])
+                                        .output()
+                                        .ok();
+                                }
                             }
                         }
 
@@ -332,28 +449,45 @@ impl ServerManager {
                             }
                         };
 
-                        // Spawn new process
-                        let sidecar = match app.shell().sidecar("pm-server").map(|s| {
-                            s.env("PM_CONFIG_DIR", data_dir.to_str().unwrap())
-                                .env("PM_SERVER_PORT", port.to_string())
-                                .env("PM_SERVER_HOST", &config.server.host)
-                                .env("PM_LOG_LEVEL", &config.logging.level)
-                                .env("PM_AUTH_ENABLED", "false")
-                        }) {
-                            Ok(s) => s,
-                            Err(e) => {
-                                error!("Failed to create sidecar: {e}");
-                                let _ = state_tx.send(ServerState::Failed {
-                                    error: e.to_string(),
-                                });
-                                continue;
-                            }
-                        };
+                        // Prepare log file path
+                        let log_file = server_dir
+                            .join(&config.logging.directory)
+                            .join("pm-server.log");
 
-                        match sidecar.spawn() {
-                            Ok((_rx, child)) => {
-                                *process.lock().await = Some(child);
+                        // Spawn new process
+                        let mut cmd = std::process::Command::new(&server_binary);
+                        cmd.env("PM_CONFIG_DIR", server_dir.to_str().unwrap())
+                            .env("PM_SERVER_PORT", port.to_string())
+                            .env("PM_SERVER_HOST", &config.server.host)
+                            .env("PM_LOG_LEVEL", &config.logging.level)
+                            .env("PM_LOG_FILE", log_file.to_str().unwrap())
+                            .env(
+                                "PM_IDLE_SHUTDOWN_SECS",
+                                config.connection.idle_shutdown_secs.to_string(),
+                            )
+                            .env("PM_AUTH_ENABLED", "false");
+
+                        #[cfg(unix)]
+                        {
+                            use std::os::unix::process::CommandExt;
+                            unsafe {
+                                cmd.pre_exec(|| {
+                                    libc::setsid();
+                                    Ok(())
+                                });
+                            }
+                        }
+
+                        cmd.stdin(std::process::Stdio::null())
+                            .stdout(std::process::Stdio::null())
+                            .stderr(std::process::Stdio::null());
+
+                        match cmd.spawn() {
+                            Ok(child) => {
+                                let new_pid = child.id();
+                                *server_pid.lock().await = Some(new_pid);
                                 *actual_port.lock().await = Some(port);
+                                drop(child); // Detached
 
                                 // Update health checker port
                                 *health_checker.lock().await = Some(HealthChecker::new(port, 3));
@@ -399,17 +533,17 @@ impl ServerManager {
 
     /// Ensure data directory structure exists.
     fn ensure_data_dir(&self) -> ServerResult<()> {
-        std::fs::create_dir_all(&self.data_dir).map_err(|e| ServerError::DataDirCreation {
-            path: self.data_dir.clone(),
+        std::fs::create_dir_all(&self.server_dir).map_err(|e| ServerError::DataDirCreation {
+            path: self.server_dir.clone(),
             source: e,
-            location: error_location::ErrorLocation::from(Location::caller()),
+            location: ErrorLocation::from(Location::caller()),
         })?;
 
-        let logs_dir = self.data_dir.join(&self.config.logging.directory);
+        let logs_dir = self.server_dir.join(&self.config.logging.directory);
         std::fs::create_dir_all(&logs_dir).map_err(|e| ServerError::DataDirCreation {
             path: logs_dir,
             source: e,
-            location: error_location::ErrorLocation::from(Location::caller()),
+            location: ErrorLocation::from(Location::caller()),
         })?;
 
         Ok(())
@@ -453,7 +587,13 @@ impl ServerManager {
 
     /// Get server process PID (if running).
     pub async fn server_pid(&self) -> Option<u32> {
-        self.process.lock().await.as_ref().map(|child| child.pid())
+        *self.server_pid.lock().await
+    }
+
+    /// Get tauri data directory.
+    #[allow(dead_code)]
+    pub fn tauri_dir(&self) -> &PathBuf {
+        &self.tauri_dir
     }
 
     /// Stop the server gracefully.
@@ -473,9 +613,11 @@ impl ServerManager {
             warn!("Failed to checkpoint database: {e}");
         }
 
-        // Graceful shutdown with timeout
-        let mut process_guard = self.process.lock().await;
-        if let Some(child) = process_guard.take() {
+        // Kill server process if we have a PID
+        let pid_guard = self.server_pid.lock().await;
+        if let Some(pid) = *pid_guard {
+            drop(pid_guard); // Release lock before async operations
+
             let timeout = Duration::from_secs(self.config.resilience.shutdown_timeout_secs);
             let port = self
                 .actual_port
@@ -493,7 +635,6 @@ impl ServerManager {
                     use nix::sys::signal::{Signal, kill};
                     use nix::unistd::Pid;
 
-                    let pid = child.pid();
                     info!("Sending SIGTERM to pid {pid}");
                     kill(Pid::from_raw(pid as i32), Signal::SIGTERM).ok();
                 }
@@ -504,7 +645,6 @@ impl ServerManager {
                         CTRL_BREAK_EVENT, GenerateConsoleCtrlEvent,
                     };
 
-                    let pid = child.pid();
                     info!("Sending CTRL_BREAK to pid {pid}");
                     unsafe {
                         GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, pid);
@@ -517,28 +657,41 @@ impl ServerManager {
             let poll_interval = Duration::from_millis(100);
 
             while start.elapsed() < timeout {
-                // Check if process has exited via health endpoint
-                let client = reqwest::Client::builder()
+                if let Ok(client) = reqwest::Client::builder()
                     .timeout(Duration::from_millis(500))
                     .build()
-                    .ok();
-
-                if let Some(client) = client {
+                {
                     let url = format!("http://127.0.0.1:{}/health", port);
                     if client.get(&url).send().await.is_err() {
                         info!("Server stopped responding, shutdown complete");
                         break;
                     }
                 }
-
                 tokio::time::sleep(poll_interval).await;
             }
 
             // Force kill if still running after timeout
-            info!("Force killing server process");
-            child.kill().ok();
+            info!("Force killing server process (PID: {})", pid);
+
+            #[cfg(unix)]
+            {
+                use nix::sys::signal::{Signal, kill};
+                use nix::unistd::Pid;
+
+                kill(Pid::from_raw(pid as i32), Signal::SIGKILL).ok();
+            }
+
+            #[cfg(windows)]
+            {
+                std::process::Command::new("taskkill")
+                    .args(["/F", "/PID", &pid.to_string()])
+                    .output()
+                    .ok();
+            }
+
+            // Clear stored PID
+            *self.server_pid.lock().await = None;
         }
-        drop(process_guard);
 
         // Release lock file
         if let Some(mut lock) = self.lock_file.lock().await.take() {
@@ -565,7 +718,7 @@ impl ServerManager {
             .build()
             .map_err(|e| ServerError::CheckpointFailed {
                 message: e.to_string(),
-                location: error_location::ErrorLocation::from(Location::caller()),
+                location: ErrorLocation::from(Location::caller()),
             })?;
 
         let resp = client
@@ -574,13 +727,13 @@ impl ServerManager {
             .await
             .map_err(|e| ServerError::CheckpointFailed {
                 message: e.to_string(),
-                location: error_location::ErrorLocation::from(Location::caller()),
+                location: ErrorLocation::from(Location::caller()),
             })?;
 
         if !resp.status().is_success() {
             return Err(ServerError::CheckpointFailed {
                 message: format!("HTTP {}", resp.status()),
-                location: error_location::ErrorLocation::from(Location::caller()),
+                location: ErrorLocation::from(Location::caller()),
             });
         }
 

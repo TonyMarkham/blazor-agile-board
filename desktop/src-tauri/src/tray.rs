@@ -77,10 +77,15 @@ impl TrayManager {
                     }
                 }
                 "quit" => {
+                    tracing::info!("Tray quit clicked");
                     let app_handle = app.clone();
-                    tauri::async_runtime::spawn(async move {
+                    // Use block_on to ensure server stops BEFORE app exits
+                    tauri::async_runtime::block_on(async move {
                         if let Some(manager) = app_handle.try_state::<Arc<ServerManager>>() {
-                            let _ = manager.stop().await;
+                            match manager.stop().await {
+                                Ok(()) => tracing::info!("Server stopped successfully"),
+                                Err(e) => tracing::error!("Failed to stop server: {}", e),
+                            }
                         }
                         app_handle.exit(0);
                     });

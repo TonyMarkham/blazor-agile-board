@@ -22,8 +22,7 @@ fn main() {
         .join("pm-server");
 
     // Destination path for the sidecar
-    let binaries_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap())
-        .join("binaries");
+    let binaries_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join("binaries");
 
     let dest_binary = binaries_dir.join(format!("pm-server-{}", target_triple));
 
@@ -33,15 +32,18 @@ fn main() {
     // If source binary exists, copy it. Otherwise, build it first.
     if source_binary.exists() {
         println!("cargo:warning=Copying {} to {:?}", profile, dest_binary);
-        fs::copy(&source_binary, &dest_binary)
-            .expect("Failed to copy pm-server binary");
+        fs::copy(&source_binary, &dest_binary).expect("Failed to copy pm-server binary");
     } else {
         println!("cargo:warning=pm-server binary not found, building it...");
 
         // Build pm-server in the appropriate profile
         let status = Command::new("cargo")
-            .args(&["build", "-p", "pm-server"])
-            .args(if profile == "release" { vec!["--release"] } else { vec![] })
+            .args(["build", "-p", "pm-server"])
+            .args(if profile == "release" {
+                vec!["--release"]
+            } else {
+                vec![]
+            })
             .current_dir(&workspace_root)
             .status()
             .expect("Failed to build pm-server");

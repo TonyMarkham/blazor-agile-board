@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 mod commands;
 mod identity;
 mod logging;
@@ -16,7 +18,8 @@ use std::sync::Arc;
 use tauri::{Emitter, Manager};
 use tracing::{error, info};
 
-const PM_SERVER_CONFIG_DIRECTORY_NAME: &str = ".pm";
+const SERVER_DATA_DIR: &str = ".server";
+const TAURI_DATA_DIR: &str = ".tauri";
 const PM_SERVER_CONFIG_FILENAME: &str = "config.toml";
 
 // Tauri event names (must match frontend TauriService constants)
@@ -36,26 +39,67 @@ pub fn run() {
             }
         }))
         .setup(|app| {
-            // Get data directory early for logging setup
-            let data_dir = app
-                .path()
-                .app_data_dir()?
-                .join(PM_SERVER_CONFIG_DIRECTORY_NAME);
-            std::fs::create_dir_all(&data_dir)?;
+            let app_data_dir = app.path().app_data_dir()?;
 
-            // Initialize logging with rotation
-            setup_logging(&data_dir)?;
+            // Server data directory (.server/) - for pm-server
+            let server_dir = app_data_dir.join(SERVER_DATA_DIR);
+            std::fs::create_dir_all(&server_dir)?;
+
+            // Tauri data directory (.tauri/) - for Tauri config/logs
+            let tauri_dir = app_data_dir.join(TAURI_DATA_DIR);
+            std::fs::create_dir_all(&tauri_dir)?;
+
+            // Initialize Tauri logging to .tauri/
+            setup_logging(&tauri_dir)?;
 
             info!("Starting Project Manager v{}", env!("CARGO_PKG_VERSION"));
-            info!("Data directory: {:?}", data_dir);
+            info!("Server directory: {:?}", server_dir);
+            info!("Tauri directory: {:?}", tauri_dir);
 
-            // Extract bundled pm-server config on first run
-            let pm_config_dest = data_dir.join(PM_SERVER_CONFIG_FILENAME);
+            // Setup signal handlers for graceful shutdown on Unix
+            #[cfg(unix)]
+            {
+                let app_handle = app.handle().clone();
+                std::thread::spawn(move || {
+                    use signal_hook::consts::{SIGINT, SIGTERM};
+                    use signal_hook::iterator::Signals;
+
+                    let mut signals = match Signals::new([SIGINT, SIGTERM]) {
+                        Ok(s) => s,
+                        Err(e) => {
+                            error!("Failed to register signal handlers: {e}");
+                            return;
+                        }
+                    };
+
+                    if let Some(sig) = signals.forever().next() {
+                        info!("Received signal {sig}, shutting down...");
+
+                        if let Some(manager) = app_handle.try_state::<Arc<ServerManager>>() {
+                            tauri::async_runtime::block_on(async {
+                                match manager.stop().await {
+                                    Ok(()) => {
+                                        info!("Server stopped due to signal {sig}")
+                                    }
+                                    Err(e) => {
+                                        error!("Failed to stop server on signal: {e}")
+                                    }
+                                }
+                            });
+                        }
+
+                        std::process::exit(0);
+                    }
+                });
+            }
+
+            // Extract bundled pm-server config on first run (to .server/)
+            let pm_config_dest = server_dir.join(PM_SERVER_CONFIG_FILENAME);
             if !pm_config_dest.exists()
                 && let Ok(resource_dir) = app.path().resource_dir()
             {
                 let pm_config_src = resource_dir
-                    .join(PM_SERVER_CONFIG_DIRECTORY_NAME)
+                    .join(SERVER_DATA_DIR)
                     .join(PM_SERVER_CONFIG_FILENAME);
                 if pm_config_src.exists() {
                     std::fs::copy(&pm_config_src, &pm_config_dest)?;
@@ -63,12 +107,16 @@ pub fn run() {
                 }
             }
 
-            // Load or create config
-            let config = ServerConfig::load_or_create(&data_dir)
+            // Load or create config from .tauri/
+            let config = ServerConfig::load_or_create(&tauri_dir)
                 .map_err(|e| format!("Config error: {}", e))?;
 
-            // Create server manager
-            let manager = Arc::new(ServerManager::new(data_dir.clone(), config));
+            // Create server manager with both directories
+            let manager = Arc::new(ServerManager::new(
+                server_dir.clone(),
+                tauri_dir.clone(),
+                config,
+            ));
             app.manage(manager.clone());
 
             // Setup system tray with TrayManager
@@ -167,7 +215,29 @@ pub fn run() {
             commands::restart_server,
             commands::export_diagnostics,
             commands::get_recent_logs,
+            commands::quit_app,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| {
+            use tauri::RunEvent;
+
+            if let RunEvent::ExitRequested { api, code, .. } = event {
+                info!("Exit requested (code: {:?})", code);
+                api.prevent_exit();
+
+                let app_handle_clone = app_handle.clone();
+                tauri::async_runtime::block_on(async move {
+                    if let Some(manager) = app_handle_clone.try_state::<Arc<ServerManager>>() {
+                        info!("Stopping server before exit...");
+                        match manager.stop().await {
+                            Ok(()) => info!("Server stopped successfully"),
+                            Err(e) => error!("Failed to stop server: {}", e),
+                        }
+                    }
+                });
+
+                std::process::exit(code.unwrap_or(0));
+            }
+        });
 }

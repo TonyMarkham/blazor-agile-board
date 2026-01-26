@@ -1,6 +1,6 @@
 # PM Server Configuration Example
 # ================================
-# Copy to .pm/config.toml in your working directory (relative to where you run pm-server).
+# Copy to .server/config.toml in your working directory (relative to where you run pm-server).
 # All values shown are defaults - only override what you need.
 #
 # Environment variables override TOML values with PM_ prefix:
@@ -29,12 +29,16 @@ port = 8000
 # Maximum concurrent connections (range: 1-100000, default: 10000)
 max_connections = 10000
 
+# Auto-shutdown when no connections for N seconds (0 = disabled, default: 0)
+# Desktop mode sets this via PM_IDLE_SHUTDOWN_SECS env var
+idle_shutdown_secs = 0
+
 # =============================================================================
 # Database Configuration
 # =============================================================================
 
 [database]
-# SQLite database file path (relative to .pm/ directory, default: "data.db")
+# SQLite database file path (relative to .server/ directory, default: "data.db")
 # Must be relative and cannot contain '..' for security
 path = "data.db"
 
@@ -56,7 +60,7 @@ enabled = false
 
 # === JWT Public Key (RS256) ===
 # Path to RSA public key PEM file for RS256 JWT validation
-# Path is relative to .pm/ directory and cannot contain '..'
+# Path is relative to .server/ directory and cannot contain '..'
 # Only used when auth.enabled = true and jwt_secret is not provided
 # jwt_public_key_path = "public.pem"
 
@@ -74,12 +78,17 @@ enabled = false
 # Options: "trace", "debug", "info", "warn", "error", "off"
 level = "info"
 
-# Log directory (relative to .pm/ directory, default: "log")
+# Log directory (relative to .server/ directory, default: "log")
 dir = "log"
 
 # Enable colored output (default: true)
 # Set to false for non-TTY environments (CI, Docker logs, systemd)
 colored = false
+
+# Optional log file name (omit for stdout logging)
+# When set, logs go to {dir}/{file} instead of stdout
+# Desktop mode sets this via PM_LOG_FILE env var
+# file = "pm-server.log"
 
 # =============================================================================
 # WebSocket Configuration

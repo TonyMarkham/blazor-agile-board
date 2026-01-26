@@ -580,61 +580,83 @@ public class ProjectManagementWebSocketClient
 
 ---
 
-## Session 40: Tauri Desktop Integration
+## Session 40: Tauri Desktop Integration ✅
+
+**Status**: Complete (2026-01-25)
 
 **Goal**: Desktop app with embedded pm-server
 
 **Estimated Tokens**: ~80k
+**Actual Tokens**: ~200k across sub-sessions (40.1-44)
 
-### Phase 1: Sidecar Configuration
+**Detailed Plan**: See `docs/session-plans/44-Session-Plan.md` for implementation details
 
-**Files to modify**:
-- `desktop/src-tauri/tauri.conf.json` - Configure pm-server as sidecar
-- Build scripts to bundle pm-server binary
+### What Was Delivered:
 
-### Phase 2: Lifecycle Management
+**Session 40.1: Desktop App Foundation** ✅
+- Tauri app with server lifecycle management
+- Health checking with circuit breaker pattern
+- Lock file for single-instance enforcement
+- System tray with status indicators
 
-**Files to create/modify**:
-- `desktop/src-tauri/src/main.rs` - Sidecar spawn/kill
-- Start pm-server on app launch
-- Stop pm-server on app close
-- Handle crashes/restarts
+**Session 42.5: Identity & Error Infrastructure** ✅
+- User identity persistence with atomic writes
+- Comprehensive error handling with recovery hints
+- Diagnostics export (zip bundle)
 
-### Phase 3: Port Discovery
+**Session 44: Server Shutdown & Logging** ✅
+- Directory restructure: `.server/` (pm-server) + `.tauri/` (Tauri config)
+- Signal handlers for graceful shutdown (SIGINT, SIGTERM)
+- ExitRequested handler for clean app close
+- Configurable idle shutdown with validation
+- pm-server binary discovery (bundled, dev, PATH)
+- File-based logging for pm-server
 
-**Files to create**:
-- Health check endpoint in pm-server
-- Frontend discovers server port
-- Fallback if server not ready
+### Directory Structure
 
-### Phase 4: Data Directory
+```
+~/Library/Application Support/com.projectmanager.app/
+├── .server/                    ← pm-server (backend)
+│   ├── config.toml             ← pm-server config (extracted from bundle)
+│   ├── data.db
+│   ├── logs/
+│   │   └── pm-server.log
+│   └── server.lock
+├── .tauri/                     ← Tauri desktop app
+│   ├── config.toml             ← Tauri's ServerConfig
+│   └── logs/
+│       └── pm-desktop.YYYY-MM-DD.log
+└── user.json                   ← User identity
+```
 
-**Files to modify**:
-- pm-server uses `.pm/data.db` (relative to app directory)
-- Config file at `.pm/config.toml`
-- Logs at `.pm/logs/`
+### Key Files Modified (14 files)
 
-### Phase 5: Build & Package
-
-**Files to create**:
-- Build scripts for dev and release
-- Platform-specific packaging (macOS, Windows, Linux)
-
-### Phase 6: End-to-End Testing
-
-**Tests**:
-- App launches and server starts
-- Frontend connects to backend
-- CRUD operations work
-- App closes cleanly
+| File | Change |
+|------|--------|
+| `Cargo.toml` | signal-hook workspace dependency |
+| `desktop/src-tauri/Cargo.toml` | signal-hook Unix dependency |
+| `backend/crates/pm-config/src/logging_config.rs` | `file` field for log output |
+| `backend/crates/pm-config/src/server_config.rs` | `idle_shutdown_secs` field |
+| `backend/crates/pm-config/src/config.rs` | PM_LOG_FILE, PM_IDLE_SHUTDOWN_SECS |
+| `backend/pm-server/src/logger.rs` | Optional file path parameter |
+| `backend/pm-server/src/main.rs` | Config-driven logging, idle shutdown |
+| `desktop/src-tauri/src/server/config.rs` | ConnectionSettings with validation |
+| `desktop/src-tauri/src/server/lifecycle.rs` | PID tracking, binary discovery, graceful stop |
+| `desktop/src-tauri/src/lib.rs` | Directory setup, signal handlers, ExitRequested |
+| `desktop/src-tauri/src/tray.rs` | Blocking quit handler |
+| `desktop/src-tauri/src/commands.rs` | wasm_ready re-emit, quit_app command |
+| `desktop/src-tauri/tauri.conf.json` | pm-server bundling |
 
 **Success Criteria**:
-- [ ] `cargo tauri dev` launches working app
-- [ ] pm-server starts automatically
-- [ ] Frontend connects via WebSocket
-- [ ] Data persists in .pm/data.db
-- [ ] App closes cleanly (server stops)
-- [ ] Can build release package
+- [x] `just dev` launches working app
+- [x] pm-server starts automatically as detached process
+- [x] Frontend connects via WebSocket
+- [x] Data persists in `.server/data.db`
+- [x] App closes cleanly (server stops via SIGTERM then SIGKILL)
+- [x] No orphan pm-server processes after quit
+- [x] System tray shows server status
+- [x] Signal handlers work (Ctrl+C, kill)
+- [x] `just build-release` produces bundled app
 
 ---
 
@@ -822,11 +844,11 @@ Running timer logic: only one active timer per user
 | **10** | Database & Handlers | ~100k | **~120k** | ✅ Complete | Working backend with circuit breaker, 166 tests passing |
 | **20** | Blazor Foundation | ~100k | **~190k** | ✅ Complete | Production-grade frontend, 88 tests, full end-to-end |
 | **30** | Work Item UI | ~100k | **~500k** | 🟡 In Progress | 36/41 files, 256 tests, 5 sessions complete |
-| **40** | Tauri Integration | ~80k | TBD | Planned | Desktop app with embedded server |
+| **40** | Tauri Integration | ~80k | **~200k** | ✅ Complete | Desktop app with server lifecycle, graceful shutdown |
 | **50** | Sprints & Comments | ~100k | TBD | Planned | Sprint planning & commenting |
 | **60** | Time & Dependencies | ~100k | TBD | Planned | Time tracking & dependency management |
 | **70** | Polish & Docs | ~80k | TBD | Planned | Production-ready application |
-| **Total** | | **~700k** | **~918k / ~1218k** | In Progress | Complete desktop application |
+| **Total** | | **~700k** | **~1118k** | In Progress | Complete desktop application |
 
 ---
 

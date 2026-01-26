@@ -46,11 +46,10 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "externalBin": [
-      "binaries/pm-server"
-    ],
+    "externalBin": [],
     "resources": {
-      "../../.pm/config.toml": ".pm/config.toml"
+      "../../.server/config.toml": ".server/config.toml",
+      "../../target/release/pm-server": "pm-server"
     },
     "targets": ["app", "dmg", "nsis", "deb", "rpm"],
     "category": "Productivity",

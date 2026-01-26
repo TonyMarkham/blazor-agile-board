@@ -198,6 +198,7 @@ impl Config {
             "PM_SERVER_MAX_CONNECTIONS",
             &mut self.server.max_connections,
         );
+        Self::apply_env_parse("PM_IDLE_SHUTDOWN_SECS", &mut self.server.idle_shutdown_secs);
 
         // Database
         Self::apply_env_string("PM_DATABASE_PATH", &mut self.database.path);
@@ -214,6 +215,7 @@ impl Config {
         // Logging
         Self::apply_env_parse("PM_LOG_LEVEL", &mut self.logging.level);
         Self::apply_env_bool("PM_LOG_COLORED", &mut self.logging.colored);
+        Self::apply_env_option_string("PM_LOG_FILE", &mut self.logging.file);
 
         // WebSocket
         Self::apply_env_parse(

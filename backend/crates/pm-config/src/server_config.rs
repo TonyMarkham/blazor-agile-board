@@ -12,6 +12,8 @@ pub struct ServerConfig {
     pub port: u16,
     /// Maximum concurrent connections
     pub max_connections: usize,
+    /// Auto-shutdown when no connections for N seconds (0 = disabled)
+    pub idle_shutdown_secs: u64,
 }
 
 impl Default for ServerConfig {
@@ -20,6 +22,7 @@ impl Default for ServerConfig {
             host: String::from(DEFAULT_HOST),
             port: DEFAULT_PORT,
             max_connections: DEFAULT_MAX_CONNECTIONS,
+            idle_shutdown_secs: 0,
         }
     }
 }

@@ -3,6 +3,80 @@
 **Prerequisites**: Session 42.5 completed, `cargo check --workspace` passes
 **Source**: `stash@{0}` contains working code with quality issues to fix
 **Target**: ~50-60k tokens
+**Status**: Implementation Complete - Testing/Verification Phase
+
+---
+
+## Progress Tracking
+
+| Step | Description | Status |
+|------|-------------|--------|
+| 1 | Add signal-hook dependency | ✅ Done |
+| 2 | Update LoggingConfig with file field | ✅ Done |
+| 3 | Update ServerConfig with idle_shutdown_secs | ✅ Done |
+| 4 | Add environment variable overrides | ✅ Done |
+| 5 | Update config.example.toml | ✅ Done |
+| 6 | Update logger signature | ✅ Done |
+| 7 | Update main.rs logger initialization | ✅ Done |
+| 8 | Add configurable idle shutdown | ✅ Done |
+| 9 | Add ConnectionSettings to Tauri config | ✅ Done |
+| 10 | Complete lifecycle.rs refactor | ✅ Done |
+| 11 | Update lib.rs directory setup | ✅ Done |
+| 12 | Add signal handlers to lib.rs | ✅ Done |
+| 13 | Add ExitRequested handler | ✅ Done |
+| 14 | Update tray.rs quit handler | ✅ Done |
+| 15 | Update wasm_ready command | ✅ Done |
+| 16 | Add quit_app command | ✅ Done |
+| 17 | Update bundling config | ✅ Done |
+
+**Phases Completed**: 1-8 (All implementation phases)
+**Current Phase**: Testing & Verification
+
+---
+
+## Issues Discovered During Testing
+
+### Issue 1: WASM TypeLoadException on Startup
+
+**Symptom**: Blazor WASM times out waiting for server on first launch. Clicking "Retry" works.
+
+**Console Error**:
+```
+[Error] Unhandled Promise Rejection: Error: System.TypeLoadException: Could not resolve type
+with token 0100001d from typeref (expected class 'System.Diagnostics.DebuggerStepThroughAttribute'
+in assembly 'System.Runtime, Version=10.0.0.0...
+```
+
+**Root Cause**: Stale .NET build artifacts. The `server-state-changed` event IS received by JS,
+but the callback into .NET fails due to incompatible cached assemblies.
+
+**Solution**: Clean rebuild
+```bash
+just clean
+just build-dev
+```
+
+**References**:
+- [Telerik KB: TypeLoadException](https://www.telerik.com/blazor-ui/documentation/knowledge-base/common-could-not-resolve-type-with-token)
+- [HAVIT KB: WASM AggregateException](https://knowledge-base.havit.eu/2025/05/28/wasm-aggregateexception_ctor_defaultmessage-could-not-resolve-type-with-token/)
+
+### Issue 2: Config Validation Failure
+
+**Symptom**: App crashes on startup with panic:
+```
+Config error: Configuration invalid: idle_shutdown_secs (60) must be > 2x ping_interval_secs (30)
+to avoid false shutdowns
+```
+
+**Root Cause**: Existing config file created before validation was added. The validation requires
+`idle_shutdown_secs > 2 * ping_interval_secs`, so 60 is not > 60.
+
+**Solutions**:
+1. Lower `ping_interval_secs` to 29 (then 60 > 58 ✓)
+2. Increase `idle_shutdown_secs` to 61+
+3. Delete config to regenerate with valid defaults (120)
+
+**Config Location**: `~/Library/Application Support/com.projectmanager.app/.tauri/config.toml`
 
 ---
 
@@ -1002,9 +1076,13 @@ Remove `externalBin` section if present, update `resources`:
 
 After completing all steps:
 
+- [x] All 17 implementation steps complete
+- [ ] `just clean && just build-dev` (clean build required)
 - [ ] `cargo check --workspace` passes
 - [ ] `cargo test --workspace` passes
 - [ ] `cargo clippy --workspace -- -D warnings` passes
+- [ ] Fix any stale `.tauri/config.toml` validation errors
+- [ ] Verify WASM connects to server on first launch (no retry needed)
 
 ### Files Modified (14 files, 17 steps organized in 8 phases)
 
@@ -1030,6 +1108,14 @@ After completing all steps:
 ## Final Verification
 
 ```bash
+# IMPORTANT: Clean build required after SDK/dependency changes
+just clean
+just build-dev
+
+# Or manually:
+# rm -rf frontend/**/bin frontend/**/obj
+# cargo clean
+
 # Build and test
 cargo check --workspace
 cargo test --workspace
