@@ -262,7 +262,9 @@ public sealed class WebSocketClient : IWebSocketClient
             {
                 ItemType = ProtoConverter.ToProto(request.ItemType),
                 Title = request.Title,
-                ProjectId = request.ProjectId.ToString()
+                ProjectId = request.ProjectId.ToString(),
+                Status = request.Status,
+                Priority = request.Priority
             }
         };
 
