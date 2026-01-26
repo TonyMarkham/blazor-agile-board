@@ -19,7 +19,11 @@
       "Bash(sqlite3:*)",
       "Bash(dotnet build:*)",
       "Bash(dotnet test:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "WebFetch(domain:blazor.radzen.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:www.radzen.com)",
+      "WebFetch(domain:forum.radzen.com)"
     ]
   }
 }
