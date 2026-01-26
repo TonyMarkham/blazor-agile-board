@@ -47,6 +47,26 @@ public sealed class WorkItemViewModel : IViewModel<WorkItem>, IEquatable<WorkIte
     // === Computed Properties ===
     public bool IsDeleted => Model.DeletedAt.HasValue;
     public bool IsCompleted => Model.Status == "done";
+    
+    /// <summary>
+    /// Progress of child tasks (for Story cards)
+    /// </summary>
+    public ChildProgress? TaskProgress { get; init; }
+
+    /// <summary>
+    /// Progress of child stories (for Epic cards)
+    /// </summary>
+    public ChildProgress? StoryProgress { get; init; }
+
+    /// <summary>
+    /// True if this card should show progress bars (Epic or Story with children)
+    /// </summary>
+    public bool ShowProgress => ItemType switch
+    {
+        WorkItemType.Epic => StoryProgress?.HasChildren == true || TaskProgress?.HasChildren == true,
+        WorkItemType.Story => TaskProgress?.HasChildren == true,
+        _ => false
+    };
 
     public string StatusDisplayName => Status switch
     {

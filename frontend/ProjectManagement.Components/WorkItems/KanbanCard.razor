@@ -55,6 +55,29 @@
                               aria-label="@($"Edit {Item.Title}")" />
             }
         </RadzenStack>
+        
+        @* Progress section for Epic/Story cards *@
+        @if (Item.ShowProgress)
+        {
+            @if (Item.ItemType == WorkItemType.Epic)
+            {
+                @if (Item.StoryProgress?.HasChildren == true)
+                {
+                    <ChildProgressBar Progress="@Item.StoryProgress" Label="Stories" />
+                }
+                @if (Item.TaskProgress?.HasChildren == true)
+                {
+                    <ChildProgressBar Progress="@Item.TaskProgress" Label="Tasks" />
+                }
+            }
+            else if (Item.ItemType == WorkItemType.Story)
+            {
+                @if (Item.TaskProgress?.HasChildren == true)
+                {
+                    <ChildProgressBar Progress="@Item.TaskProgress" Label="Tasks" />
+                }
+            }
+        }
     </RadzenStack>
 </div>
 

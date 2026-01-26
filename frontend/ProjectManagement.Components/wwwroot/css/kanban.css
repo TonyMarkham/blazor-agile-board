@@ -243,3 +243,70 @@
     background: transparent;
     cursor: default;
 }
+
+/* =============================================================================
+     CHILD PROGRESS BAR (for Epic/Story cards)
+     ============================================================================= */
+
+.child-progress-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+.progress-track {
+    flex: 1;
+    height: 6px;
+    background: var(--rz-base-300);
+    border-radius: 3px;
+    overflow: hidden;
+    display: flex;
+}
+
+.progress-segment {
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+/* Status colors - match Kanban column semantics */
+.progress-segment.status-done {
+    background: var(--rz-success);
+}
+
+.progress-segment.status-review {
+    background: var(--rz-secondary);
+}
+
+.progress-segment.status-in-progress {
+    background: var(--rz-warning);
+}
+
+.progress-segment.status-todo {
+    background: var(--rz-info);
+}
+
+.progress-segment.status-backlog {
+    background: var(--rz-base-400);
+}
+
+.progress-label {
+    font-size: 0.7rem;
+    color: var(--rz-text-secondary-color);
+    white-space: nowrap;
+    min-width: 3rem;
+}
+
+/* Compact progress for cards - add separator */
+.kanban-card .child-progress-bar {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--rz-border-color);
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+    .progress-segment {
+        transition: none;
+    }
+}

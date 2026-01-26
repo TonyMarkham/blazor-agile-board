@@ -1,0 +1,66 @@
+@using ProjectManagement.Core.ViewModels
+
+  @if (Progress?.HasChildren == true)
+  {
+      <div class="child-progress-bar" title="@TooltipText">
+          <div class="progress-track">
+              @foreach (var segment in GetSegments())
+              {
+                  <div class="progress-segment @segment.StatusClass"
+                       style="width: @segment.WidthPercent%"
+                       title="@segment.Tooltip">
+                  </div>
+              }
+          </div>
+          <span class="progress-label">@Label @Progress.DisplayText</span>
+      </div>
+  }
+
+  @code {
+      [Parameter, EditorRequired]
+      public ChildProgress Progress { get; set; } = ChildProgress.Empty;
+
+      [Parameter]
+      public string Label { get; set; } = "";
+
+      private string TooltipText => $"{Label}: {Progress.Completed} of {Progress.Total} complete ({Progress.Percentage}%)";
+
+      // Status display order (left to right on progress bar)
+      // Done on the left, Backlog on the right - shows completed work first
+      private static readonly string[] StatusOrder = { "done", "review", "in_progress", "todo", "backlog" };
+
+      private IEnumerable<ProgressSegment> GetSegments()
+      {
+          if (Progress.Total == 0) yield break;
+
+          foreach (var status in StatusOrder)
+          {
+              if (Progress.ByStatus.TryGetValue(status, out var count) && count > 0)
+              {
+                  yield return new ProgressSegment
+                  {
+                      StatusClass = $"status-{status.Replace("_", "-")}",
+                      WidthPercent = (count * 100.0) / Progress.Total,
+                      Tooltip = $"{StatusDisplayName(status)}: {count}"
+                  };
+              }
+          }
+      }
+
+      private static string StatusDisplayName(string status) => status switch
+      {
+          "backlog" => "Backlog",
+          "todo" => "To Do",
+          "in_progress" => "In Progress",
+          "review" => "Review",
+          "done" => "Done",
+          _ => status
+      };
+
+      private record ProgressSegment
+      {
+          public string StatusClass { get; init; } = "";
+          public double WidthPercent { get; init; }
+          public string Tooltip { get; init; } = "";
+      }
+  }

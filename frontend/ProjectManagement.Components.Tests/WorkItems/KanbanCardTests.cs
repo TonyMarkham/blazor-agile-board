@@ -270,6 +270,101 @@ public class KanbanCardTests : BunitContext
 
     #endregion
 
+    #region Progress Bar Tests
+
+    [Fact]
+    public void KanbanCard_ShowsTaskProgress_ForStoryWithChildren()
+    {
+        // Arrange
+        var workItem = CreateTestWorkItem() with { ItemType = WorkItemType.Story };
+        var progress = new ChildProgress
+        {
+            ByStatus = new Dictionary<string, int> { ["done"] = 2, ["todo"] = 3 },
+            Total = 5,
+            Completed = 2
+        };
+        var viewModel = new WorkItemViewModel(workItem, isPendingSync: false)
+        {
+            TaskProgress = progress
+        };
+
+        // Act
+        var cut = Render<KanbanCard>(parameters => parameters
+            .Add(p => p.Item, viewModel));
+
+        // Assert
+        cut.FindComponents<ChildProgressBar>().Should().HaveCount(1);
+        cut.Markup.Should().Contain("2/5");
+    }
+
+    [Fact]
+    public void KanbanCard_ShowsBothProgressBars_ForEpicWithStoriesAndTasks()
+    {
+        // Arrange
+        var workItem = CreateTestWorkItem() with { ItemType = WorkItemType.Epic };
+        var storyProgress = new ChildProgress
+        {
+            ByStatus = new Dictionary<string, int> { ["done"] = 1, ["in_progress"] = 2 },
+            Total = 3,
+            Completed = 1
+        };
+        var taskProgress = new ChildProgress
+        {
+            ByStatus = new Dictionary<string, int> { ["done"] = 5, ["todo"] = 5 },
+            Total = 10,
+            Completed = 5
+        };
+        var viewModel = new WorkItemViewModel(workItem, isPendingSync: false)
+        {
+            StoryProgress = storyProgress,
+            TaskProgress = taskProgress
+        };
+
+        // Act
+        var cut = Render<KanbanCard>(parameters => parameters
+            .Add(p => p.Item, viewModel));
+
+        // Assert
+        cut.FindComponents<ChildProgressBar>().Should().HaveCount(2);
+        cut.Markup.Should().Contain("Stories");
+        cut.Markup.Should().Contain("Tasks");
+    }
+
+    [Fact]
+    public void KanbanCard_HidesProgressBar_ForTaskItems()
+    {
+        // Arrange
+        var workItem = CreateTestWorkItem() with { ItemType = WorkItemType.Task };
+        var viewModel = new WorkItemViewModel(workItem, isPendingSync: false);
+
+        // Act
+        var cut = Render<KanbanCard>(parameters => parameters
+            .Add(p => p.Item, viewModel));
+
+        // Assert
+        cut.FindComponents<ChildProgressBar>().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void KanbanCard_HidesProgressBar_ForStoryWithNoChildren()
+    {
+        // Arrange
+        var workItem = CreateTestWorkItem() with { ItemType = WorkItemType.Story };
+        var viewModel = new WorkItemViewModel(workItem, isPendingSync: false)
+        {
+            TaskProgress = ChildProgress.Empty
+        };
+
+        // Act
+        var cut = Render<KanbanCard>(parameters => parameters
+            .Add(p => p.Item, viewModel));
+
+        // Assert
+        cut.FindComponents<ChildProgressBar>().Should().BeEmpty();
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private static WorkItemViewModel CreateTestViewModel()
