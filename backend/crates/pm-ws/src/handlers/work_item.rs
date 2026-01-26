@@ -409,10 +409,10 @@ fn apply_updates(work_item: &mut WorkItem, req: &UpdateWorkItemRequest) -> Resul
 // NOTE: These functions are `pub` so property tests can access them
 pub fn validate_status(status: &str) -> Result<(), WsError> {
     match status {
-        "todo" | "in_progress" | "review" | "done" | "blocked" => Ok(()),
+        "backlog" | "todo" | "in_progress" | "review" | "done" | "blocked" => Ok(()),
         _ => Err(WsError::ValidationError {
             message: format!(
-                "Invalid status: {}. Valid: todo, in_progress, review, done, blocked",
+                "Invalid status: {}. Valid: backlog, todo, in_progress, review, done, blocked",
                 status
             ),
             field: Some("status".to_string()),

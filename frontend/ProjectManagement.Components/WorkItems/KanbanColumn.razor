@@ -1,102 +1,52 @@
 @using ProjectManagement.Core.ViewModels
 
-<div class="kanban-column @(IsDragTarget ? "drag-target" : "")"
+<div class="kanban-column @(IsKeyboardDragTarget ? "drag-target" : "")"
      role="listbox"
-     aria-label="@($"{Title} column, {ItemCount} items")"
-     @ondragover="HandleDragOver"
-     @ondragover:preventDefault="true"
-     @ondrop="HandleDrop">
+     aria-label="@($"{Title} column, {ItemCount} items")">
 
-    @* Header *@
-    <div class="kanban-column-header">
-        <RadzenText TextStyle="TextStyle.Subtitle1" class="m-0">@Title</RadzenText>
-        <RadzenBadge BadgeStyle="@HeaderBadgeStyle"
-                     Text="@ItemCount.ToString()"
-                     IsPill="true" />
-    </div>
+    <RadzenDropZone TItem="WorkItemViewModel" Value="@Status">
+        @* Header *@
+        <div class="kanban-column-header">
+            <RadzenText TextStyle="TextStyle.Subtitle1" class="m-0">@Title</RadzenText>
+            <RadzenBadge BadgeStyle="@HeaderBadgeStyle" Text="@ItemCount.ToString()" IsPill="true" />
+        </div>
 
-    @* Body *@
-    <div class="kanban-column-body" role="list">
+        @* Empty state *@
         @if (ItemCount == 0)
         {
             <div class="kanban-empty-column">
                 <RadzenIcon Icon="inbox" Style="font-size: 1.5rem; opacity: 0.5;" />
-                <RadzenText TextStyle="TextStyle.Caption" class="text-muted mt-2">
-                    No items
-                </RadzenText>
+                <RadzenText TextStyle="TextStyle.Caption" class="text-muted mt-2">No items</RadzenText>
             </div>
         }
-        else
-        {
-            @foreach (var item in Items)
-            {
-                <KanbanCard Item="@item"
-                            IsConnected="@IsConnected"
-                            OnClick="@OnCardClick"
-                            OnEdit="@OnCardEdit"
-                            OnDragStart="@OnDragStart"
-                            OnDragEnd="@OnDragEnd" />
-            }
-        }
-    </div>
+    </RadzenDropZone>
 </div>
 
 @code {
-    [Parameter, EditorRequired]
-    public string Status { get; set; } = "";
+    [Parameter, EditorRequired] public string Status { get; set; } = "";
 
-    [Parameter, EditorRequired]
-    public string Title { get; set; } = "";
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
 
-    [Parameter]
-    public IEnumerable<WorkItemViewModel> Items { get; set; } = Enumerable.Empty<WorkItemViewModel>();
+    [Parameter] public IEnumerable<WorkItemViewModel> Items { get; set; } = Enumerable.Empty<WorkItemViewModel>();
 
-    [Parameter]
-    public bool IsConnected { get; set; } = true;
+    [Parameter] public bool IsConnected { get; set; }
 
-    [Parameter]
-    public bool IsDragTarget { get; set; }
+    [Parameter] public bool IsKeyboardDragTarget { get; set; }
 
-    [Parameter]
-    public EventCallback<WorkItemViewModel> OnCardClick { get; set; }
+    [Parameter] public EventCallback<WorkItemViewModel> OnCardClick { get; set; }
 
-    [Parameter]
-    public EventCallback<WorkItemViewModel> OnCardEdit { get; set; }
-
-    [Parameter]
-    public EventCallback<WorkItemViewModel> OnDragStart { get; set; }
-
-    [Parameter]
-    public EventCallback OnDragEnd { get; set; }
-
-    [Parameter]
-    public EventCallback OnDragEnter { get; set; }
-
-    [Parameter]
-    public EventCallback<string> OnDrop { get; set; }
+    [Parameter] public EventCallback<WorkItemViewModel> OnCardEdit { get; set; }
 
     private int ItemCount => Items.Count();
 
     private BadgeStyle HeaderBadgeStyle => Status switch
     {
-        "done" => BadgeStyle.Success,
+        "backlog" => BadgeStyle.Light,
+        "todo" => BadgeStyle.Info,
         "in_progress" => BadgeStyle.Warning,
+        "review" => BadgeStyle.Secondary,
+        "done" => BadgeStyle.Success,
         _ => BadgeStyle.Light
     };
 
-    private async Task HandleDragOver(DragEventArgs e)
-    {
-        if (OnDragEnter.HasDelegate)
-        {
-            await OnDragEnter.InvokeAsync();
-        }
-    }
-
-    private async Task HandleDrop(DragEventArgs e)
-    {
-        if (OnDrop.HasDelegate)
-        {
-            await OnDrop.InvokeAsync(Status);
-        }
-    }
 }

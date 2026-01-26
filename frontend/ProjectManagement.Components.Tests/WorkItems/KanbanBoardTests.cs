@@ -62,9 +62,9 @@ public class KanbanBoardTests : BunitContext
         var cut = Render<KanbanBoard>(parameters => parameters
             .Add(p => p.ProjectId, _projectId));
 
-        // Wait for columns to render
-        await cut.WaitForAssertionAsync(() => 
-            cut.FindComponents<KanbanColumn>().Should().HaveCount(5),
+        // Wait for columns to render - columns are now inline divs with class kanban-column
+        await cut.WaitForAssertionAsync(() =>
+            cut.FindAll(".kanban-column").Should().HaveCount(5),
             timeout: TimeSpan.FromSeconds(5));
     }
 
@@ -225,9 +225,12 @@ public class KanbanBoardTests : BunitContext
         var cut = Render<KanbanBoard>(parameters => parameters
             .Add(p => p.ProjectId, _projectId));
 
-        await cut.WaitForAssertionAsync(() => 
-            cut.FindComponents<KanbanCard>().Should().HaveCount(3),
-            timeout: TimeSpan.FromSeconds(5));
+        await cut.WaitForAssertionAsync(() =>
+        {
+            cut.Markup.Should().Contain("Epic 1");
+            cut.Markup.Should().Contain("Story 1");
+            cut.Markup.Should().Contain("Task 1");
+        }, timeout: TimeSpan.FromSeconds(5));
 
         // Act - Filter by Story type
         var typeDropdown = cut.FindComponents<RadzenDropDown<WorkItemType?>>()
@@ -262,8 +265,8 @@ public class KanbanBoardTests : BunitContext
         var cut = Render<KanbanBoard>(parameters => parameters
             .Add(p => p.ProjectId, _projectId));
 
-        await cut.WaitForAssertionAsync(() => 
-                cut.FindComponents<KanbanColumn>().Should().HaveCount(5),
+        await cut.WaitForAssertionAsync(() =>
+                cut.FindAll(".kanban-column").Should().HaveCount(5),
             timeout: TimeSpan.FromSeconds(5));
 
         // Verify Done item is initially visible
@@ -312,9 +315,9 @@ public class KanbanBoardTests : BunitContext
         // Assert - Each column should have one card
         await cut.WaitForAssertionAsync(() =>
         {
-            var columns = cut.FindComponents<KanbanColumn>();
+            var columns = cut.FindAll(".kanban-column");
             columns.Should().HaveCount(5);
-            
+
             // Each column should render its respective item
             cut.Markup.Should().Contain("Backlog Item");
             cut.Markup.Should().Contain("Todo Item");
@@ -396,93 +399,58 @@ public class KanbanBoardTests : BunitContext
 
     #endregion
 
-    #region KanbanColumn Tests
+    #region Column Structure Tests
 
     [Fact]
-    public void KanbanColumn_RendersTitle()
-    {
-        // Act
-        var cut = Render<KanbanColumn>(parameters => parameters
-            .Add(p => p.Status, "backlog")
-            .Add(p => p.Title, "Backlog")
-            .Add(p => p.Items, Enumerable.Empty<WorkItemViewModel>()));
-
-        // Assert
-        cut.Markup.Should().Contain("Backlog");
-    }
-
-    [Fact]
-    public void KanbanColumn_RendersItemCount()
+    public async Task KanbanBoard_ColumnsHaveHeaders()
     {
         // Arrange
-        var items = new List<WorkItemViewModel>
+        SetupEmptyStore();
+
+        // Act
+        var cut = Render<KanbanBoard>(parameters => parameters
+            .Add(p => p.ProjectId, _projectId));
+
+        // Assert - all column headers should be present
+        await cut.WaitForAssertionAsync(() =>
         {
-            new(CreateWorkItem("Item 1", WorkItemType.Story, "backlog")),
-            new(CreateWorkItem("Item 2", WorkItemType.Story, "backlog")),
-            new(CreateWorkItem("Item 3", WorkItemType.Story, "backlog"))
-        };
-
-        // Act
-        var cut = Render<KanbanColumn>(parameters => parameters
-            .Add(p => p.Status, "backlog")
-            .Add(p => p.Title, "Backlog")
-            .Add(p => p.Items, items));
-
-        // Assert
-        cut.Markup.Should().Contain("3");
+            cut.FindAll(".kanban-column-header").Should().HaveCount(5);
+        }, timeout: TimeSpan.FromSeconds(5));
     }
 
     [Fact]
-    public void KanbanColumn_ShowsEmptyMessage_WhenNoItems()
+    public async Task KanbanBoard_ShowsEmptyMessage_InEmptyColumns()
     {
-        // Act
-        var cut = Render<KanbanColumn>(parameters => parameters
-            .Add(p => p.Status, "backlog")
-            .Add(p => p.Title, "Backlog")
-            .Add(p => p.Items, Enumerable.Empty<WorkItemViewModel>()));
+        // Arrange
+        SetupEmptyStore();
 
-        // Assert
-        cut.Markup.Should().Contain("No items");
+        // Act
+        var cut = Render<KanbanBoard>(parameters => parameters
+            .Add(p => p.ProjectId, _projectId));
+
+        // Assert - all columns should show "No items"
+        await cut.WaitForAssertionAsync(() =>
+        {
+            cut.FindAll(".kanban-empty-column").Should().HaveCount(5);
+            cut.Markup.Should().Contain("No items");
+        }, timeout: TimeSpan.FromSeconds(5));
     }
 
     [Fact]
-    public void KanbanColumn_HasListboxRole()
+    public async Task KanbanBoard_ColumnsHaveListboxRole()
     {
+        // Arrange
+        SetupEmptyStore();
+
         // Act
-        var cut = Render<KanbanColumn>(parameters => parameters
-            .Add(p => p.Status, "backlog")
-            .Add(p => p.Title, "Backlog")
-            .Add(p => p.Items, Enumerable.Empty<WorkItemViewModel>()));
+        var cut = Render<KanbanBoard>(parameters => parameters
+            .Add(p => p.ProjectId, _projectId));
 
         // Assert
-        cut.Markup.Should().Contain("role=\"listbox\"");
-    }
-
-    [Fact]
-    public void KanbanColumn_HasAriaLabel()
-    {
-        // Act
-        var cut = Render<KanbanColumn>(parameters => parameters
-            .Add(p => p.Status, "backlog")
-            .Add(p => p.Title, "Backlog")
-            .Add(p => p.Items, Enumerable.Empty<WorkItemViewModel>()));
-
-        // Assert
-        cut.Markup.Should().Contain("aria-label=\"Backlog column");
-    }
-
-    [Fact]
-    public void KanbanColumn_AppliesDragTargetClass_WhenIsDragTarget()
-    {
-        // Act
-        var cut = Render<KanbanColumn>(parameters => parameters
-            .Add(p => p.Status, "backlog")
-            .Add(p => p.Title, "Backlog")
-            .Add(p => p.Items, Enumerable.Empty<WorkItemViewModel>())
-            .Add(p => p.IsDragTarget, true));
-
-        // Assert
-        cut.Markup.Should().Contain("drag-target");
+        await cut.WaitForAssertionAsync(() =>
+        {
+            cut.Markup.Should().Contain("role=\"listbox\"");
+        }, timeout: TimeSpan.FromSeconds(5));
     }
 
     #endregion

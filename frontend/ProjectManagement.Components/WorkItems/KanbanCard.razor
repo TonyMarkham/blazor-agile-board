@@ -4,14 +4,10 @@
 <div class="kanban-card @CardCssClass"
      role="listitem"
      tabindex="0"
-     draggable="@IsDraggable.ToString().ToLowerInvariant()"
      aria-label="@AriaLabel"
-     aria-grabbed="@_isDragging.ToString().ToLowerInvariant()"
      @onclick="HandleClick"
      @onclick:stopPropagation="true"
-     @onkeydown="HandleKeyDown"
-     @ondragstart="HandleDragStart"
-     @ondragend="HandleDragEnd">
+     @onkeydown="HandleKeyDown">
 
     <RadzenStack Gap="0.5rem">
         @* Header: Type + Title *@
@@ -75,26 +71,7 @@
     [Parameter]
     public EventCallback<WorkItemViewModel> OnEdit { get; set; }
 
-    [Parameter]
-    public EventCallback<WorkItemViewModel> OnDragStart { get; set; }
-
-    [Parameter]
-    public EventCallback OnDragEnd { get; set; }
-
-    private bool _isDragging;
-
-    private bool IsDraggable => IsConnected && !Item.IsPendingSync;
-
-    private string CardCssClass
-    {
-        get
-        {
-            var classes = new List<string>();
-            if (Item.IsPendingSync) classes.Add("pending-sync");
-            if (_isDragging) classes.Add("dragging");
-            return string.Join(" ", classes);
-        }
-    }
+    private string CardCssClass => Item.IsPendingSync ? "pending-sync" : "";
 
     private string AriaLabel
     {
@@ -110,11 +87,6 @@
             if (Item.IsPendingSync)
             {
                 label += " (saving)";
-            }
-
-            if (IsDraggable)
-            {
-                label += ". Drag to move to another column.";
             }
 
             return label;
@@ -137,30 +109,6 @@
         }
     }
 
-    private async Task HandleDragStart(DragEventArgs e)
-    {
-        if (!IsDraggable) return;
-
-        _isDragging = true;
-
-        // Set drag data for native HTML5 drag and drop
-        // Note: In Blazor, we handle this through events rather than dataTransfer
-        if (OnDragStart.HasDelegate)
-        {
-            await OnDragStart.InvokeAsync(Item);
-        }
-    }
-
-    private async Task HandleDragEnd(DragEventArgs e)
-    {
-        _isDragging = false;
-
-        if (OnDragEnd.HasDelegate)
-        {
-            await OnDragEnd.InvokeAsync();
-        }
-    }
-
     private async Task HandleKeyDown(KeyboardEventArgs e)
     {
         if (Item.IsPendingSync) return;
@@ -171,33 +119,6 @@
                 if (OnClick.HasDelegate)
                 {
                     await OnClick.InvokeAsync(Item);
-                }
-                break;
-
-            case " " when IsDraggable && !_isDragging:
-                // Space to pick up (keyboard drag)
-                _isDragging = true;
-                if (OnDragStart.HasDelegate)
-                {
-                    await OnDragStart.InvokeAsync(Item);
-                }
-                break;
-
-            case " " when _isDragging:
-                // Space to drop
-                _isDragging = false;
-                if (OnDragEnd.HasDelegate)
-                {
-                    await OnDragEnd.InvokeAsync();
-                }
-                break;
-
-            case "Escape" when _isDragging:
-                // Cancel drag
-                _isDragging = false;
-                if (OnDragEnd.HasDelegate)
-                {
-                    await OnDragEnd.InvokeAsync();
                 }
                 break;
 

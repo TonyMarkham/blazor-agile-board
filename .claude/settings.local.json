@@ -23,7 +23,9 @@
       "WebFetch(domain:blazor.radzen.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "WebFetch(domain:www.radzen.com)",
-      "WebFetch(domain:forum.radzen.com)"
+      "WebFetch(domain:forum.radzen.com)",
+      "Bash(just build-cs-components:*)",
+      "Bash(just test-cs-components:*)"
     ]
   }
 }

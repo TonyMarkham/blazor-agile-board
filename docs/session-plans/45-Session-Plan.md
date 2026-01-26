@@ -22,8 +22,10 @@ This plan has been split into sub-sessions to fit within token budgets:
 
 | Session | Scope | Est. Tokens | Status |
 |---------|-------|-------------|--------|
-| **[45.1](45.1-Session-Plan.md)** | Radzen Drag-and-Drop Integration | ~35-40k | Pending |
+| **[45.1](45.1-Session-Plan.md)** | Radzen Drag-and-Drop Integration | ~35-40k | ✅ **Complete** |
 | **[45.2](45.2-Session-Plan.md)** | Type-Specific Cards with Progress Bars | ~30-35k | Pending |
+
+**Note:** Session 45.1 completed successfully but differently than planned. The root cause was Tauri's `dragDropEnabled` config, not Blazor/Radzen implementation. See 45.1 plan for actual implementation details.
 
 ---
 
@@ -257,8 +259,89 @@ just dev
 
 ---
 
+## Actual Implementation (Session 45.1 Complete)
+
+**Full details in [45.1-Session-Plan.md](45.1-Session-Plan.md#actual-implementation-session-451-complete)**
+
+### Root Cause Discovery
+
+After 4+ debugging sessions, the issue was **NOT** with Blazor, Radzen, or HTML5 drag-drop APIs. The root cause was:
+
+**Tauri's native drag-drop handler intercepts HTML5 drag events.**
+
+Tauri's `dragDropEnabled` setting (default: `true`) enables native OS-level file drag-drop onto the application window. This intercepts all drag events at the webview level, preventing them from reaching the browser's HTML5 drag-drop API that Radzen relies on.
+
+### Fixes Applied
+
+#### 1. Tauri Configuration (Critical Fix)
+
+**File:** `desktop/src-tauri/tauri.conf.json`
+
+```json
+"windows": [
+  {
+    "title": "Project Manager",
+    ...
+    "dragDropEnabled": false  // <-- ADD THIS LINE
+  }
+]
+```
+
+This disables Tauri's native file drag-drop, allowing HTML5 drag events to reach Radzen's JavaScript handlers.
+
+#### 2. Backend Status Validation
+
+**File:** `backend/crates/pm-ws/src/handlers/work_item.rs`
+
+The `validate_status()` function was missing "backlog" as a valid status, causing drops to Backlog column to fail validation.
+
+```rust
+// BEFORE (missing backlog):
+"todo" | "in_progress" | "review" | "done" | "blocked" => Ok(()),
+
+// AFTER:
+"backlog" | "todo" | "in_progress" | "review" | "done" | "blocked" => Ok(()),
+```
+
+#### 3. Backend Tests Updated
+
+**File:** `backend/crates/pm-ws/src/tests/property_tests.rs`
+
+Added "backlog" to valid status test cases.
+
+#### 4. KanbanBoard Restructured
+
+**File:** `frontend/ProjectManagement.Components/WorkItems/KanbanBoard.razor`
+
+- Uses `RadzenDropZoneContainer` wrapping all columns
+- Each `KanbanColumn` contains a `RadzenDropZone`
+- `KanbanCard` rendered via the container's `Template`
+- Filters, accessibility, and connection state handling preserved
+
+### Key Learnings
+
+1. **Tauri + HTML5 Drag-Drop Conflict:** Anyone using Radzen (or any HTML5 drag-drop library) inside Tauri MUST set `dragDropEnabled: false` in the window config. This is not documented in Radzen's docs because it's a Tauri-specific issue.
+
+2. **Test in Browser First:** When debugging drag-drop in Tauri, test the same code in a standalone browser to isolate whether the issue is Tauri's webview or the component code.
+
+3. **Check Backend Validation:** Frontend drag-drop can appear "broken" when the backend rejects the status value. Always verify the full request/response flow.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `desktop/src-tauri/tauri.conf.json` | Added `dragDropEnabled: false` |
+| `backend/crates/pm-ws/src/handlers/work_item.rs` | Added "backlog" to valid statuses |
+| `backend/crates/pm-ws/src/tests/property_tests.rs` | Updated status validation tests |
+| `frontend/.../WorkItems/KanbanBoard.razor` | Restructured with RadzenDropZoneContainer |
+| `frontend/.../WorkItems/KanbanColumn.razor` | Contains RadzenDropZone |
+| `frontend/.../WorkItems/KanbanCard.razor` | Rendered via Template |
+
+---
+
 ## Sources
 
 - [Radzen DropZone Demo](https://blazor.radzen.com/dropzone)
 - [RadzenDropZoneItemRenderEventArgs API](https://blazor.radzen.com/docs/api/Radzen.RadzenDropZoneItemRenderEventArgs-1.html)
 - [Radzen GitHub - RadzenDropZone.razor](https://github.com/radzenhq/radzen-blazor/blob/master/Radzen.Blazor/RadzenDropZone.razor)
+- [Tauri Window Configuration](https://tauri.app/reference/config/#windowconfig) - `dragDropEnabled` setting

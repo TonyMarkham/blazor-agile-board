@@ -21,6 +21,7 @@ proptest! {
 
     #[test]
     fn given_valid_status_when_validated_then_succeeds(status in prop_oneof![
+        Just("backlog".to_string()),
         Just("todo".to_string()),
         Just("in_progress".to_string()),
         Just("review".to_string()),
@@ -32,7 +33,7 @@ proptest! {
 
     #[test]
     fn given_random_status_when_validated_then_fails(status in "[a-z]{6,20}") {
-        if !["todo", "in_progress", "review", "done", "blocked"].contains(&status.as_str()) {
+        if !["backlog", "todo", "in_progress", "review", "done", "blocked"].contains(&status.as_str()) {
             prop_assert!(validate_status(&status).is_err());
         }
     }
@@ -131,6 +132,7 @@ fn given_whitespace_padded_text_when_sanitized_then_trimmed() {
 
 #[test]
 fn given_valid_statuses_when_validated_then_all_succeed() {
+    assert!(validate_status("backlog").is_ok());
     assert!(validate_status("todo").is_ok());
     assert!(validate_status("in_progress").is_ok());
     assert!(validate_status("review").is_ok());
