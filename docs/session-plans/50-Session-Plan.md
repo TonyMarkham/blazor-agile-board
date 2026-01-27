@@ -18,8 +18,8 @@ This plan has been split into sub-sessions to fit within token budgets:
 
 | Session | Scope | Est. Tokens | Status |
 |---------|-------|-------------|--------|
-| **[50.1](50.1-Session-Plan.md)** | Proto Schema + Backend Sprint Infrastructure | ~35-40k | Pending |
-| **[50.2](50.2-Session-Plan.md)** | Backend Comment Handler + Response Builders | ~35-40k | Pending |
+| **[50.1](50.1-Session-Plan.md)** | Proto Schema + Backend Sprint Infrastructure | ~35-40k | ✅ Complete (2026-01-27) |
+| **[50.2](50.2-Session-Plan.md)** | Backend Comment Handler + Dispatcher Wiring | ~35-40k | Pending |
 | **[50.3](50.3-Session-Plan.md)** | Frontend Models + WebSocket Integration | ~40-45k | Pending |
 | **[50.4](50.4-Session-Plan.md)** | State Management + UI Components | ~40-45k | Pending |
 | **[50.5](50.5-Session-Plan.md)** | Testing (Backend + Frontend) | ~35-40k | Pending |
@@ -42,15 +42,17 @@ This plan has been split into sub-sessions to fit within token budgets:
 
 ---
 
-## Session 50.2: Backend Comment Handler + Response Builders
+## Session 50.2: Backend Comment Handler + Dispatcher Wiring
+
+**Note**: Sprint response builders were completed in Session 50.1.
 
 **Files Created:**
 - `pm-ws/src/handlers/comment.rs` - Comment CRUD handlers
 
 **Files Modified:**
-- `pm-ws/src/handlers/response_builder.rs` - Sprint/Comment response builders
+- `pm-ws/src/handlers/response_builder.rs` - Comment response builders (Sprint already done)
 - `pm-ws/src/handlers/dispatcher.rs` - Route Sprint/Comment messages
-- `pm-ws/src/handlers/mod.rs` - Export new modules
+- `pm-ws/src/handlers/mod.rs` - Export comment module
 - `pm-ws/src/lib.rs` - Public exports
 - `pm-ws/src/message_validator.rs` - Sprint/Comment validation
 
@@ -120,44 +122,46 @@ Before starting **any** sub-session:
 
 ## Files Summary
 
-### Create (15 files)
+### Create (16 files)
 
-| File | Purpose |
-|------|---------|
-| `pm-ws/src/handlers/sprint.rs` | Sprint CRUD handlers |
-| `pm-ws/src/handlers/comment.rs` | Comment CRUD handlers |
-| `ProjectManagement.Core/Models/Comment.cs` | Comment domain model |
-| `ProjectManagement.Core/Models/CreateCommentRequest.cs` | Create comment request |
-| `ProjectManagement.Core/Models/UpdateCommentRequest.cs` | Update comment request |
-| `ProjectManagement.Core/Interfaces/ICommentStore.cs` | Comment store interface |
-| `ProjectManagement.Services/State/CommentStore.cs` | Comment state management |
-| `ProjectManagement.Components/Sprint/SprintCard.razor` | Sprint card component |
-| `ProjectManagement.Components/Sprint/SprintDialog.razor` | Sprint dialog |
-| `ProjectManagement.Components/Comments/CommentList.razor` | Comment thread UI |
-| `ProjectManagement.Components/Comments/CommentEditor.razor` | Comment input |
-| `pm-ws/tests/sprint_handler_tests.rs` | Sprint handler tests |
-| `pm-ws/tests/comment_handler_tests.rs` | Comment handler tests |
-| `ProjectManagement.Core.Tests/Converters/SprintConverterTests.cs` | Sprint converter tests |
-| `ProjectManagement.Services.Tests/State/CommentStoreTests.cs` | Comment store tests |
+| File | Purpose | Session |
+|------|---------|---------|
+| `pm-ws/src/handlers/sprint.rs` | Sprint CRUD handlers | ✅ 50.1 |
+| `pm-ws/src/handlers/field_change_builder.rs` | Generic change tracker | ✅ 50.1 |
+| `pm-ws/src/handlers/comment.rs` | Comment CRUD handlers | 50.2 |
+| `ProjectManagement.Core/Models/Comment.cs` | Comment domain model | 50.3 |
+| `ProjectManagement.Core/Models/CreateCommentRequest.cs` | Create comment request | 50.3 |
+| `ProjectManagement.Core/Models/UpdateCommentRequest.cs` | Update comment request | 50.3 |
+| `ProjectManagement.Core/Interfaces/ICommentStore.cs` | Comment store interface | 50.4 |
+| `ProjectManagement.Services/State/CommentStore.cs` | Comment state management | 50.4 |
+| `ProjectManagement.Components/Sprint/SprintCard.razor` | Sprint card component | 50.4 |
+| `ProjectManagement.Components/Sprint/SprintDialog.razor` | Sprint dialog | 50.4 |
+| `ProjectManagement.Components/Comments/CommentList.razor` | Comment thread UI | 50.4 |
+| `ProjectManagement.Components/Comments/CommentEditor.razor` | Comment input | 50.4 |
+| `pm-ws/tests/sprint_handler_tests.rs` | Sprint handler tests | 50.5 |
+| `pm-ws/tests/comment_handler_tests.rs` | Comment handler tests | 50.5 |
+| `ProjectManagement.Core.Tests/Converters/SprintConverterTests.cs` | Sprint converter tests | 50.5 |
+| `ProjectManagement.Services.Tests/State/CommentStoreTests.cs` | Comment store tests | 50.5 |
 
 ### Modify (14 files)
 
-| File | Change |
-|------|--------|
-| `proto/messages.proto` | Add Sprint/Comment WebSocket messages |
-| `pm-core/src/models/sprint.rs` | Add version field |
-| `pm-db/src/repositories/sprint_repository.rs` | Update queries for version |
-| `pm-ws/src/handlers/response_builder.rs` | Add Sprint/Comment response builders |
-| `pm-ws/src/handlers/dispatcher.rs` | Route Sprint/Comment messages |
-| `pm-ws/src/handlers/mod.rs` | Export sprint/comment modules |
-| `pm-ws/src/lib.rs` | Public exports |
-| `pm-ws/src/message_validator.rs` | Sprint/Comment validation |
-| `ProjectManagement.Core/Models/Sprint.cs` | Add Version property |
-| `ProjectManagement.Core/Models/UpdateSprintRequest.cs` | Add ExpectedVersion + Status |
-| `ProjectManagement.Core/Converters/ProtoConverter.cs` | Sprint/Comment conversions |
-| `ProjectManagement.Core/Interfaces/IWebSocketClient.cs` | Sprint/Comment events |
-| `ProjectManagement.Services/WebSocket/WebSocketClient.cs` | Implementation |
-| `ProjectManagement.Services/State/SprintStore.cs` | WebSocket integration |
+| File | Change | Session |
+|------|--------|---------|
+| `proto/messages.proto` | Add Sprint/Comment WebSocket messages | ✅ 50.1 |
+| `pm-core/src/models/sprint.rs` | Add version field | ✅ 50.1 |
+| `pm-db/src/repositories/sprint_repository.rs` | Update queries for version | ✅ 50.1 |
+| `pm-ws/src/handlers/response_builder.rs` | Add Sprint/Comment response builders | ✅ 50.1 (Sprint), 50.2 (Comment) |
+| `pm-ws/src/handlers/change_tracker.rs` | Add FieldChangeBuilder | ✅ 50.1 |
+| `pm-ws/src/handlers/dispatcher.rs` | Route Sprint/Comment messages | 50.2 |
+| `pm-ws/src/handlers/mod.rs` | Export sprint/comment modules | ✅ 50.1 (sprint), 50.2 (comment) |
+| `pm-ws/src/lib.rs` | Public exports | 50.2 |
+| `pm-ws/src/message_validator.rs` | Sprint/Comment validation | 50.2 |
+| `ProjectManagement.Core/Models/Sprint.cs` | Add Version property | 50.3 |
+| `ProjectManagement.Core/Models/UpdateSprintRequest.cs` | Add ExpectedVersion + Status | 50.3 |
+| `ProjectManagement.Core/Converters/ProtoConverter.cs` | Sprint/Comment conversions | 50.3 |
+| `ProjectManagement.Core/Interfaces/IWebSocketClient.cs` | Sprint/Comment events | 50.3 |
+| `ProjectManagement.Services/WebSocket/WebSocketClient.cs` | Implementation | 50.3 |
+| `ProjectManagement.Services/State/SprintStore.cs` | WebSocket integration | 50.4 |
 
 ---
 

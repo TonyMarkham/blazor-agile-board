@@ -40,6 +40,7 @@ pub use handlers::{
         CONFLICT, DELETE_BLOCKED, INTERNAL_ERROR, INVALID_MESSAGE, NOT_FOUND, RATE_LIMITED,
         UNAUTHORIZED, VALIDATION_ERROR,
     },
+    field_change_builder::FieldChangeBuilder,
     hierarchy_validator::validate_hierarchy,
     idempotency::{check_idempotency, store_idempotency},
     project::{
@@ -48,7 +49,9 @@ pub use handlers::{
     },
     query::handle_get_work_items,
     response_builder::{
-        build_error_response, build_work_item_created_response, build_work_item_deleted_response,
+        build_error_response, build_sprint_created_response, build_sprint_deleted_response,
+        build_sprint_updated_response, build_sprints_list_response,
+        build_work_item_created_response, build_work_item_deleted_response,
         build_work_item_updated_response, build_work_items_list_response,
     },
     work_item::{

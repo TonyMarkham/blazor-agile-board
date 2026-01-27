@@ -16,6 +16,7 @@ pub struct Sprint {
     pub end_date: DateTime<Utc>,
 
     pub status: SprintStatus,
+    pub version: i32,
 
     // Audit
     pub created_at: DateTime<Utc>,
@@ -43,6 +44,7 @@ impl Sprint {
             start_date,
             end_date,
             status: SprintStatus::Planned,
+            version: 1,
             created_at: now,
             updated_at: now,
             created_by,

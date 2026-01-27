@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n              SELECT id, project_id, name, goal, start_date, end_date, status,\n                     created_at, updated_at, created_by, updated_by, deleted_at\n              FROM pm_sprints\n              WHERE project_id = ? AND deleted_at IS NULL\n              ORDER BY start_date DESC\n              ",
+  "query": "\n                SELECT id, project_id, name, goal, start_date, end_date, status, version,\n                       created_at, updated_at, created_by, updated_by, deleted_at\n                FROM pm_sprints\n                WHERE project_id = ? AND status = ? AND deleted_at IS NULL\n            ",
   "describe": {
     "columns": [
       {
@@ -39,33 +39,38 @@
         "type_info": "Text"
       },
       {
-        "name": "created_at",
+        "name": "version",
         "ordinal": 7,
         "type_info": "Integer"
       },
       {
-        "name": "updated_at",
+        "name": "created_at",
         "ordinal": 8,
         "type_info": "Integer"
       },
       {
-        "name": "created_by",
+        "name": "updated_at",
         "ordinal": 9,
-        "type_info": "Text"
+        "type_info": "Integer"
       },
       {
-        "name": "updated_by",
+        "name": "created_by",
         "ordinal": 10,
         "type_info": "Text"
       },
       {
-        "name": "deleted_at",
+        "name": "updated_by",
         "ordinal": 11,
+        "type_info": "Text"
+      },
+      {
+        "name": "deleted_at",
+        "ordinal": 12,
         "type_info": "Integer"
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 2
     },
     "nullable": [
       true,
@@ -79,8 +84,9 @@
       false,
       false,
       false,
+      false,
       true
     ]
   },
-  "hash": "cdce72373582d4687ba0f00f31fdc256062244978b43f588506029d70d83f715"
+  "hash": "a81649d44cfa6b8ad8caede45e9242bc34025392ca280803293df75f955ecdef"
 }

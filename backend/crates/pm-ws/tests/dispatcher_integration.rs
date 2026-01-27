@@ -224,6 +224,8 @@ async fn given_empty_title_when_creating_work_item_then_returns_validation_error
             item_type: ProtoWorkItemType::Task as i32,
             project_id: Uuid::new_v4().to_string(),
             parent_id: None,
+            status: None,
+            priority: None,
         })),
     };
 

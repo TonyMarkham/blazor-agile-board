@@ -31,12 +31,12 @@ impl SprintRepository {
 
         sqlx::query!(
             r#"
-              INSERT INTO pm_sprints (
-                  id, project_id, name, goal,
-                  start_date, end_date, status,
-                  created_at, updated_at, created_by, updated_by, deleted_at
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-              "#,
+                INSERT INTO pm_sprints (
+                                        id, project_id, name, goal,
+                                        start_date, end_date, status, version,
+                                        created_at, updated_at, created_by, updated_by, deleted_at
+                                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "#,
             id,
             project_id,
             sprint.name,
@@ -44,6 +44,7 @@ impl SprintRepository {
             start_date,
             end_date,
             status,
+            sprint.version,
             created_at,
             updated_at,
             created_by,
@@ -61,11 +62,11 @@ impl SprintRepository {
 
         let row = sqlx::query!(
             r#"
-              SELECT id, project_id, name, goal, start_date, end_date, status,
-                     created_at, updated_at, created_by, updated_by, deleted_at
-              FROM pm_sprints
-              WHERE id = ? AND deleted_at IS NULL
-              "#,
+                SELECT id, project_id, name, goal, start_date, end_date, status, version,
+                       created_at, updated_at, created_by, updated_by, deleted_at
+                FROM pm_sprints
+                WHERE id = ? AND deleted_at IS NULL
+            "#,
             id_str
         )
         .fetch_optional(&self.pool)
@@ -79,6 +80,7 @@ impl SprintRepository {
             start_date: DateTime::from_timestamp(r.start_date, 0).unwrap(),
             end_date: DateTime::from_timestamp(r.end_date, 0).unwrap(),
             status: SprintStatus::from_str(&r.status).unwrap(),
+            version: r.version as i32,
             created_at: DateTime::from_timestamp(r.created_at, 0).unwrap(),
             updated_at: DateTime::from_timestamp(r.updated_at, 0).unwrap(),
             created_by: Uuid::parse_str(&r.created_by).unwrap(),
@@ -92,12 +94,12 @@ impl SprintRepository {
 
         let rows = sqlx::query!(
             r#"
-              SELECT id, project_id, name, goal, start_date, end_date, status,
-                     created_at, updated_at, created_by, updated_by, deleted_at
-              FROM pm_sprints
-              WHERE project_id = ? AND deleted_at IS NULL
-              ORDER BY start_date DESC
-              "#,
+                SELECT id, project_id, name, goal, start_date, end_date, status, version,
+                       created_at, updated_at, created_by, updated_by, deleted_at
+                FROM pm_sprints
+                WHERE project_id = ? AND deleted_at IS NULL
+                ORDER BY start_date DESC
+            "#,
             project_id_str
         )
         .fetch_all(&self.pool)
@@ -113,6 +115,7 @@ impl SprintRepository {
                 start_date: DateTime::from_timestamp(r.start_date, 0).unwrap(),
                 end_date: DateTime::from_timestamp(r.end_date, 0).unwrap(),
                 status: SprintStatus::from_str(&r.status).unwrap(),
+                version: r.version as i32,
                 created_at: DateTime::from_timestamp(r.created_at, 0).unwrap(),
                 updated_at: DateTime::from_timestamp(r.updated_at, 0).unwrap(),
                 created_by: Uuid::parse_str(&r.created_by).unwrap(),
@@ -120,6 +123,40 @@ impl SprintRepository {
                 deleted_at: r.deleted_at.and_then(|ts| DateTime::from_timestamp(ts, 0)),
             })
             .collect())
+    }
+
+    pub async fn find_active_by_project(&self, project_id: Uuid) -> DbErrorResult<Option<Sprint>> {
+        let project_id_str = project_id.to_string();
+        let active_status = SprintStatus::Active.as_str();
+
+        let row = sqlx::query!(
+            r#"
+                SELECT id, project_id, name, goal, start_date, end_date, status, version,
+                       created_at, updated_at, created_by, updated_by, deleted_at
+                FROM pm_sprints
+                WHERE project_id = ? AND status = ? AND deleted_at IS NULL
+            "#,
+            project_id_str,
+            active_status
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.map(|r| Sprint {
+            id: Uuid::parse_str(r.id.as_ref().unwrap()).unwrap(),
+            project_id: Uuid::parse_str(&r.project_id).unwrap(),
+            name: r.name,
+            goal: r.goal,
+            start_date: DateTime::from_timestamp(r.start_date, 0).unwrap(),
+            end_date: DateTime::from_timestamp(r.end_date, 0).unwrap(),
+            status: SprintStatus::from_str(&r.status).unwrap(),
+            version: r.version as i32,
+            created_at: DateTime::from_timestamp(r.created_at, 0).unwrap(),
+            updated_at: DateTime::from_timestamp(r.updated_at, 0).unwrap(),
+            created_by: Uuid::parse_str(&r.created_by).unwrap(),
+            updated_by: Uuid::parse_str(&r.updated_by).unwrap(),
+            deleted_at: r.deleted_at.and_then(|ts| DateTime::from_timestamp(ts, 0)),
+        }))
     }
 
     pub async fn update(&self, sprint: &Sprint) -> DbErrorResult<()> {
@@ -133,18 +170,19 @@ impl SprintRepository {
 
         sqlx::query!(
             r#"
-              UPDATE pm_sprints
-              SET project_id = ?, name = ?, goal = ?,
-                  start_date = ?, end_date = ?, status = ?,
-                  updated_at = ?, updated_by = ?
-              WHERE id = ? AND deleted_at IS NULL
-              "#,
+                UPDATE pm_sprints
+                SET project_id = ?, name = ?, goal = ?,
+                    start_date = ?, end_date = ?, status = ?, version = ?,
+                    updated_at = ?, updated_by = ?
+                WHERE id = ? AND deleted_at IS NULL
+            "#,
             project_id,
             sprint.name,
             sprint.goal,
             start_date,
             end_date,
             status,
+            sprint.version,
             updated_at,
             updated_by,
             id,

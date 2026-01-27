@@ -61,6 +61,7 @@ pub fn create_test_sprint(project_id: Uuid, user_id: Uuid) -> Sprint {
         start_date: now,
         end_date: now + chrono::Duration::days(14), // 2-week sprint
         status: SprintStatus::Planned,
+        version: 1,
         created_at: now,
         updated_at: now,
         created_by: user_id,

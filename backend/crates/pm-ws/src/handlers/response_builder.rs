@@ -1,13 +1,17 @@
-use pm_core::WorkItem;
 use pm_core::{Project, ProjectStatus};
+use pm_core::{Sprint, SprintStatus, WorkItem};
 use pm_proto::{
     Error as PmProtoError, FieldChange, Project as ProtoProject, ProjectCreated, ProjectDeleted,
-    ProjectList, ProjectStatus as ProtoProjectStatus, ProjectUpdated, WebSocketMessage,
-    WorkItem as PmProtoWorkItem, WorkItemCreated, WorkItemDeleted, WorkItemUpdated, WorkItemsList,
+    ProjectList, ProjectStatus as ProtoProjectStatus, ProjectUpdated, Sprint as ProtoSprint,
+    SprintCreated, SprintDeleted, SprintStatus as ProtoSprintStatus, SprintUpdated, SprintsList,
+    WebSocketMessage, WorkItem as PmProtoWorkItem, WorkItemCreated, WorkItemDeleted,
+    WorkItemUpdated, WorkItemsList,
     web_socket_message::Payload::{
         Error as ProtoError, ProjectCreated as ProtoProjectCreated,
         ProjectDeleted as ProtoProjectDeleted, ProjectList as ProtoProjectList,
-        ProjectUpdated as ProtoProjectUpdated, WorkItemCreated as ProtoWorkItemCreated,
+        ProjectUpdated as ProtoProjectUpdated, SprintCreated as ProtoSprintCreated,
+        SprintDeleted as ProtoSprintDeleted, SprintUpdated as ProtoSprintUpdated,
+        SprintsList as ProtoSprintsList, WorkItemCreated as ProtoWorkItemCreated,
         WorkItemDeleted as ProtoWorkItemDeleted, WorkItemUpdated as ProtoWorkItemUpdated,
         WorkItemsList as ProtoWorkItemsList,
     },
@@ -193,5 +197,95 @@ pub fn build_project_list_response(message_id: &str, projects: &[Project]) -> We
         payload: Some(ProtoProjectList(ProjectList {
             projects: projects.iter().map(project_to_proto).collect(),
         })),
+    }
+}
+
+/// Build SprintCreated response
+pub fn build_sprint_created_response(
+    message_id: &str,
+    sprint: &Sprint,
+    actor_id: Uuid,
+) -> WebSocketMessage {
+    WebSocketMessage {
+        message_id: message_id.to_string(),
+        timestamp: Utc::now().timestamp(),
+        payload: Some(ProtoSprintCreated(SprintCreated {
+            sprint: Some(sprint_to_proto(sprint)),
+            user_id: actor_id.to_string(),
+        })),
+    }
+}
+
+/// Build SprintUpdated response with field changes
+pub fn build_sprint_updated_response(
+    message_id: &str,
+    sprint: &Sprint,
+    changes: &[FieldChange],
+    actor_id: Uuid,
+) -> WebSocketMessage {
+    WebSocketMessage {
+        message_id: message_id.to_string(),
+        timestamp: Utc::now().timestamp(),
+        payload: Some(ProtoSprintUpdated(SprintUpdated {
+            sprint: Some(sprint_to_proto(sprint)),
+            changes: changes.to_vec(),
+            user_id: actor_id.to_string(),
+        })),
+    }
+}
+
+/// Build SprintDeleted response
+pub fn build_sprint_deleted_response(
+    message_id: &str,
+    sprint_id: Uuid,
+    actor_id: Uuid,
+) -> WebSocketMessage {
+    WebSocketMessage {
+        message_id: message_id.to_string(),
+        timestamp: Utc::now().timestamp(),
+        payload: Some(ProtoSprintDeleted(SprintDeleted {
+            sprint_id: sprint_id.to_string(),
+            user_id: actor_id.to_string(),
+        })),
+    }
+}
+
+/// Build SprintsList response
+pub fn build_sprints_list_response(message_id: &str, sprints: Vec<Sprint>) -> WebSocketMessage {
+    WebSocketMessage {
+        message_id: message_id.to_string(),
+        timestamp: Utc::now().timestamp(),
+        payload: Some(ProtoSprintsList(SprintsList {
+            sprints: sprints.iter().map(sprint_to_proto).collect(),
+        })),
+    }
+}
+
+/// Convert domain Sprint to proto Sprint
+fn sprint_to_proto(sprint: &Sprint) -> ProtoSprint {
+    ProtoSprint {
+        id: sprint.id.to_string(),
+        project_id: sprint.project_id.to_string(),
+        name: sprint.name.clone(),
+        goal: sprint.goal.clone(),
+        start_date: sprint.start_date.timestamp(),
+        end_date: sprint.end_date.timestamp(),
+        status: sprint_status_to_proto(&sprint.status) as i32,
+        version: sprint.version,
+        created_at: sprint.created_at.timestamp(),
+        updated_at: sprint.updated_at.timestamp(),
+        created_by: sprint.created_by.to_string(),
+        updated_by: sprint.updated_by.to_string(),
+        deleted_at: sprint.deleted_at.map(|dt| dt.timestamp()),
+    }
+}
+
+/// Convert domain SprintStatus to proto SprintStatus
+fn sprint_status_to_proto(status: &SprintStatus) -> ProtoSprintStatus {
+    match status {
+        SprintStatus::Planned => ProtoSprintStatus::Planned,
+        SprintStatus::Active => ProtoSprintStatus::Active,
+        SprintStatus::Completed => ProtoSprintStatus::Completed,
+        SprintStatus::Cancelled => ProtoSprintStatus::Cancelled,
     }
 }
