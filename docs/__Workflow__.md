@@ -24,7 +24,7 @@ Iterating on your plan until you meet the target level.
 
 ### ordering
 ```text
-Verify that the `50-Session-Plan.md` has proper dependency ordering so that when implementing sequentially, nothing references code that hasn't been written yet.
+Verify that the `51-Session-Plan.md` has proper dependency ordering so that when implementing sequentially, nothing references code that hasn't been written yet.
 ```
 
 ```text
@@ -37,12 +37,12 @@ Can you show a dependency graph?
 
 ### x
 ```text
-before continuing, can I get you to perform a fresh-eyes review of `50-Session-Plan.md`. Identify strengths/weaknesses/issues and re-grade x.x/10 for production-grade
+before continuing, can I get you to perform a fresh-eyes review of `51-Session-Plan.md`. Identify strengths/weaknesses/issues and re-grade x.x/10 for production-grade
 ```
 
 ### Sub-Process
 ```text
-read `docs/session-plans/45-Session-Plan-Initial.md` and break it down into multiple sub-sessions targeting <50k tokens each that can be presented to a future user as teaching material. Take inspiration from the plan/sub-plans in `docs/session-plans/template/`
+read `docs/session-plans/51-Session-Plan-Initial.md` and break it down into multiple sub-sessions targeting <50k tokens each that can be presented to a future user as teaching material. Take inspiration from the plan/sub-plans in `docs/session-plans/template/`
 ```
 
 ### Summarize
@@ -61,21 +61,21 @@ Follow the structure in docs/session-plans/42.1-Session-Plan.md as a template.
 
 ### Other
 ```text
-Read `CRITICAL_OPERATING_CONSTRAINTS.md`, `docs/session-plans/50.5-Session-Plan.md`, `docs/session-plans/50-Session-Plan.md` and `docs/implementation-plan-v2.md`.
+Read `CRITICAL_OPERATING_CONSTRAINTS.md`, `docs/session-plans/51.1-Session-Plan.md`, `docs/session-plans/51-Session-Plan.md` and `docs/implementation-plan-v2.md`.
 
-Please audit `docs/session-plans/50.5-Session-Plan.md` and cross reference it's contents against the current state of the project to avoid making poor assumptions.
+Please audit `docs/session-plans/51.1-Session-Plan.md` and cross reference it's contents against the current state of the project to avoid making poor assumptions.
 
 I want you to teach me by presenting me with bite-sized chunks for me to write/edit keeping the commentary separate from the code snippets to make the code snippets easier for me to follow
 ```
 
 ### End of Session Sanity Check
 ```text
-Builds clean and all tests pass. Please sanity check that everything in `docs/session-plans/50.5-Session-Plan.md` was implemented as expected.
+Builds clean and all tests pass. Please sanity check that everything in `docs/session-plans/51.1-Session-Plan.md` was implemented as expected.
 ```
 
 ### Update Docs
 ```text
-Please update `docs/session-plans/50.5-Session-Plan.md` and `docs/session-plans/50-Session-Plan.md`
+Please update `docs/session-plans/50.5-Session-Plan.md` and `docs/session-plans/51-Session-Plan.md`
 ```
 
 ### Commit
