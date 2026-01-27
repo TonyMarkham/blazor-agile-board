@@ -33,7 +33,10 @@
       "Bash(just build-cs-services:*)",
       "Bash(just build-frontend:*)",
       "Bash(just test-frontend:*)",
-      "Bash(just check:*)"
+      "Bash(just check:*)",
+      "Bash(just test-cs-core:*)",
+      "Bash(just test-cs-services:*)",
+      "Bash(just test:*)"
     ]
   }
 }
