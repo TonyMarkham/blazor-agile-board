@@ -2,7 +2,7 @@
 
 **Purpose:** Standard constraints for AI-assisted software development sessions
 **Usage:** Include this document in session initialization prompts
-**Last Updated:** 2026-01-18
+**Last Updated:** 2026-01-27
 
 ---
 
@@ -42,6 +42,8 @@
 - Don't mix explanation prose with code blocks - keep them distinct
 - Use markdown headers to structure presentation (## Step X: Description)
 - Show complete, runnable code blocks (not fragments requiring mental assembly)
+- **Include line numbers** when referencing existing code for edits
+- **Show existing code being replaced** - not just the new code in isolation
 
 **Chunk sizing:**
 - Default: Complete logical units (one full module, one full test file, etc.)
@@ -132,6 +134,52 @@ After completing Step 2, immediately update:
 - Don't reorganize or refactor unless explicitly asked
 
 **The session plan is the contract.** Stick to it.
+
+### File Editing Discipline
+
+**CRITICAL: Always read files before proposing edits**
+
+Before suggesting any changes to a file:
+1. **Read the file first** - Never propose edits based on memory or assumptions
+2. **Verify current state** - Files may have changed since you last saw them
+3. **Reference exact content** - Your edits must match what's actually in the file
+
+**Why this matters:**
+- Files change during sessions (user edits, other tools, git operations)
+- Proposing edits to stale content wastes time and causes confusion
+- Line numbers and content drift as files are modified
+
+**When presenting edits, include landmarks:**
+- **Line numbers** - Reference specific line numbers for context
+- **Existing code** - Show the code being replaced, not just the new code
+- **Surrounding context** - Include enough context to locate the edit uniquely
+
+**Example of good edit presentation:**
+```
+**File**: `backend/crates/pm-ws/src/handlers/dispatcher.rs`
+
+**Find this code** (around lines 145-150):
+```rust
+Some(Payload::UpdateSprintRequest(req)) => sprint::handle_update_sprint(req, ctx).await,
+Some(Payload::DeleteSprintRequest(req)) => sprint::handle_delete_sprint(req, ctx).await,
+```
+
+**Replace with:**
+```rust
+Some(Payload::UpdateSprintRequest(req)) => sprint::handle_update_sprint(req, ctx).await,
+Some(Payload::DeleteSprintRequest(req)) => sprint::handle_delete_sprint(req, ctx).await,
+Some(Payload::StartTimerRequest(req)) => time_entry::handle_start_timer(req, ctx).await,
+```
+```
+
+**Example of bad edit presentation:**
+```
+Add this to dispatcher.rs:
+```rust
+Some(Payload::StartTimerRequest(req)) => time_entry::handle_start_timer(req, ctx).await,
+```
+```
+☝️ Where? After what? User has to search the file to figure out placement.
 
 ### Verification & Testing
 
@@ -572,6 +620,8 @@ Before marking any task as "done", verify:
 - [ ] **Planning**: Did I read the ENTIRE step before starting?
 - [ ] **Analysis**: Did I identify all sub-tasks and dependencies?
 - [ ] **Approach**: Did I present my plan to the user first?
+- [ ] **File reading**: Did I read each file before proposing edits to it?
+- [ ] **Edit landmarks**: Did I include line numbers and existing code context?
 - [ ] **Teaching mode**: Did I present code snippets (not write files)?
 - [ ] **Todo tracking**: Did I update todos after completing this task?
 - [ ] **Verification**: Did I suggest tests/checks for the user to run?
@@ -597,5 +647,6 @@ Before marking any task as "done", verify:
 
 ## Version History
 
+- **v1.2 (2026-01-27)** - Added "File Editing Discipline" section: always read files before proposing edits; include line numbers and existing code references for landmarking
 - **v1.1 (2026-01-18)** - Added presentation/pacing, todo tracking, session plan adherence, verification sections; removed "should I explain or implement?" anti-pattern
 - **v1.0 (2026-01-07)** - Initial version extracted from Session 6 planning
