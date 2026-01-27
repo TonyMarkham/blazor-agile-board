@@ -8,6 +8,12 @@ use pm_proto::{Pong, WebSocketMessage, web_socket_message::Payload};
 
 use std::panic::Location;
 
+use crate::handlers::comment::{
+    handle_create_comment, handle_delete_comment, handle_get_comments, handle_update_comment,
+};
+use crate::handlers::sprint::{
+    handle_create_sprint, handle_delete_sprint, handle_get_sprints, handle_update_sprint,
+};
 use error_location::ErrorLocation;
 
 /// Dispatch incoming WebSocket message to appropriate handler.
@@ -75,6 +81,18 @@ async fn dispatch_inner(msg: WebSocketMessage, ctx: HandlerContext) -> WebSocket
         Some(Payload::UpdateProjectRequest(req)) => handle_update_project(req, ctx).await,
         Some(Payload::DeleteProjectRequest(req)) => handle_delete_project(req, ctx).await,
         Some(Payload::ListProjectsRequest(req)) => handle_list(req, ctx).await,
+
+        // Sprint handlers
+        Some(Payload::CreateSprintRequest(req)) => handle_create_sprint(req, ctx).await,
+        Some(Payload::UpdateSprintRequest(req)) => handle_update_sprint(req, ctx).await,
+        Some(Payload::DeleteSprintRequest(req)) => handle_delete_sprint(req, ctx).await,
+        Some(Payload::GetSprintsRequest(req)) => handle_get_sprints(req, ctx).await,
+
+        // Comment handlers
+        Some(Payload::CreateCommentRequest(req)) => handle_create_comment(req, ctx).await,
+        Some(Payload::UpdateCommentRequest(req)) => handle_update_comment(req, ctx).await,
+        Some(Payload::DeleteCommentRequest(req)) => handle_delete_comment(req, ctx).await,
+        Some(Payload::GetCommentsRequest(req)) => handle_get_comments(req, ctx).await,
 
         // Ping/Pong
         Some(Payload::Ping(ping)) => {

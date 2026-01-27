@@ -1,12 +1,14 @@
-use pm_core::{Project, ProjectStatus};
-use pm_core::{Sprint, SprintStatus, WorkItem};
+use pm_core::{Comment, Project, ProjectStatus, Sprint, SprintStatus, WorkItem};
 use pm_proto::{
+    Comment as ProtoComment, CommentCreated, CommentDeleted, CommentUpdated, CommentsList,
     Error as PmProtoError, FieldChange, Project as ProtoProject, ProjectCreated, ProjectDeleted,
     ProjectList, ProjectStatus as ProtoProjectStatus, ProjectUpdated, Sprint as ProtoSprint,
     SprintCreated, SprintDeleted, SprintStatus as ProtoSprintStatus, SprintUpdated, SprintsList,
     WebSocketMessage, WorkItem as PmProtoWorkItem, WorkItemCreated, WorkItemDeleted,
     WorkItemUpdated, WorkItemsList,
     web_socket_message::Payload::{
+        CommentCreated as ProtoCommentCreated, CommentDeleted as ProtoCommentDeleted,
+        CommentUpdated as ProtoCommentUpdated, CommentsList as ProtoCommentsList,
         Error as ProtoError, ProjectCreated as ProtoProjectCreated,
         ProjectDeleted as ProtoProjectDeleted, ProjectList as ProtoProjectList,
         ProjectUpdated as ProtoProjectUpdated, SprintCreated as ProtoSprintCreated,
@@ -287,5 +289,73 @@ fn sprint_status_to_proto(status: &SprintStatus) -> ProtoSprintStatus {
         SprintStatus::Active => ProtoSprintStatus::Active,
         SprintStatus::Completed => ProtoSprintStatus::Completed,
         SprintStatus::Cancelled => ProtoSprintStatus::Cancelled,
+    }
+}
+
+fn comment_to_proto(comment: &Comment) -> ProtoComment {
+    ProtoComment {
+        id: comment.id.to_string(),
+        work_item_id: comment.work_item_id.to_string(),
+        content: comment.content.clone(),
+        created_at: comment.created_at.timestamp(),
+        updated_at: comment.updated_at.timestamp(),
+        created_by: comment.created_by.to_string(),
+        updated_by: comment.updated_by.to_string(),
+        deleted_at: comment.deleted_at.map(|dt| dt.timestamp()),
+    }
+}
+
+pub fn build_comment_created_response(
+    message_id: &str,
+    comment: &Comment,
+    actor_id: Uuid,
+) -> WebSocketMessage {
+    WebSocketMessage {
+        message_id: message_id.to_string(),
+        timestamp: Utc::now().timestamp(),
+        payload: Some(ProtoCommentCreated(CommentCreated {
+            comment: Some(comment_to_proto(comment)),
+            user_id: actor_id.to_string(),
+        })),
+    }
+}
+
+pub fn build_comment_updated_response(
+    message_id: &str,
+    comment: &Comment,
+    actor_id: Uuid,
+) -> WebSocketMessage {
+    WebSocketMessage {
+        message_id: message_id.to_string(),
+        timestamp: Utc::now().timestamp(),
+        payload: Some(ProtoCommentUpdated(CommentUpdated {
+            comment: Some(comment_to_proto(comment)),
+            user_id: actor_id.to_string(),
+        })),
+    }
+}
+
+pub fn build_comment_deleted_response(
+    message_id: &str,
+    comment_id: Uuid,
+    actor_id: Uuid,
+) -> WebSocketMessage {
+    WebSocketMessage {
+        message_id: message_id.to_string(),
+        timestamp: Utc::now().timestamp(),
+        payload: Some(ProtoCommentDeleted(CommentDeleted {
+            comment_id: comment_id.to_string(),
+            user_id: actor_id.to_string(),
+        })),
+    }
+}
+
+pub fn build_comments_list_response(message_id: &str, comments: Vec<Comment>) -> WebSocketMessage {
+    WebSocketMessage {
+        message_id: message_id.to_string(),
+        timestamp: Utc::now().timestamp(),
+        payload: Some(ProtoCommentsList(CommentsList {
+            comments: comments.iter().map(comment_to_proto).collect(),
+        })),
     }
 }

@@ -19,7 +19,7 @@ This plan has been split into sub-sessions to fit within token budgets:
 | Session | Scope | Est. Tokens | Status |
 |---------|-------|-------------|--------|
 | **[50.1](50.1-Session-Plan.md)** | Proto Schema + Backend Sprint Infrastructure | ~35-40k | ✅ Complete (2026-01-27) |
-| **[50.2](50.2-Session-Plan.md)** | Backend Comment Handler + Dispatcher Wiring | ~35-40k | Pending |
+| **[50.2](50.2-Session-Plan.md)** | Backend Comment Handler + Dispatcher Wiring | ~35-40k | ✅ Complete (2026-01-27) |
 | **[50.3](50.3-Session-Plan.md)** | Frontend Models + WebSocket Integration | ~40-45k | Pending |
 | **[50.4](50.4-Session-Plan.md)** | State Management + UI Components | ~40-45k | Pending |
 | **[50.5](50.5-Session-Plan.md)** | Testing (Backend + Frontend) | ~35-40k | Pending |
@@ -42,21 +42,24 @@ This plan has been split into sub-sessions to fit within token budgets:
 
 ---
 
-## Session 50.2: Backend Comment Handler + Dispatcher Wiring
+## Session 50.2: Backend Comment Handler + Dispatcher Wiring ✅
+
+**Status**: Complete (2026-01-27)
 
 **Note**: Sprint response builders were completed in Session 50.1.
 
 **Files Created:**
-- `pm-ws/src/handlers/comment.rs` - Comment CRUD handlers
+- `pm-ws/src/handlers/comment.rs` - Comment CRUD handlers (287 lines)
 
 **Files Modified:**
 - `pm-ws/src/handlers/response_builder.rs` - Comment response builders (Sprint already done)
-- `pm-ws/src/handlers/dispatcher.rs` - Route Sprint/Comment messages
+- `pm-ws/src/handlers/dispatcher.rs` - Route Sprint/Comment messages (8 new types)
 - `pm-ws/src/handlers/mod.rs` - Export comment module
-- `pm-ws/src/lib.rs` - Public exports
-- `pm-ws/src/message_validator.rs` - Sprint/Comment validation
+- `pm-ws/src/lib.rs` - Public exports for Sprint/Comment handlers
 
-**Verification:** `just check-rs-ws && just test-rs-ws`
+**Note**: `message_validator.rs` already had Sprint/Comment validation from Session 50.1
+
+**Verification:** ✅ All tests passing (74 tests), 0 clippy warnings
 
 ---
 
@@ -128,7 +131,7 @@ Before starting **any** sub-session:
 |------|---------|---------|
 | `pm-ws/src/handlers/sprint.rs` | Sprint CRUD handlers | ✅ 50.1 |
 | `pm-ws/src/handlers/field_change_builder.rs` | Generic change tracker | ✅ 50.1 |
-| `pm-ws/src/handlers/comment.rs` | Comment CRUD handlers | 50.2 |
+| `pm-ws/src/handlers/comment.rs` | Comment CRUD handlers | ✅ 50.2 |
 | `ProjectManagement.Core/Models/Comment.cs` | Comment domain model | 50.3 |
 | `ProjectManagement.Core/Models/CreateCommentRequest.cs` | Create comment request | 50.3 |
 | `ProjectManagement.Core/Models/UpdateCommentRequest.cs` | Update comment request | 50.3 |
@@ -150,12 +153,12 @@ Before starting **any** sub-session:
 | `proto/messages.proto` | Add Sprint/Comment WebSocket messages | ✅ 50.1 |
 | `pm-core/src/models/sprint.rs` | Add version field | ✅ 50.1 |
 | `pm-db/src/repositories/sprint_repository.rs` | Update queries for version | ✅ 50.1 |
-| `pm-ws/src/handlers/response_builder.rs` | Add Sprint/Comment response builders | ✅ 50.1 (Sprint), 50.2 (Comment) |
+| `pm-ws/src/handlers/response_builder.rs` | Add Sprint/Comment response builders | ✅ 50.1 (Sprint), ✅ 50.2 (Comment) |
 | `pm-ws/src/handlers/change_tracker.rs` | Add FieldChangeBuilder | ✅ 50.1 |
-| `pm-ws/src/handlers/dispatcher.rs` | Route Sprint/Comment messages | 50.2 |
-| `pm-ws/src/handlers/mod.rs` | Export sprint/comment modules | ✅ 50.1 (sprint), 50.2 (comment) |
-| `pm-ws/src/lib.rs` | Public exports | 50.2 |
-| `pm-ws/src/message_validator.rs` | Sprint/Comment validation | 50.2 |
+| `pm-ws/src/handlers/dispatcher.rs` | Route Sprint/Comment messages | ✅ 50.2 |
+| `pm-ws/src/handlers/mod.rs` | Export sprint/comment modules | ✅ 50.1 (sprint), ✅ 50.2 (comment) |
+| `pm-ws/src/lib.rs` | Public exports | ✅ 50.2 |
+| `pm-ws/src/message_validator.rs` | Sprint/Comment validation | ✅ 50.1 |
 | `ProjectManagement.Core/Models/Sprint.cs` | Add Version property | 50.3 |
 | `ProjectManagement.Core/Models/UpdateSprintRequest.cs` | Add ExpectedVersion + Status | 50.3 |
 | `ProjectManagement.Core/Converters/ProtoConverter.cs` | Sprint/Comment conversions | 50.3 |

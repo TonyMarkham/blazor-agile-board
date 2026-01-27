@@ -25,7 +25,11 @@
       "WebFetch(domain:www.radzen.com)",
       "WebFetch(domain:forum.radzen.com)",
       "Bash(just build-cs-components:*)",
-      "Bash(just test-cs-components:*)"
+      "Bash(just test-cs-components:*)",
+      "Bash(just check-rs-ws:*)",
+      "Bash(just test-rs-ws:*)",
+      "Bash(just check-backend:*)",
+      "Bash(just clippy-backend:*)"
     ]
   }
 }

@@ -1,5 +1,6 @@
 pub(crate) mod authorization;
 pub(crate) mod change_tracker;
+pub(crate) mod comment;
 pub(crate) mod connection;
 pub(crate) mod context;
 pub(crate) mod db_ops;

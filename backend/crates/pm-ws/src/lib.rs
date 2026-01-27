@@ -31,6 +31,9 @@ pub use error::{Result, WsError};
 pub use handlers::{
     authorization::check_permission,
     change_tracker::track_changes,
+    comment::{
+        handle_create_comment, handle_delete_comment, handle_get_comments, handle_update_comment,
+    },
     connection::extract_user_id,
     context::HandlerContext,
     db_ops::{db_read, db_transaction, db_write},
@@ -49,10 +52,15 @@ pub use handlers::{
     },
     query::handle_get_work_items,
     response_builder::{
-        build_error_response, build_sprint_created_response, build_sprint_deleted_response,
+        build_comment_created_response, build_comment_deleted_response,
+        build_comment_updated_response, build_comments_list_response, build_error_response,
+        build_sprint_created_response, build_sprint_deleted_response,
         build_sprint_updated_response, build_sprints_list_response,
         build_work_item_created_response, build_work_item_deleted_response,
         build_work_item_updated_response, build_work_items_list_response,
+    },
+    sprint::{
+        handle_create_sprint, handle_delete_sprint, handle_get_sprints, handle_update_sprint,
     },
     work_item::{
         handle_create, handle_delete, handle_update, sanitize_string, validate_priority,
