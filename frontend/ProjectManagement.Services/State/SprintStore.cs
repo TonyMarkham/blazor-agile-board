@@ -26,9 +26,10 @@ public sealed class SprintStore : ISprintStore
         _client = client;
         _logger = logger;
 
-        // Sprint events will be wired up in Session 40 when backend handlers are implemented
-        // _client.OnSprintCreated += HandleSprintCreated;
-        // _client.OnSprintUpdated += HandleSprintUpdated;
+        // Wire up WebSocket events for real-time updates from other clients
+        _client.OnSprintCreated += HandleSprintCreated;
+        _client.OnSprintUpdated += HandleSprintUpdated;
+        _client.OnSprintDeleted += HandleSprintDeleted;
     }
 
     public event Action? OnChanged;
@@ -37,6 +38,10 @@ public sealed class SprintStore : ISprintStore
     {
         if (_disposed) return;
         _disposed = true;
+
+        _client.OnSprintCreated -= HandleSprintCreated;
+        _client.OnSprintUpdated -= HandleSprintUpdated;
+        _client.OnSprintDeleted -= HandleSprintDeleted;
     }
 
     #region Read Operations
@@ -68,44 +73,60 @@ public sealed class SprintStore : ISprintStore
 
     #region Write Operations
 
-    public Task<Sprint> CreateAsync(
+    public async Task<Sprint> CreateAsync(
         CreateSprintRequest request,
         CancellationToken ct = default)
     {
         ThrowIfDisposed();
 
-        var sprintId = Guid.NewGuid();
-        _pendingUpdates[sprintId] = true;
+        // Create optimistic sprint with temporary ID
+        var tempId = Guid.NewGuid();
+        var optimistic = new Sprint
+        {
+            Id = tempId,
+            ProjectId = request.ProjectId,
+            Name = request.Name,
+            Goal = request.Goal,
+            StartDate = request.StartDate,
+            EndDate = request.EndDate,
+            Status = SprintStatus.Planned,
+            Version = 1,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+            CreatedBy = Guid.Empty,
+            UpdatedBy = Guid.Empty
+        };
+
+        // Optimistic update
+        _sprints[tempId] = optimistic;
+        _pendingUpdates[tempId] = true;
+        NotifyChanged();
+
         try
         {
-            var sprint = new Sprint
-            {
-                Id = sprintId,
-                ProjectId = request.ProjectId,
-                Name = request.Name,
-                Goal = request.Goal,
-                StartDate = request.StartDate,
-                EndDate = request.EndDate,
-                Status = SprintStatus.Planned,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow,
-                CreatedBy = Guid.Empty,
-                UpdatedBy = Guid.Empty
-            };
+            // Send to server
+            var confirmed = await _client.CreateSprintAsync(request, ct);
 
-            _sprints[sprint.Id] = sprint;
+            // Replace temp with confirmed
+            _sprints.TryRemove(tempId, out _);
+            _sprints[confirmed.Id] = confirmed;
+            _pendingUpdates.TryRemove(tempId, out _);
             NotifyChanged();
 
-            _logger.LogDebug("Sprint created locally: {Id}", sprint.Id);
-            return Task.FromResult(sprint);
+            _logger.LogDebug("Sprint created: {Id}", confirmed.Id);
+            return confirmed;
         }
-        finally
+        catch
         {
-            _pendingUpdates.TryRemove(sprintId, out _);
+            // Rollback optimistic update
+            _sprints.TryRemove(tempId, out _);
+            _pendingUpdates.TryRemove(tempId, out _);
+            NotifyChanged();
+            throw;
         }
     }
 
-    public Task<Sprint> UpdateAsync(
+    public async Task<Sprint> UpdateAsync(
         UpdateSprintRequest request,
         CancellationToken ct = default)
     {
@@ -114,26 +135,39 @@ public sealed class SprintStore : ISprintStore
         if (!_sprints.TryGetValue(request.SprintId, out var current))
             throw new KeyNotFoundException($"Sprint not found: {request.SprintId}");
 
+        // Create optimistic update
+        var optimistic = current with
+        {
+            Name = request.Name ?? current.Name,
+            Goal = request.Goal ?? current.Goal,
+            StartDate = request.StartDate ?? current.StartDate,
+            EndDate = request.EndDate ?? current.EndDate,
+            Status = request.Status ?? current.Status,
+            Version = current.Version + 1,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        // Store previous value for rollback
+        var previousValue = _sprints[request.SprintId];
+        _sprints[request.SprintId] = optimistic;
         _pendingUpdates[request.SprintId] = true;
+        NotifyChanged();
+
         try
         {
-            var updated = current with
-            {
-                Name = request.Name ?? current.Name,
-                Goal = request.Goal ?? current.Goal,
-                StartDate = request.StartDate ?? current.StartDate,
-                EndDate = request.EndDate ?? current.EndDate,
-                UpdatedAt = DateTime.UtcNow
-            };
-
-            _sprints[request.SprintId] = updated;
-            NotifyChanged();
-
-            return Task.FromResult(updated);
-        }
-        finally
-        {
+            var confirmed = await _client.UpdateSprintAsync(request, ct);
+            _sprints[request.SprintId] = confirmed;
             _pendingUpdates.TryRemove(request.SprintId, out _);
+            NotifyChanged();
+            return confirmed;
+        }
+        catch
+        {
+            // Rollback to previous value
+            _sprints[request.SprintId] = previousValue;
+            _pendingUpdates.TryRemove(request.SprintId, out _);
+            NotifyChanged();
+            throw;
         }
     }
 
@@ -225,13 +259,27 @@ public sealed class SprintStore : ISprintStore
         }
     }
 
-    public Task RefreshAsync(Guid projectId, CancellationToken ct = default)
+    public async Task RefreshAsync(Guid projectId, CancellationToken ct = default)
     {
         ThrowIfDisposed();
 
-        // Will call _client.GetSprintsAsync when backend handler is implemented in Session 40
-        _logger.LogDebug("Sprint refresh for project {ProjectId} - backend not yet implemented", projectId);
-        return Task.CompletedTask;
+        var sprints = await _client.GetSprintsAsync(projectId, ct);
+
+        // Remove existing sprints for this project
+        var toRemove = _sprints.Values
+            .Where(s => s.ProjectId == projectId)
+            .Select(s => s.Id)
+            .ToList();
+
+        foreach (var id in toRemove)
+            _sprints.TryRemove(id, out _);
+
+        // Add fetched sprints
+        foreach (var sprint in sprints)
+            _sprints[sprint.Id] = sprint;
+
+        NotifyChanged();
+        _logger.LogDebug("Refreshed {Count} sprints for project {ProjectId}", sprints.Count, projectId);
     }
 
     #endregion
@@ -256,6 +304,44 @@ public sealed class SprintStore : ISprintStore
     }
 
     #endregion
-    
+
+    #region WebSocket Event Handlers
+
+    private void HandleSprintCreated(Sprint sprint)
+    {
+        // Skip if we have a pending update (we created this)
+        if (_pendingUpdates.ContainsKey(sprint.Id)) return;
+
+        _sprints[sprint.Id] = sprint;
+        NotifyChanged();
+        _logger.LogDebug("Received sprint created: {Id}", sprint.Id);
+    }
+
+    private void HandleSprintUpdated(Sprint sprint, IReadOnlyList<FieldChange> changes)
+    {
+        // Skip if we have a pending update (we updated this)
+        if (_pendingUpdates.ContainsKey(sprint.Id)) return;
+
+        _sprints[sprint.Id] = sprint;
+        NotifyChanged();
+        _logger.LogDebug("Received sprint updated: {Id}", sprint.Id);
+    }
+
+    private void HandleSprintDeleted(Guid id)
+    {
+        // Skip if we have a pending update (we deleted this)
+        if (_pendingUpdates.ContainsKey(id)) return;
+
+        if (_sprints.TryGetValue(id, out var sprint))
+        {
+            _sprints[id] = sprint with { DeletedAt = DateTime.UtcNow };
+            NotifyChanged();
+        }
+
+        _logger.LogDebug("Received sprint deleted: {Id}", id);
+    }
+
+    #endregion
+
     public bool IsPending(Guid id) => _pendingUpdates.ContainsKey(id);
 }

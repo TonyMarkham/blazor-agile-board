@@ -38,7 +38,7 @@ public interface IWebSocketClient : IAsyncDisposable
 
     Task<IReadOnlyList<WorkItem>> GetWorkItemsAsync(Guid projectId, DateTime? since = null,
         CancellationToken ct = default);
-    
+
     // ============================================================
     // Project Events
     // ============================================================
@@ -81,4 +81,94 @@ public interface IWebSocketClient : IAsyncDisposable
     /// Get all projects.
     /// </summary>
     Task<IReadOnlyList<Project>> GetProjectsAsync(CancellationToken ct = default);
+
+    // ============================================================
+    // Sprint Events (received from server)
+    // ============================================================
+
+    /// <summary>
+    /// Fired when a sprint is created (by this or another client).
+    /// </summary>
+    event Action<Sprint>? OnSprintCreated;
+
+    /// <summary>
+    /// Fired when a sprint is updated (by this or another client).
+    /// </summary>
+    event Action<Sprint, IReadOnlyList<FieldChange>>? OnSprintUpdated;
+
+    /// <summary>
+    /// Fired when a sprint is deleted (by this or another client).
+    /// </summary>
+    event Action<Guid>? OnSprintDeleted;
+
+    // ============================================================
+    // Sprint Operations (send to server)
+    // ============================================================
+
+    /// <summary>
+    /// Create a new sprint in a project.
+    /// </summary>
+    Task<Sprint> CreateSprintAsync(CreateSprintRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Update an existing sprint.
+    /// Uses optimistic locking - ExpectedVersion must match server's version.
+    /// </summary>
+    Task<Sprint> UpdateSprintAsync(UpdateSprintRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Delete a sprint (soft delete).
+    /// Requires admin permission. Cannot delete completed sprints.
+    /// </summary>
+    Task DeleteSprintAsync(Guid sprintId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Get all sprints for a project.
+    /// </summary>
+    Task<IReadOnlyList<Sprint>> GetSprintsAsync(Guid projectId, CancellationToken ct = default);
+
+    // ============================================================
+    // Comment Events (received from server)
+    // ============================================================
+
+    /// <summary>
+    /// Fired when a comment is created (by this or another client).
+    /// </summary>
+    event Action<Comment>? OnCommentCreated;
+
+    /// <summary>
+    /// Fired when a comment is updated (by this or another client).
+    /// </summary>
+    event Action<Comment>? OnCommentUpdated;
+
+    /// <summary>
+    /// Fired when a comment is deleted (by this or another client).
+    /// </summary>
+    event Action<Guid>? OnCommentDeleted;
+
+    // ============================================================
+    // Comment Operations (send to server)
+    // ============================================================
+
+    /// <summary>
+    /// Create a comment on a work item.
+    /// </summary>
+    Task<Comment> CreateCommentAsync(CreateCommentRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Update a comment.
+    /// Only the comment author can update their own comment.
+    /// </summary>
+    Task<Comment> UpdateCommentAsync(UpdateCommentRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Delete a comment.
+    /// Only the comment author can delete their own comment.
+    /// </summary>
+    Task DeleteCommentAsync(Guid commentId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Get all comments for a work item.
+    /// </summary>
+    Task<IReadOnlyList<Comment>> GetCommentsAsync(Guid workItemId, CancellationToken ct = default);
 }

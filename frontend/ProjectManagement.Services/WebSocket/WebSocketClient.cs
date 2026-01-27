@@ -35,7 +35,7 @@ public sealed class WebSocketClient : IWebSocketClient
     private CancellationTokenSource? _receiveCts;
     private Task? _receiveTask;
     private HashSet<Guid> _subscribedProjects = new();
-    
+
     // Query parameter names
     private const string QueryParamUserId = "user_id";
     private const string QueryParamToken = "token";
@@ -79,6 +79,12 @@ public sealed class WebSocketClient : IWebSocketClient
     public event Action<Project>? OnProjectCreated;
     public event Action<Project, IReadOnlyList<FieldChange>>? OnProjectUpdated;
     public event Action<Guid>? OnProjectDeleted;
+    public event Action<Sprint>? OnSprintCreated;
+    public event Action<Sprint, IReadOnlyList<FieldChange>>? OnSprintUpdated;
+    public event Action<Guid>? OnSprintDeleted;
+    public event Action<Comment>? OnCommentCreated;
+    public event Action<Comment>? OnCommentUpdated;
+    public event Action<Guid>? OnCommentDeleted;
 
     public async Task ConnectAsync(CancellationToken ct = default)
     {
@@ -119,7 +125,7 @@ public sealed class WebSocketClient : IWebSocketClient
             _stateLock.Release();
         }
     }
-    
+
     /// <summary>
     /// Connects to WebSocket server with explicit user identity.
     /// Used in desktop mode where JWT authentication is disabled.
@@ -679,6 +685,39 @@ public sealed class WebSocketClient : IWebSocketClient
                     OnProjectDeleted?.Invoke(deletedProjectId);
                 break;
 
+            case Pm.WebSocketMessage.PayloadOneofCase.SprintCreated:
+                var createdSprint = ProtoConverter.ToDomain(message.SprintCreated.Sprint);
+                OnSprintCreated?.Invoke(createdSprint);
+                break;
+
+            case Pm.WebSocketMessage.PayloadOneofCase.SprintUpdated:
+                var updatedSprint = ProtoConverter.ToDomain(message.SprintUpdated.Sprint);
+                var sprintChanges = message.SprintUpdated.Changes
+                    .Select(c => new FieldChange(c.FieldName, c.OldValue, c.NewValue))
+                    .ToList();
+                OnSprintUpdated?.Invoke(updatedSprint, sprintChanges);
+                break;
+
+            case Pm.WebSocketMessage.PayloadOneofCase.SprintDeleted:
+                if (Guid.TryParse(message.SprintDeleted.SprintId, out var deletedSprintId))
+                    OnSprintDeleted?.Invoke(deletedSprintId);
+                break;
+
+            case Pm.WebSocketMessage.PayloadOneofCase.CommentCreated:
+                var createdComment = ProtoConverter.ToDomain(message.CommentCreated.Comment);
+                OnCommentCreated?.Invoke(createdComment);
+                break;
+
+            case Pm.WebSocketMessage.PayloadOneofCase.CommentUpdated:
+                var updatedComment = ProtoConverter.ToDomain(message.CommentUpdated.Comment);
+                OnCommentUpdated?.Invoke(updatedComment);
+                break;
+
+            case Pm.WebSocketMessage.PayloadOneofCase.CommentDeleted:
+                if (Guid.TryParse(message.CommentDeleted.CommentId, out var deletedCommentId))
+                    OnCommentDeleted?.Invoke(deletedCommentId);
+                break;
+
             default:
                 _logger.LogWarning("Unhandled broadcast message type: {Type}",
                     message.PayloadCase);
@@ -818,6 +857,194 @@ public sealed class WebSocketClient : IWebSocketClient
     private void ThrowIfDisposed()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+    }
+
+    #endregion
+
+    #region Sprint Operations
+
+    public async Task<Sprint> CreateSprintAsync(CreateSprintRequest request, CancellationToken ct = default)
+    {
+        ThrowIfDisposed();
+        EnsureConnected();
+
+        var message = new Pm.WebSocketMessage
+        {
+            MessageId = Guid.NewGuid().ToString(),
+            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            CreateSprintRequest = ProtoConverter.ToProto(request),
+        };
+
+        var response = await SendRequestAsync(message, ct);
+
+        if (response.PayloadCase == Pm.WebSocketMessage.PayloadOneofCase.Error)
+            throw new ServerRejectedException(response.Error.Code, response.Error.Message);
+
+        if (response.PayloadCase != Pm.WebSocketMessage.PayloadOneofCase.SprintCreated)
+            throw new InvalidOperationException($"Unexpected response type: {response.PayloadCase}");
+
+        return ProtoConverter.ToDomain(response.SprintCreated.Sprint);
+    }
+
+    public async Task<Sprint> UpdateSprintAsync(UpdateSprintRequest request, CancellationToken ct = default)
+    {
+        ThrowIfDisposed();
+        EnsureConnected();
+
+        var message = new Pm.WebSocketMessage
+        {
+            MessageId = Guid.NewGuid().ToString(),
+            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            UpdateSprintRequest = ProtoConverter.ToProto(request),
+        };
+
+        var response = await SendRequestAsync(message, ct);
+
+        if (response.PayloadCase == Pm.WebSocketMessage.PayloadOneofCase.Error)
+            throw new ServerRejectedException(response.Error.Code, response.Error.Message);
+
+        if (response.PayloadCase != Pm.WebSocketMessage.PayloadOneofCase.SprintUpdated)
+            throw new InvalidOperationException($"Unexpected response type: {response.PayloadCase}");
+
+        return ProtoConverter.ToDomain(response.SprintUpdated.Sprint);
+    }
+
+    public async Task DeleteSprintAsync(Guid sprintId, CancellationToken ct = default)
+    {
+        ThrowIfDisposed();
+        EnsureConnected();
+
+        var message = new Pm.WebSocketMessage
+        {
+            MessageId = Guid.NewGuid().ToString(),
+            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            DeleteSprintRequest = new Pm.DeleteSprintRequest { SprintId = sprintId.ToString() },
+        };
+
+        var response = await SendRequestAsync(message, ct);
+
+        if (response.PayloadCase == Pm.WebSocketMessage.PayloadOneofCase.Error)
+            throw new ServerRejectedException(response.Error.Code, response.Error.Message);
+
+        if (response.PayloadCase != Pm.WebSocketMessage.PayloadOneofCase.SprintDeleted)
+            throw new InvalidOperationException($"Unexpected response type: {response.PayloadCase}");
+    }
+
+    public async Task<IReadOnlyList<Sprint>> GetSprintsAsync(Guid projectId, CancellationToken ct = default)
+    {
+        ThrowIfDisposed();
+        EnsureConnected();
+
+        var message = new Pm.WebSocketMessage
+        {
+            MessageId = Guid.NewGuid().ToString(),
+            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            GetSprintsRequest = new Pm.GetSprintsRequest { ProjectId = projectId.ToString() },
+        };
+
+        var response = await SendRequestAsync(message, ct);
+
+        if (response.PayloadCase == Pm.WebSocketMessage.PayloadOneofCase.Error)
+            throw new ServerRejectedException(response.Error.Code, response.Error.Message);
+
+        if (response.PayloadCase != Pm.WebSocketMessage.PayloadOneofCase.SprintsList)
+            throw new InvalidOperationException($"Unexpected response type: {response.PayloadCase}");
+
+        return response.SprintsList.Sprints.Select(ProtoConverter.ToDomain).ToList();
+    }
+
+    #endregion
+
+    #region Comment Operations
+
+    public async Task<Comment> CreateCommentAsync(CreateCommentRequest request, CancellationToken ct = default)
+    {
+        ThrowIfDisposed();
+        EnsureConnected();
+
+        var message = new Pm.WebSocketMessage
+        {
+            MessageId = Guid.NewGuid().ToString(),
+            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            CreateCommentRequest = ProtoConverter.ToProto(request),
+        };
+
+        var response = await SendRequestAsync(message, ct);
+
+        if (response.PayloadCase == Pm.WebSocketMessage.PayloadOneofCase.Error)
+            throw new ServerRejectedException(response.Error.Code, response.Error.Message);
+
+        if (response.PayloadCase != Pm.WebSocketMessage.PayloadOneofCase.CommentCreated)
+            throw new InvalidOperationException($"Unexpected response type: {response.PayloadCase}");
+
+        return ProtoConverter.ToDomain(response.CommentCreated.Comment);
+    }
+
+    public async Task<Comment> UpdateCommentAsync(UpdateCommentRequest request, CancellationToken ct = default)
+    {
+        ThrowIfDisposed();
+        EnsureConnected();
+
+        var message = new Pm.WebSocketMessage
+        {
+            MessageId = Guid.NewGuid().ToString(),
+            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            UpdateCommentRequest = ProtoConverter.ToProto(request),
+        };
+
+        var response = await SendRequestAsync(message, ct);
+
+        if (response.PayloadCase == Pm.WebSocketMessage.PayloadOneofCase.Error)
+            throw new ServerRejectedException(response.Error.Code, response.Error.Message);
+
+        if (response.PayloadCase != Pm.WebSocketMessage.PayloadOneofCase.CommentUpdated)
+            throw new InvalidOperationException($"Unexpected response type: {response.PayloadCase}");
+
+        return ProtoConverter.ToDomain(response.CommentUpdated.Comment);
+    }
+
+    public async Task DeleteCommentAsync(Guid commentId, CancellationToken ct = default)
+    {
+        ThrowIfDisposed();
+        EnsureConnected();
+
+        var message = new Pm.WebSocketMessage
+        {
+            MessageId = Guid.NewGuid().ToString(),
+            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            DeleteCommentRequest = new Pm.DeleteCommentRequest { CommentId = commentId.ToString() },
+        };
+
+        var response = await SendRequestAsync(message, ct);
+
+        if (response.PayloadCase == Pm.WebSocketMessage.PayloadOneofCase.Error)
+            throw new ServerRejectedException(response.Error.Code, response.Error.Message);
+
+        if (response.PayloadCase != Pm.WebSocketMessage.PayloadOneofCase.CommentDeleted)
+            throw new InvalidOperationException($"Unexpected response type: {response.PayloadCase}");
+    }
+
+    public async Task<IReadOnlyList<Comment>> GetCommentsAsync(Guid workItemId, CancellationToken ct = default)
+    {
+        ThrowIfDisposed();
+        EnsureConnected();
+
+        var message = new Pm.WebSocketMessage
+        {
+            MessageId = Guid.NewGuid().ToString(),
+            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            GetCommentsRequest = new Pm.GetCommentsRequest { WorkItemId = workItemId.ToString() },
+        };
+
+        var response = await SendRequestAsync(message, ct);
+
+        if (response.PayloadCase == Pm.WebSocketMessage.PayloadOneofCase.Error)
+            throw new ServerRejectedException(response.Error.Code, response.Error.Message);
+
+        if (response.PayloadCase != Pm.WebSocketMessage.PayloadOneofCase.CommentsList)
+            throw new InvalidOperationException($"Unexpected response type: {response.PayloadCase}");
+
+        return response.CommentsList.Comments.Select(ProtoConverter.ToDomain).ToList();
     }
 
     #endregion

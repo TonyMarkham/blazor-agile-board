@@ -19,6 +19,27 @@
           _client = new Mock<IWebSocketClient>();
           _logger = new Mock<ILogger<SprintStore>>();
           _sut = new SprintStore(_client.Object, _logger.Object);
+          
+          // Mock Sprint WebSocket operations
+          _client.Setup(c => c.CreateSprintAsync(It.IsAny<CreateSprintRequest>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync((CreateSprintRequest req, CancellationToken ct) => new Sprint
+              {
+                  Id = Guid.NewGuid(),
+                  ProjectId = req.ProjectId,
+                  Name = req.Name,
+                  Goal = req.Goal,
+                  StartDate = req.StartDate,
+                  EndDate = req.EndDate,
+                  Status = SprintStatus.Planned,
+                  Version = 1,
+                  CreatedAt = DateTime.UtcNow,
+                  UpdatedAt = DateTime.UtcNow,
+                  CreatedBy = Guid.Empty,
+                  UpdatedBy = Guid.Empty
+              });
+
+          _client.Setup(c => c.GetSprintsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync(new List<Sprint>());
       }
 
       [Fact]

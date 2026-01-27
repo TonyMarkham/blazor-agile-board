@@ -29,7 +29,11 @@
       "Bash(just check-rs-ws:*)",
       "Bash(just test-rs-ws:*)",
       "Bash(just check-backend:*)",
-      "Bash(just clippy-backend:*)"
+      "Bash(just clippy-backend:*)",
+      "Bash(just build-cs-services:*)",
+      "Bash(just build-frontend:*)",
+      "Bash(just test-frontend:*)",
+      "Bash(just check:*)"
     ]
   }
 }

@@ -105,7 +105,7 @@ public static class ProtoConverter
     }
 
     #endregion
-    
+
     #region WorkItem Conversions
 
     public static DomainWorkItem ToDomain(ProtoWorkItem proto)
@@ -222,6 +222,157 @@ public static class ProtoConverter
     private static long ToUnixTimestamp(DateTime dateTime)
     {
         return (long)(dateTime.ToUniversalTime() - UnixEpoch).TotalSeconds;
+    }
+
+    #endregion
+
+    #region Sprint Conversions
+
+    /// <summary>
+    /// Convert protobuf Sprint to domain Sprint.
+    /// </summary>
+    public static Sprint ToDomain(Proto.Sprint proto)
+    {
+        ArgumentNullException.ThrowIfNull(proto);
+
+        return new Sprint
+        {
+            Id = ParseGuid(proto.Id, "Sprint.Id"),
+            ProjectId = ParseGuid(proto.ProjectId, "Sprint.ProjectId"),
+            Name = proto.Name ?? string.Empty,
+            Goal = string.IsNullOrEmpty(proto.Goal) ? null : proto.Goal,
+            StartDate = FromUnixTimestamp(proto.StartDate),
+            EndDate = FromUnixTimestamp(proto.EndDate),
+            Status = ToDomain(proto.Status),
+            Version = proto.Version,
+            CreatedAt = FromUnixTimestamp(proto.CreatedAt),
+            UpdatedAt = FromUnixTimestamp(proto.UpdatedAt),
+            CreatedBy = ParseGuid(proto.CreatedBy, "Sprint.CreatedBy"),
+            UpdatedBy = ParseGuid(proto.UpdatedBy, "Sprint.UpdatedBy"),
+            DeletedAt = proto.DeletedAt == 0 ? null : FromUnixTimestamp(proto.DeletedAt),
+        };
+    }
+
+    /// <summary>
+    /// Convert CreateSprintRequest to protobuf.
+    /// </summary>
+    public static Proto.CreateSprintRequest ToProto(CreateSprintRequest req)
+    {
+        ArgumentNullException.ThrowIfNull(req);
+
+        return new Proto.CreateSprintRequest
+        {
+            ProjectId = req.ProjectId.ToString(),
+            Name = req.Name,
+            Goal = req.Goal ?? string.Empty,
+            StartDate = ToUnixTimestamp(req.StartDate),
+            EndDate = ToUnixTimestamp(req.EndDate),
+        };
+    }
+
+    /// <summary>
+    /// Convert UpdateSprintRequest to protobuf.
+    /// Only includes fields that are set (non-null).
+    /// </summary>
+    public static Proto.UpdateSprintRequest ToProto(UpdateSprintRequest req)
+    {
+        ArgumentNullException.ThrowIfNull(req);
+
+        var proto = new Proto.UpdateSprintRequest
+        {
+            SprintId = req.SprintId.ToString(),
+            ExpectedVersion = req.ExpectedVersion,
+        };
+
+        if (req.Name is not null) proto.Name = req.Name;
+        if (req.Goal is not null) proto.Goal = req.Goal;
+        if (req.StartDate.HasValue) proto.StartDate = ToUnixTimestamp(req.StartDate.Value);
+        if (req.EndDate.HasValue) proto.EndDate = ToUnixTimestamp(req.EndDate.Value);
+        if (req.Status.HasValue) proto.Status = ToProto(req.Status.Value);
+
+        return proto;
+    }
+
+    /// <summary>
+    /// Convert protobuf SprintStatus to domain SprintStatus.
+    /// </summary>
+    public static SprintStatus ToDomain(Proto.SprintStatus proto)
+    {
+        return proto switch
+        {
+            Proto.SprintStatus.Planned => SprintStatus.Planned,
+            Proto.SprintStatus.Active => SprintStatus.Active,
+            Proto.SprintStatus.Completed => SprintStatus.Completed,
+            Proto.SprintStatus.Cancelled => SprintStatus.Cancelled,
+            _ => SprintStatus.Planned
+        };
+    }
+
+    /// <summary>
+    /// Convert domain SprintStatus to protobuf.
+    /// </summary>
+    public static Proto.SprintStatus ToProto(SprintStatus domain)
+    {
+        return domain switch
+        {
+            SprintStatus.Planned => Proto.SprintStatus.Planned,
+            SprintStatus.Active => Proto.SprintStatus.Active,
+            SprintStatus.Completed => Proto.SprintStatus.Completed,
+            SprintStatus.Cancelled => Proto.SprintStatus.Cancelled,
+            _ => Proto.SprintStatus.Planned
+        };
+    }
+
+    #endregion
+
+    #region Comment Conversions
+
+    /// <summary>
+    /// Convert protobuf Comment to domain Comment.
+    /// </summary>
+    public static Comment ToDomain(Proto.Comment proto)
+    {
+        ArgumentNullException.ThrowIfNull(proto);
+
+        return new Comment
+        {
+            Id = ParseGuid(proto.Id, "Comment.Id"),
+            WorkItemId = ParseGuid(proto.WorkItemId, "Comment.WorkItemId"),
+            Content = proto.Content ?? string.Empty,
+            CreatedAt = FromUnixTimestamp(proto.CreatedAt),
+            UpdatedAt = FromUnixTimestamp(proto.UpdatedAt),
+            CreatedBy = ParseGuid(proto.CreatedBy, "Comment.CreatedBy"),
+            UpdatedBy = ParseGuid(proto.UpdatedBy, "Comment.UpdatedBy"),
+            DeletedAt = proto.DeletedAt == 0 ? null : FromUnixTimestamp(proto.DeletedAt),
+        };
+    }
+
+    /// <summary>
+    /// Convert CreateCommentRequest to protobuf.
+    /// </summary>
+    public static Proto.CreateCommentRequest ToProto(CreateCommentRequest req)
+    {
+        ArgumentNullException.ThrowIfNull(req);
+
+        return new Proto.CreateCommentRequest
+        {
+            WorkItemId = req.WorkItemId.ToString(),
+            Content = req.Content,
+        };
+    }
+
+    /// <summary>
+    /// Convert UpdateCommentRequest to protobuf.
+    /// </summary>
+    public static Proto.UpdateCommentRequest ToProto(UpdateCommentRequest req)
+    {
+        ArgumentNullException.ThrowIfNull(req);
+
+        return new Proto.UpdateCommentRequest
+        {
+            CommentId = req.CommentId.ToString(),
+            Content = req.Content,
+        };
     }
 
     #endregion

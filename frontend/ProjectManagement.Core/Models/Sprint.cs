@@ -12,6 +12,7 @@ public sealed record Sprint : IAuditable, IProjectScoped
     public DateTime StartDate { get; init; }
     public DateTime EndDate { get; init; }
     public SprintStatus Status { get; init; } = SprintStatus.Planned;
+    public int Version { get; init; } = 1;
     public Guid Id { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime UpdatedAt { get; init; }

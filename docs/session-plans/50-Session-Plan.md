@@ -16,13 +16,13 @@ This session implements Sprint and Comment functionality with full WebSocket int
 
 This plan has been split into sub-sessions to fit within token budgets:
 
-| Session | Scope | Est. Tokens | Status |
-|---------|-------|-------------|--------|
-| **[50.1](50.1-Session-Plan.md)** | Proto Schema + Backend Sprint Infrastructure | ~35-40k | ✅ Complete (2026-01-27) |
-| **[50.2](50.2-Session-Plan.md)** | Backend Comment Handler + Dispatcher Wiring | ~35-40k | ✅ Complete (2026-01-27) |
-| **[50.3](50.3-Session-Plan.md)** | Frontend Models + WebSocket Integration | ~40-45k | Pending |
-| **[50.4](50.4-Session-Plan.md)** | State Management + UI Components | ~40-45k | Pending |
-| **[50.5](50.5-Session-Plan.md)** | Testing (Backend + Frontend) | ~35-40k | Pending |
+| Session | Scope | Est. Tokens | Actual | Status |
+|---------|-------|-------------|--------|--------|
+| **[50.1](50.1-Session-Plan.md)** | Proto Schema + Backend Sprint Infrastructure | ~35-40k | ~38k | ✅ Complete (2026-01-27) |
+| **[50.2](50.2-Session-Plan.md)** | Backend Comment Handler + Dispatcher Wiring | ~35-40k | ~32k | ✅ Complete (2026-01-27) |
+| **[50.3](50.3-Session-Plan.md)** | Frontend Models + WebSocket Integration | ~40-45k | ~35k | ✅ Complete (2026-01-27) |
+| **[50.4](50.4-Session-Plan.md)** | State Management + UI Components | ~40-45k | TBD | Pending |
+| **[50.5](50.5-Session-Plan.md)** | Testing (Backend + Frontend) | ~35-40k | TBD | Pending |
 
 ---
 
@@ -48,6 +48,8 @@ This plan has been split into sub-sessions to fit within token budgets:
 
 **Note**: Sprint response builders were completed in Session 50.1.
 
+---
+
 **Files Created:**
 - `pm-ws/src/handlers/comment.rs` - Comment CRUD handlers (287 lines)
 
@@ -63,24 +65,33 @@ This plan has been split into sub-sessions to fit within token budgets:
 
 ---
 
-## Session 50.3: Frontend Models + WebSocket Integration
+## Session 50.3: Frontend Models + WebSocket Integration ✅
+
+**Status**: Complete (2026-01-27)
 
 **Files Modified:**
-- `ProjectManagement.Core/Models/Sprint.cs` - Add Version property
-- `ProjectManagement.Core/Models/UpdateSprintRequest.cs` - Add ExpectedVersion
+- `ProjectManagement.Core/Models/Sprint.cs` - Added Version property
+- `ProjectManagement.Core/Models/UpdateSprintRequest.cs` - Added ExpectedVersion + Status
+- `ProjectManagement.Core/Converters/ProtoConverter.cs` - Sprint/Comment conversions (+153 lines)
+- `ProjectManagement.Core/Interfaces/IWebSocketClient.cs` - Sprint/Comment events and operations (+92 lines)
+- `ProjectManagement.Services/WebSocket/WebSocketClient.cs` - Implementation (+231 lines)
+- `ProjectManagement.Services/Resilience/ResilientWebSocketClient.cs` - Decorator forwarding (+114 lines)
+- `ProjectManagement.Services/State/SprintStore.cs` - WebSocket integration with optimistic updates (+174 lines)
+- `ProjectManagement.Services.Tests/State/SprintStoreTests.cs` - Mock setup (+21 lines)
 
 **Files Created:**
-- `ProjectManagement.Core/Models/Comment.cs` - Comment model
-- `ProjectManagement.Core/Models/CreateCommentRequest.cs` - Create request
-- `ProjectManagement.Core/Models/UpdateCommentRequest.cs` - Update request
+- `ProjectManagement.Core/Models/Comment.cs` - Comment model (1361 bytes)
+- `ProjectManagement.Core/Models/CreateCommentRequest.cs` - Create request (451 bytes)
+- `ProjectManagement.Core/Models/UpdateCommentRequest.cs` - Update request (493 bytes)
 
-**Files Modified:**
-- `ProjectManagement.Core/Converters/ProtoConverter.cs` - Sprint/Comment conversions
-- `ProjectManagement.Core/Interfaces/IWebSocketClient.cs` - Sprint/Comment events and operations
-- `ProjectManagement.Services/WebSocket/WebSocketClient.cs` - Implementation
-- `ProjectManagement.Services/State/SprintStore.cs` - WebSocket integration
+**Deliverables:**
+- Sprint and Comment WebSocket operations fully implemented
+- Optimistic updates with temporary IDs and server confirmation
+- Event deduplication to prevent double-updates
+- Error rollback to maintain consistency
+- All 365 frontend tests passing
 
-**Verification:** `just build-frontend && just test-frontend`
+**Verification:** ✅ `just build-frontend && just test-frontend` - All tests passing
 
 ---
 
@@ -132,9 +143,9 @@ Before starting **any** sub-session:
 | `pm-ws/src/handlers/sprint.rs` | Sprint CRUD handlers | ✅ 50.1 |
 | `pm-ws/src/handlers/field_change_builder.rs` | Generic change tracker | ✅ 50.1 |
 | `pm-ws/src/handlers/comment.rs` | Comment CRUD handlers | ✅ 50.2 |
-| `ProjectManagement.Core/Models/Comment.cs` | Comment domain model | 50.3 |
-| `ProjectManagement.Core/Models/CreateCommentRequest.cs` | Create comment request | 50.3 |
-| `ProjectManagement.Core/Models/UpdateCommentRequest.cs` | Update comment request | 50.3 |
+| `ProjectManagement.Core/Models/Comment.cs` | Comment domain model | ✅ 50.3 |
+| `ProjectManagement.Core/Models/CreateCommentRequest.cs` | Create comment request | ✅ 50.3 |
+| `ProjectManagement.Core/Models/UpdateCommentRequest.cs` | Update comment request | ✅ 50.3 |
 | `ProjectManagement.Core/Interfaces/ICommentStore.cs` | Comment store interface | 50.4 |
 | `ProjectManagement.Services/State/CommentStore.cs` | Comment state management | 50.4 |
 | `ProjectManagement.Components/Sprint/SprintCard.razor` | Sprint card component | 50.4 |
@@ -159,12 +170,14 @@ Before starting **any** sub-session:
 | `pm-ws/src/handlers/mod.rs` | Export sprint/comment modules | ✅ 50.1 (sprint), ✅ 50.2 (comment) |
 | `pm-ws/src/lib.rs` | Public exports | ✅ 50.2 |
 | `pm-ws/src/message_validator.rs` | Sprint/Comment validation | ✅ 50.1 |
-| `ProjectManagement.Core/Models/Sprint.cs` | Add Version property | 50.3 |
-| `ProjectManagement.Core/Models/UpdateSprintRequest.cs` | Add ExpectedVersion + Status | 50.3 |
-| `ProjectManagement.Core/Converters/ProtoConverter.cs` | Sprint/Comment conversions | 50.3 |
-| `ProjectManagement.Core/Interfaces/IWebSocketClient.cs` | Sprint/Comment events | 50.3 |
-| `ProjectManagement.Services/WebSocket/WebSocketClient.cs` | Implementation | 50.3 |
-| `ProjectManagement.Services/State/SprintStore.cs` | WebSocket integration | 50.4 |
+| `ProjectManagement.Core/Models/Sprint.cs` | Add Version property | ✅ 50.3 |
+| `ProjectManagement.Core/Models/UpdateSprintRequest.cs` | Add ExpectedVersion + Status | ✅ 50.3 |
+| `ProjectManagement.Core/Converters/ProtoConverter.cs` | Sprint/Comment conversions | ✅ 50.3 |
+| `ProjectManagement.Core/Interfaces/IWebSocketClient.cs` | Sprint/Comment events | ✅ 50.3 |
+| `ProjectManagement.Services/WebSocket/WebSocketClient.cs` | Implementation | ✅ 50.3 |
+| `ProjectManagement.Services/Resilience/ResilientWebSocketClient.cs` | Decorator forwarding | ✅ 50.3 |
+| `ProjectManagement.Services/State/SprintStore.cs` | WebSocket integration | ✅ 50.3 |
+| `ProjectManagement.Services.Tests/State/SprintStoreTests.cs` | Mock setup | ✅ 50.3 |
 
 ---
 

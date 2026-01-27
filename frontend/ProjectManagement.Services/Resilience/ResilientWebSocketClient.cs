@@ -76,7 +76,7 @@ public sealed class ResilientWebSocketClient : IWebSocketClient
     {
         return _inner.ConnectAsync(ct);
     }
-    
+
     public Task ConnectAsync(Guid userId, CancellationToken ct = default)
     {
         return _inner.ConnectAsync(userId, ct);
@@ -206,6 +206,118 @@ public sealed class ResilientWebSocketClient : IWebSocketClient
                     token);
                 return true;
             },
+            ct);
+    }
+
+    public event Action<Sprint>? OnSprintCreated
+    {
+        add => _inner.OnSprintCreated += value;
+        remove => _inner.OnSprintCreated -= value;
+    }
+
+    public event Action<Sprint, IReadOnlyList<FieldChange>>? OnSprintUpdated
+    {
+        add => _inner.OnSprintUpdated += value;
+        remove => _inner.OnSprintUpdated -= value;
+    }
+
+    public event Action<Guid>? OnSprintDeleted
+    {
+        add => _inner.OnSprintDeleted += value;
+        remove => _inner.OnSprintDeleted -= value;
+    }
+
+    public event Action<Comment>? OnCommentCreated
+    {
+        add => _inner.OnCommentCreated += value;
+        remove => _inner.OnCommentCreated -= value;
+    }
+
+    public event Action<Comment>? OnCommentUpdated
+    {
+        add => _inner.OnCommentUpdated += value;
+        remove => _inner.OnCommentUpdated -= value;
+    }
+
+    public event Action<Guid>? OnCommentDeleted
+    {
+        add => _inner.OnCommentDeleted += value;
+        remove => _inner.OnCommentDeleted -= value;
+    }
+
+    public Task<Sprint> CreateSprintAsync(
+        CreateSprintRequest request,
+        CancellationToken ct = default)
+    {
+        return ExecuteWithResilienceAsync(
+            token => _inner.CreateSprintAsync(request, token),
+            ct);
+    }
+
+    public Task<Sprint> UpdateSprintAsync(
+        UpdateSprintRequest request,
+        CancellationToken ct = default)
+    {
+        return ExecuteWithResilienceAsync(
+            token => _inner.UpdateSprintAsync(request, token),
+            ct);
+    }
+
+    public Task DeleteSprintAsync(Guid sprintId, CancellationToken ct = default)
+    {
+        return ExecuteWithResilienceAsync(
+            async token =>
+            {
+                await _inner.DeleteSprintAsync(sprintId, token);
+                return true;
+            },
+            ct);
+    }
+
+    public Task<IReadOnlyList<Sprint>> GetSprintsAsync(
+        Guid projectId,
+        CancellationToken ct = default)
+    {
+        return ExecuteWithResilienceAsync(
+            token => _inner.GetSprintsAsync(projectId, token),
+            ct);
+    }
+
+    public Task<Comment> CreateCommentAsync(
+        CreateCommentRequest request,
+        CancellationToken ct = default)
+    {
+        return ExecuteWithResilienceAsync(
+            token => _inner.CreateCommentAsync(request, token),
+            ct);
+    }
+
+    public Task<Comment> UpdateCommentAsync(
+        UpdateCommentRequest request,
+        CancellationToken ct = default)
+    {
+        return ExecuteWithResilienceAsync(
+            token => _inner.UpdateCommentAsync(request, token),
+            ct);
+    }
+
+    public Task DeleteCommentAsync(Guid commentId, CancellationToken ct = default)
+    {
+        return ExecuteWithResilienceAsync(
+            async token =>
+            {
+                await _inner.DeleteCommentAsync(commentId, token);
+                return true;
+            },
+            ct);
+    }
+
+    public Task<IReadOnlyList<Comment>> GetCommentsAsync(
+        Guid workItemId,
+        CancellationToken ct = default)
+    {
+        return ExecuteWithResilienceAsync(
+            token => _inner.GetCommentsAsync(workItemId, token),
             ct);
     }
 }
