@@ -48,7 +48,8 @@ public sealed class AppState : IDisposable
         sprints.OnChanged += () => OnStateChanged?.Invoke();
         projects.OnCurrentProjectChanged += () => OnStateChanged?.Invoke();
         projects.OnProjectsChanged += () => OnStateChanged?.Invoke();
-        comments.OnChanged += () => OnStateChanged?.Invoke();
+        // NOTE: Comments use their own event system (CommentStore.OnChanged) to avoid
+        // triggering global OnStateChanged, which would cause re-render feedback loops.
     }
 
     public IWorkItemStore WorkItems { get; }

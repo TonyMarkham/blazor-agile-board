@@ -1,6 +1,7 @@
 @page "/workitem/{WorkItemId:guid}"
 @using ProjectManagement.Core.Models
 @using ProjectManagement.Core.ViewModels
+@using ProjectManagement.Components.Comments
 @inject AppState AppState
 @inject ViewModelFactory ViewModelFactory
 @inject DialogService DialogService
@@ -105,6 +106,16 @@ else
                     }
                 </div>
             }
+
+            @* Comments Section *@
+            <div class="content-card mt-4">
+                <div class="content-card-header">
+                    <h2 class="content-card-title">Comments</h2>
+                </div>
+                <CommentList WorkItemId="@WorkItemId"
+                             CurrentUserId="@_currentUserId"
+                             UserNameResolver="@ResolveUserName" />
+            </div>
         </RadzenColumn>
 
         @* Sidebar *@
@@ -166,11 +177,14 @@ else
     private SprintViewModel? _sprint;
     private List<WorkItemViewModel> _children = new();
     private bool _loading = true;
+    private bool _initialLoadComplete = false;
     private bool _isConnected = true;
     private bool _deleting = false;
+    private Guid _currentUserId;
 
     protected override void OnInitialized()
     {
+        _currentUserId = AppState.CurrentUser?.Id ?? Guid.Empty;
         _isConnected = AppState.ConnectionState == ConnectionState.Connected;
         AppState.OnStateChanged += HandleStateChanged;
         AppState.OnConnectionStateChanged += HandleConnectionChanged;
@@ -178,13 +192,18 @@ else
 
     protected override async Task OnParametersSetAsync()
     {
-        await LoadWorkItemAsync();
+        await LoadWorkItemAsync(isInitialLoad: !_initialLoadComplete);
     }
 
-    private async Task LoadWorkItemAsync()
+    private async Task LoadWorkItemAsync(bool isInitialLoad = false)
     {
-        _loading = true;
-        StateHasChanged();
+        // Only show loading skeleton on initial load, not refreshes
+        // This prevents CommentList from being unmounted/remounted on every state change
+        if (isInitialLoad)
+        {
+            _loading = true;
+            StateHasChanged();
+        }
 
         try
         {
@@ -220,6 +239,7 @@ else
         finally
         {
             _loading = false;
+            _initialLoadComplete = true;
             StateHasChanged();
         }
     }
@@ -346,7 +366,8 @@ else
         // Don't reload if we're in the middle of deleting (about to navigate away)
         if (!_deleting)
         {
-            _ = LoadWorkItemAsync();
+            // isInitialLoad: false prevents showing loading skeleton, which would unmount CommentList
+            _ = LoadWorkItemAsync(isInitialLoad: false);
         }
     }
 
@@ -355,6 +376,8 @@ else
         _isConnected = state == ConnectionState.Connected;
         InvokeAsync(StateHasChanged);
     }
+    
+    private string ResolveUserName(Guid userId) => userId.ToString()[..8];
 
     public void Dispose()
     {

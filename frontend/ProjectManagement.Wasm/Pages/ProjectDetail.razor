@@ -1,5 +1,6 @@
 @page "/project/{ProjectId:guid}"
 @using ProjectManagement.Core.Models
+@using ProjectManagement.Components.Sprints
 @using ProjectManagement.Core.ViewModels
 @inject AppState AppState
 @inject ViewModelFactory ViewModelFactory
@@ -12,82 +13,135 @@
 
 @if (_loading)
 {
-    <ProjectDetailSkeleton />
+<ProjectDetailSkeleton />
 }
 else if (_project is null)
 {
-    <EmptyState Icon="error"
-                Title="Project Not Found"
-                Description="The project you're looking for doesn't exist or has been deleted."
-                ActionText="Go Home"
-                OnAction="@(() => NavigationManager.NavigateTo("/"))" />
+<EmptyState Icon="error"
+            Title="Project Not Found"
+            Description="The project you're looking for doesn't exist or has been deleted."
+            ActionText="Go Home"
+            OnAction="@(() => NavigationManager.NavigateTo("/"))" />
 }
 else
 {
-    @* Breadcrumbs *@
-    <nav class="breadcrumbs" aria-label="Breadcrumb">
-        <a href="/">Home</a>
-        <span class="separator">/</span>
-        <span class="current">@_project.Title</span>
-    </nav>
+@* Breadcrumbs *@
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <span class="separator">/</span>
+    <span class="current">@_project.Title</span>
+</nav>
 
-    @* Header *@
-    <div class="page-header">
-        <RadzenStack Orientation="Orientation.Horizontal"
-                     AlignItems="AlignItems.Center"
-                     Gap="0.75rem">
-            <RadzenIcon Icon="folder" Style="color: var(--rz-primary); font-size: 1.75rem;" />
-            <div>
-                <h1 class="page-title">@_project.Title</h1>
-                @if (!string.IsNullOrEmpty(_project.Description))
-                {
-                    <p class="page-subtitle">@_project.Description</p>
-                }
-            </div>
-        </RadzenStack>
-        <div class="page-actions">
-            <LoadingButton Text="New Work Item"
-                           Icon="add"
-                           ConnectionState="@_connectionState"
-                           OnClick="@ShowCreateDialog" />
+@* Header *@
+<div class="page-header">
+    <RadzenStack Orientation="Orientation.Horizontal"
+                 AlignItems="AlignItems.Center"
+                 Gap="0.75rem">
+        <RadzenIcon Icon="folder" Style="color: var(--rz-primary); font-size: 1.75rem;" />
+        <div>
+            <h1 class="page-title">@_project.Title</h1>
+            @if (!string.IsNullOrEmpty(_project.Description))
+            {
+                <p class="page-subtitle">@_project.Description</p>
+            }
         </div>
+    </RadzenStack>
+    <div class="page-actions">
+        <LoadingButton Text="New Work Item"
+                       Icon="add"
+                       ConnectionState="@_connectionState"
+                       OnClick="@ShowCreateDialog" />
     </div>
+</div>
 
-    @* View Tabs *@
-    <div class="view-tabs">
-        <button class="view-tab @(_activeView == "list" ? "active" : "")"
-                @onclick="@(() => _activeView = "list")">
-            <RadzenIcon Icon="list" />
-            List
-        </button>
-        <button class="view-tab @(_activeView == "board" ? "active" : "")"
-                @onclick="@(() => _activeView = "board")">
-            <RadzenIcon Icon="view_kanban" />
-            Board
-        </button>
-    </div>
+@* View Tabs *@
+<div class="view-tabs">
+    <button class="view-tab @(_activeView == "list" ? "active" : "")"
+            @onclick="@(() => _activeView = "list")">
+        <RadzenIcon Icon="list" />
+        List
+    </button>
+    <button class="view-tab @(_activeView == "board" ? "active" : "")"
+            @onclick="@(() => _activeView = "board")">
+        <RadzenIcon Icon="view_kanban" />
+        Board
+    </button>
+    <button class="view-tab @(_activeView == "sprints" ? "active" : "")"
+            @onclick="@(() => _activeView = "sprints")">
+        <RadzenIcon Icon="timer" />
+        Sprints
+    </button>
+</div>
 
-    @* Content *@
-    @if (_activeView == "list")
-    {
-        <WorkItemList ProjectId="@ProjectId"
-                      OnWorkItemSelected="@HandleWorkItemSelected" />
-    }
-    else
-    {
-        <KanbanBoard ProjectId="@ProjectId"
-                     OnWorkItemSelected="@HandleWorkItemSelected" />
-    }
+@* Content *@
+  @if (_activeView == "list")
+  {
+      <WorkItemList ProjectId="@ProjectId"
+                    OnWorkItemSelected="@HandleWorkItemSelected" />
+  }
+  else if (_activeView == "board")
+  {
+      <KanbanBoard ProjectId="@ProjectId"
+                   OnWorkItemSelected="@HandleWorkItemSelected" />
+  }
+  else if (_activeView == "sprints")
+  {
+      <div class="content-card">
+          <div class="content-card-header">
+              <h2 class="content-card-title">Sprints</h2>
+              <LoadingButton Text="New Sprint" Icon="add"
+                             ConnectionState="@_connectionState"
+                             OnClick="@ShowCreateSprintDialog" />
+          </div>
+
+          @if (_loadingSprints)
+          {
+              <div class="p-4">
+                  <RadzenProgressBar Mode="ProgressBarMode.Indeterminate" />
+              </div>
+          }
+          else if (!_sprints.Any())
+          {
+              <div class="p-4">
+                  <EmptyState Icon="timer" Title="No Sprints"
+                              Description="Create your first sprint to start planning work."
+                              ActionText="Create Sprint"
+                              OnAction="@ShowCreateSprintDialog" />
+              </div>
+          }
+          else
+          {
+              <RadzenStack Gap="1rem" class="p-3">
+                  @foreach (var sprint in _sprints.OrderByDescending(s => s.StartDate))
+                  {
+                      <SprintCard Sprint="@sprint"
+                                  ShowProgress="true"
+                                  TotalItems="@GetSprintItemCount(sprint.Id)"
+                                  CompletedItems="@GetSprintCompletedCount(sprint.Id)"
+                                  CanStart="@(sprint.Status == SprintStatus.Planned && _connectionState == ConnectionState.Connected)"
+                                  CanComplete="@(sprint.Status == SprintStatus.Active && _connectionState == ConnectionState.Connected)"
+                                  CanEdit="@(_connectionState == ConnectionState.Connected)"
+                                  CanDelete="@(sprint.Status == SprintStatus.Planned && _connectionState == ConnectionState.Connected)"
+                                  OnEditClick="@(() => ShowEditSprintDialog(sprint))"
+                                  OnDeleteClick="@(() => HandleDeleteSprint(sprint))"
+                                  OnStartClick="@(() => HandleStartSprint(sprint))"
+                                  OnCompleteClick="@(() => HandleCompleteSprint(sprint))" />
+                  }
+              </RadzenStack>
+          }
+      </div>
+  }
 }
 
 @code {
-    [Parameter]
-    public Guid ProjectId { get; set; }
+    [Parameter] public Guid ProjectId { get; set; }
 
     private ProjectViewModel? _project;
     private bool _loading = true;
     private string _activeView = "board"; // Default to Kanban board
     private ConnectionState _connectionState = ConnectionState.Connected;
+    private List<Sprint> _sprints = new();
+    private bool _loadingSprints = true;
 
     protected override void OnInitialized()
     {
@@ -116,6 +170,9 @@ else
 
             // Get the project from Projects store
             _project = AppState.Projects.GetById(ProjectId);
+
+            // Load sprints
+            await RefreshSprints();
         }
         catch (Exception ex)
         {
@@ -152,6 +209,7 @@ else
     {
         // Refresh project data
         _project = AppState.Projects.GetById(ProjectId);
+        _sprints = AppState.Sprints.GetByProject(ProjectId).ToList();
         InvokeAsync(StateHasChanged);
     }
 
@@ -166,4 +224,136 @@ else
         AppState.OnStateChanged -= HandleStateChanged;
         AppState.OnConnectionStateChanged -= HandleConnectionChanged;
     }
+
+    private int GetSprintItemCount(Guid sprintId) =>
+        AppState.WorkItems.GetByProject(ProjectId)
+            .Count(w => w.SprintId == sprintId && w.DeletedAt == null);
+
+    private int GetSprintCompletedCount(Guid sprintId) =>
+        AppState.WorkItems.GetByProject(ProjectId)
+            .Count(w => w.SprintId == sprintId && w.Status == "done" && w.DeletedAt == null);
+
+    private Task RefreshSprints()
+    {
+        _loadingSprints = true;
+        StateHasChanged();
+
+        try
+        {
+            _sprints = AppState.Sprints.GetByProject(ProjectId).ToList();
+        }
+        finally
+        {
+            _loadingSprints = false;
+            StateHasChanged();
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private async Task ShowCreateSprintDialog()
+    {
+        await DialogService.OpenAsync<SprintDialog>("Create Sprint",
+            new Dictionary<string, object>
+            {
+                { "ProjectId", ProjectId },
+                { "OnCreate", EventCallback.Factory.Create<CreateSprintRequest>(this, HandleCreateSprint) },
+                { "OnCancel", EventCallback.Factory.Create(this, () => DialogService.Close()) }
+            },
+            new DialogOptions { Width = "500px" });
+    }
+
+    private async Task ShowEditSprintDialog(Sprint sprint)
+    {
+        await DialogService.OpenAsync<SprintDialog>("Edit Sprint",
+            new Dictionary<string, object>
+            {
+                { "Sprint", sprint },
+                { "ProjectId", ProjectId },
+                { "OnUpdate", EventCallback.Factory.Create<UpdateSprintRequest>(this, HandleUpdateSprint) },
+                { "OnCancel", EventCallback.Factory.Create(this, () => DialogService.Close()) }
+            },
+            new DialogOptions { Width = "500px" });
+    }
+
+    private async Task HandleCreateSprint(CreateSprintRequest request)
+    {
+        try
+        {
+            await AppState.Sprints.CreateAsync(request);
+            DialogService.Close();
+            NotificationService.Notify(NotificationSeverity.Success, "Created", "Sprint created");
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error", ex.Message);
+        }
+    }
+
+    private async Task HandleUpdateSprint(UpdateSprintRequest request)
+    {
+        try
+        {
+            await AppState.Sprints.UpdateAsync(request);
+            DialogService.Close();
+            NotificationService.Notify(NotificationSeverity.Success, "Updated", "Sprint updated");
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error", ex.Message);
+        }
+    }
+
+    private async Task HandleDeleteSprint(Sprint sprint)
+    {
+        var confirmed = await DialogService.Confirm(
+            $"Delete sprint \"{sprint.Name}\"?", "Delete Sprint",
+            new ConfirmOptions { OkButtonText = "Delete", CancelButtonText = "Cancel" });
+        if (confirmed == true)
+        {
+            try
+            {
+                await AppState.Sprints.DeleteAsync(sprint.Id);
+                NotificationService.Notify(NotificationSeverity.Success, "Deleted", "Sprint deleted");
+            }
+            catch (Exception ex)
+            {
+                NotificationService.Notify(NotificationSeverity.Error, "Error", ex.Message);
+            }
+        }
+    }
+
+    private async Task HandleStartSprint(Sprint sprint)
+    {
+        try
+        {
+            await AppState.Sprints.StartSprintAsync(sprint.Id);
+            NotificationService.Notify(NotificationSeverity.Success, "Started", $"Sprint \"{sprint.Name}\" is now active");
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error", ex.Message);
+        }
+    }
+
+    private async Task HandleCompleteSprint(Sprint sprint)
+    {
+        var confirmed = await DialogService.Confirm(
+            $"Complete sprint \"{sprint.Name}\"?", "Complete Sprint",
+            new ConfirmOptions { OkButtonText = "Complete", CancelButtonText = "Cancel" });
+        if (confirmed == true)
+        {
+            try
+            {
+                await AppState.Sprints.CompleteSprintAsync(sprint.Id);
+                NotificationService.Notify(NotificationSeverity.Success, "Completed", "Sprint completed");
+            }
+            catch (Exception ex)
+            {
+                NotificationService.Notify(NotificationSeverity.Error, "Error", ex.Message);
+            }
+        }
+    }
+
 }
+

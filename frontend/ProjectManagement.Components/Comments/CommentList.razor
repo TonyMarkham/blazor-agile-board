@@ -80,13 +80,20 @@
 
     protected override async Task OnInitializedAsync()
     {
-        CommentStore.OnChanged += StateHasChanged;
+        CommentStore.OnChanged += HandleCommentsChanged;
         await LoadComments();
+    }
+
+    private void HandleCommentsChanged()
+    {
+        InvokeAsync(StateHasChanged);
     }
 
     private async Task LoadComments()
     {
         IsLoading = true;
+        StateHasChanged();
+
         try
         {
             await CommentStore.RefreshAsync(WorkItemId);
@@ -94,6 +101,7 @@
         finally
         {
             IsLoading = false;
+            StateHasChanged();
         }
     }
 
@@ -143,7 +151,7 @@
 
     public void Dispose()
     {
-        CommentStore.OnChanged -= StateHasChanged;
+        CommentStore.OnChanged -= HandleCommentsChanged;
     }
 
 }

@@ -1,7 +1,6 @@
 @using ProjectManagement.Core.Models
 
-<RadzenDialog>
-  <RadzenTemplateForm TItem="SprintFormModel" Data="@_model" Submit="OnSubmit">
+<RadzenTemplateForm TItem="SprintFormModel" Data="@_model" Submit="OnSubmit">
       <RadzenStack Gap="1rem">
           <RadzenFormField Text="Name" Variant="Variant.Outlined">
               <RadzenTextBox @bind-Value="_model.Name" Name="Name" />
@@ -54,8 +53,7 @@
                             ButtonType="ButtonType.Submit" />
           </RadzenStack>
       </RadzenStack>
-  </RadzenTemplateForm>
-</RadzenDialog>
+</RadzenTemplateForm>
 
 @code {
     [Parameter] public Sprint? Sprint { get; set; }

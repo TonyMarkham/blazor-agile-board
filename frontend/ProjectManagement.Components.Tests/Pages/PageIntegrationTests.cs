@@ -4,6 +4,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using ProjectManagement.Components.Shared;
 using ProjectManagement.Components.WorkItems;
+using ProjectManagement.Components.Sprints;
+using ProjectManagement.Components.Comments;
 using ProjectManagement.Core.Interfaces;
 using ProjectManagement.Core.Models;
 using ProjectManagement.Core.ViewModels;
@@ -162,6 +164,7 @@ public class PageIntegrationTests : BunitContext
         var projectViewModel = CreateProjectViewModel("My Project", projectId);
         _projectStoreMock.Setup(s => s.GetById(projectId)).Returns(projectViewModel);
         _workItemStoreMock.Setup(s => s.GetByProject(projectId)).Returns(Array.Empty<WorkItem>());
+        _sprintStoreMock.Setup(s => s.GetByProject(projectId)).Returns(Array.Empty<Sprint>());
 
         // Act
         var cut = Render<ProjectDetail>(parameters => parameters
@@ -183,6 +186,7 @@ public class PageIntegrationTests : BunitContext
         var projectViewModel = CreateProjectViewModel("My Project", projectId);
         _projectStoreMock.Setup(s => s.GetById(projectId)).Returns(projectViewModel);
         _workItemStoreMock.Setup(s => s.GetByProject(projectId)).Returns(Array.Empty<WorkItem>());
+        _sprintStoreMock.Setup(s => s.GetByProject(projectId)).Returns(Array.Empty<Sprint>());
 
         // Act
         var cut = Render<ProjectDetail>(parameters => parameters
@@ -202,6 +206,7 @@ public class PageIntegrationTests : BunitContext
         var projectViewModel = CreateProjectViewModel("My Project", projectId);
         _projectStoreMock.Setup(s => s.GetById(projectId)).Returns(projectViewModel);
         _workItemStoreMock.Setup(s => s.GetByProject(projectId)).Returns(Array.Empty<WorkItem>());
+        _sprintStoreMock.Setup(s => s.GetByProject(projectId)).Returns(Array.Empty<Sprint>());
 
         // Act
         var cut = Render<ProjectDetail>(parameters => parameters
@@ -223,6 +228,7 @@ public class PageIntegrationTests : BunitContext
         var projectViewModel = CreateProjectViewModel("My Project", projectId);
         _projectStoreMock.Setup(s => s.GetById(projectId)).Returns(projectViewModel);
         _workItemStoreMock.Setup(s => s.GetByProject(projectId)).Returns(Array.Empty<WorkItem>());
+        _sprintStoreMock.Setup(s => s.GetByProject(projectId)).Returns(Array.Empty<Sprint>());
 
         // Act
         var cut = Render<ProjectDetail>(parameters => parameters
@@ -242,6 +248,7 @@ public class PageIntegrationTests : BunitContext
         var projectViewModel = CreateProjectViewModel("My Project", projectId);
         _projectStoreMock.Setup(s => s.GetById(projectId)).Returns(projectViewModel);
         _workItemStoreMock.Setup(s => s.GetByProject(projectId)).Returns(Array.Empty<WorkItem>());
+        _sprintStoreMock.Setup(s => s.GetByProject(projectId)).Returns(Array.Empty<Sprint>());
 
         // Act
         var cut = Render<ProjectDetail>(parameters => parameters
@@ -499,6 +506,211 @@ public class PageIntegrationTests : BunitContext
     }
 
     #endregion
+    
+    #region ProjectDetail Sprint Tab Tests
+
+      [Fact]
+      public async Task ProjectDetailPage_RendersSprintsTab()
+      {
+          // Arrange
+          var projectId = Guid.NewGuid();
+          var project = new Project
+          {
+              Id = projectId,
+              Title = "Test Project",
+              Description = "Test Description",
+              Key = "TEST",
+              Status = ProjectStatus.Active,
+              Version = 1,
+              CreatedAt = DateTime.UtcNow,
+              UpdatedAt = DateTime.UtcNow,
+              CreatedBy = Guid.NewGuid(),
+              UpdatedBy = Guid.NewGuid()
+          };
+          _projectStoreMock.Setup(s => s.GetById(projectId)).Returns(new ProjectViewModel(project));
+          _workItemStoreMock.Setup(s => s.GetByProject(projectId)).Returns(Array.Empty<WorkItem>());
+          _sprintStoreMock.Setup(s => s.GetByProject(projectId)).Returns(Array.Empty<Sprint>());
+
+          // Act
+          var cut = Render<ProjectDetail>(parameters => parameters
+              .Add(p => p.ProjectId, projectId));
+
+          // Assert
+          await cut.WaitForAssertionAsync(() =>
+          {
+              cut.Markup.Should().Contain("Sprints");
+          }, timeout: TimeSpan.FromSeconds(5));
+      }
+
+      [Fact]
+      public async Task ProjectDetailPage_ShowsEmptyState_WhenNoSprints()
+      {
+          // Arrange
+          var projectId = Guid.NewGuid();
+          var project = new Project
+          {
+              Id = projectId,
+              Title = "Test Project",
+              Description = "Test Description",
+              Key = "TEST",
+              Status = ProjectStatus.Active,
+              Version = 1,
+              CreatedAt = DateTime.UtcNow,
+              UpdatedAt = DateTime.UtcNow,
+              CreatedBy = Guid.NewGuid(),
+              UpdatedBy = Guid.NewGuid()
+          };
+          _projectStoreMock.Setup(s => s.GetById(projectId)).Returns(new ProjectViewModel(project));
+          _workItemStoreMock.Setup(s => s.GetByProject(projectId)).Returns(Array.Empty<WorkItem>());
+          _sprintStoreMock.Setup(s => s.GetByProject(projectId)).Returns(Array.Empty<Sprint>());
+
+          // Act
+          var cut = Render<ProjectDetail>(parameters => parameters
+              .Add(p => p.ProjectId, projectId));
+
+          // Wait for initial render
+          await cut.WaitForAssertionAsync(() =>
+          {
+              cut.Markup.Should().Contain("Sprints");
+          }, timeout: TimeSpan.FromSeconds(5));
+
+          // Click Sprints tab
+          var sprintsTab = cut.FindAll("button.view-tab")
+              .FirstOrDefault(b => b.TextContent.Contains("Sprints"));
+          if (sprintsTab != null)
+          {
+              await cut.InvokeAsync(() => sprintsTab.Click());
+          }
+
+          // Assert
+          await cut.WaitForAssertionAsync(() =>
+          {
+              cut.Markup.Should().Contain("No Sprints");
+          }, timeout: TimeSpan.FromSeconds(5));
+      }
+
+      [Fact]
+      public async Task ProjectDetailPage_RendersSprintCards_WhenSprintsExist()
+      {
+          // Arrange
+          var projectId = Guid.NewGuid();
+          var project = new Project
+          {
+              Id = projectId,
+              Title = "Test Project",
+              Description = "Test Description",
+              Key = "TEST",
+              Status = ProjectStatus.Active,
+              Version = 1,
+              CreatedAt = DateTime.UtcNow,
+              UpdatedAt = DateTime.UtcNow,
+              CreatedBy = Guid.NewGuid(),
+              UpdatedBy = Guid.NewGuid()
+          };
+          var sprints = new[]
+          {
+              new Sprint
+              {
+                  Id = Guid.NewGuid(),
+                  ProjectId = projectId,
+                  Name = "Sprint 1",
+                  Status = SprintStatus.Planned,
+                  StartDate = DateTime.Today,
+                  EndDate = DateTime.Today.AddDays(14),
+                  Version = 1,
+                  CreatedAt = DateTime.UtcNow,
+                  UpdatedAt = DateTime.UtcNow,
+                  CreatedBy = Guid.NewGuid(),
+                  UpdatedBy = Guid.NewGuid()
+              },
+              new Sprint
+              {
+                  Id = Guid.NewGuid(),
+                  ProjectId = projectId,
+                  Name = "Sprint 2",
+                  Status = SprintStatus.Planned,
+                  StartDate = DateTime.Today.AddDays(14),
+                  EndDate = DateTime.Today.AddDays(28),
+                  Version = 1,
+                  CreatedAt = DateTime.UtcNow,
+                  UpdatedAt = DateTime.UtcNow,
+                  CreatedBy = Guid.NewGuid(),
+                  UpdatedBy = Guid.NewGuid()
+              }
+          };
+
+          _projectStoreMock.Setup(s => s.GetById(projectId)).Returns(new ProjectViewModel(project));
+          _workItemStoreMock.Setup(s => s.GetByProject(projectId)).Returns(Array.Empty<WorkItem>());
+          _sprintStoreMock.Setup(s => s.GetByProject(projectId)).Returns(sprints);
+
+          // Act
+          var cut = Render<ProjectDetail>(parameters => parameters
+              .Add(p => p.ProjectId, projectId));
+
+          // Wait for render and click Sprints tab
+          await cut.WaitForAssertionAsync(() =>
+          {
+              cut.Markup.Should().Contain("Sprints");
+          }, timeout: TimeSpan.FromSeconds(5));
+
+          var sprintsTab = cut.FindAll("button.view-tab")
+              .FirstOrDefault(b => b.TextContent.Contains("Sprints"));
+          if (sprintsTab != null)
+          {
+              await cut.InvokeAsync(() => sprintsTab.Click());
+          }
+
+          // Assert - SprintCards should be rendered
+          await cut.WaitForAssertionAsync(() =>
+          {
+              var sprintCards = cut.FindComponents<SprintCard>();
+              sprintCards.Should().HaveCount(2);
+          }, timeout: TimeSpan.FromSeconds(5));
+      }
+
+      #endregion
+
+      #region WorkItemDetail Comments Tests
+
+      [Fact]
+      public async Task WorkItemDetailPage_RendersCommentsSection()
+      {
+          // Arrange
+          var workItemId = Guid.NewGuid();
+          var projectId = Guid.NewGuid();
+          var workItem = new WorkItem
+          {
+              Id = workItemId,
+              ProjectId = projectId,
+              Title = "Test Task",
+              ItemType = WorkItemType.Task,
+              Status = "todo",
+              Priority = "medium",
+              Position = 1,
+              Version = 1,
+              CreatedAt = DateTime.UtcNow,
+              UpdatedAt = DateTime.UtcNow,
+              CreatedBy = Guid.NewGuid(),
+              UpdatedBy = Guid.NewGuid()
+          };
+
+          _workItemStoreMock.Setup(s => s.GetById(workItemId)).Returns(workItem);
+          _workItemStoreMock.Setup(s => s.GetChildren(workItemId)).Returns(Array.Empty<WorkItem>());
+          _commentStoreMock.Setup(c => c.GetComments(workItemId)).Returns(new List<Comment>());
+
+          // Act
+          var cut = Render<WorkItemDetail>(parameters => parameters
+              .Add(p => p.WorkItemId, workItemId));
+
+          // Assert
+          await cut.WaitForAssertionAsync(() =>
+          {
+              cut.Markup.Should().Contain("Comments");
+              cut.FindComponents<CommentList>().Should().HaveCount(1);
+          }, timeout: TimeSpan.FromSeconds(5));
+      }
+
+      #endregion
 
     #region Helper Methods
 
