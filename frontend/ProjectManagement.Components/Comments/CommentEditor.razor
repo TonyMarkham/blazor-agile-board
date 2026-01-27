@@ -1,0 +1,71 @@
+<div class="comment-editor">
+  <RadzenTextArea @bind-Value="_content"
+                  Placeholder="@Placeholder"
+                  Rows="@Rows"
+                  @onkeydown="HandleKeyDown" />
+
+  <div class="editor-actions">
+      <RadzenText TextStyle="TextStyle.Caption" class="char-count">
+          @_content.Length / 5000
+      </RadzenText>
+
+      <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
+          @if (OnCancel.HasDelegate)
+          {
+              <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Light"
+                            Size="ButtonSize.Small" Click="HandleCancel" />
+          }
+          <RadzenButton Text="@SubmitText" ButtonStyle="ButtonStyle.Primary"
+                        Size="ButtonSize.Small"
+                        Disabled="@(!CanSubmit)"
+                        Click="HandleSubmit" />
+      </RadzenStack>
+  </div>
+</div>
+
+@code {
+    [Parameter] public string InitialContent { get; set; } = "";
+
+    [Parameter] public string Placeholder { get; set; } = "Write a comment...";
+
+    [Parameter] public string SubmitText { get; set; } = "Comment";
+
+    [Parameter] public int Rows { get; set; } = 3;
+
+    [Parameter] public EventCallback<string> OnSubmit { get; set; }
+
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private string _content = "";
+
+    private bool CanSubmit => !string.IsNullOrWhiteSpace(_content) &&
+                              _content.Length <= 5000;
+
+    protected override void OnInitialized()
+    {
+        _content = InitialContent;
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (!CanSubmit) return;
+
+        await OnSubmit.InvokeAsync(_content.Trim());
+        _content = "";
+    }
+
+    private async Task HandleCancel()
+    {
+        await OnCancel.InvokeAsync();
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        // Ctrl+Enter or Cmd+Enter to submit
+        if (e.Key == "Enter" && (e.CtrlKey || e.MetaKey))
+        {
+            await HandleSubmit();
+        }
+    }
+
+}

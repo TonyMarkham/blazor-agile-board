@@ -1,0 +1,15 @@
+.comment-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.editor-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.char-count {
+    color: var(--rz-text-secondary-color);
+}

@@ -1,0 +1,163 @@
+@using ProjectManagement.Core.Models
+
+<RadzenDialog>
+  <RadzenTemplateForm TItem="SprintFormModel" Data="@_model" Submit="OnSubmit">
+      <RadzenStack Gap="1rem">
+          <RadzenFormField Text="Name" Variant="Variant.Outlined">
+              <RadzenTextBox @bind-Value="_model.Name" Name="Name" />
+              <RadzenRequiredValidator Component="Name" Text="Name is required" />
+              <RadzenLengthValidator Component="Name" Min="1" Max="100"
+                                     Text="Name must be 1-100 characters" />
+          </RadzenFormField>
+
+          <RadzenFormField Text="Goal" Variant="Variant.Outlined">
+              <RadzenTextArea @bind-Value="_model.Goal" Name="Goal" Rows="3" />
+              <RadzenLengthValidator Component="Goal" Max="500"
+                                     Text="Goal must be 500 characters or less" />
+          </RadzenFormField>
+
+          <RadzenRow Gap="1rem">
+              <RadzenColumn Size="6">
+                  <RadzenFormField Text="Start Date" Variant="Variant.Outlined">
+                      <RadzenDatePicker @bind-Value="_model.StartDate" Name="StartDate"
+                                        DateFormat="yyyy-MM-dd" />
+                      <RadzenRequiredValidator Component="StartDate" Text="Start date is required" />
+                  </RadzenFormField>
+              </RadzenColumn>
+              <RadzenColumn Size="6">
+                  <RadzenFormField Text="End Date" Variant="Variant.Outlined">
+                      <RadzenDatePicker @bind-Value="_model.EndDate" Name="EndDate"
+                                        DateFormat="yyyy-MM-dd" />
+                      <RadzenRequiredValidator Component="EndDate" Text="End date is required" />
+                      <RadzenCompareValidator Component="EndDate"
+                                              Value="@_model.StartDate"
+                                              Operator="CompareOperator.GreaterThan"
+                                              Text="End date must be after start date" />
+                  </RadzenFormField>
+              </RadzenColumn>
+          </RadzenRow>
+
+          @if (IsEdit)
+          {
+              <RadzenFormField Text="Status" Variant="Variant.Outlined">
+                  <RadzenDropDown @bind-Value="_model.Status" Name="Status"
+                                  Data="@_availableStatuses"
+                                  TextProperty="Text" ValueProperty="Value" />
+              </RadzenFormField>
+          }
+
+          <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+              <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Light"
+                            Click="OnCancel" />
+              <RadzenButton Text="@(IsEdit ? "Save" : "Create")"
+                            ButtonStyle="ButtonStyle.Primary"
+                            ButtonType="ButtonType.Submit" />
+          </RadzenStack>
+      </RadzenStack>
+  </RadzenTemplateForm>
+</RadzenDialog>
+
+@code {
+    [Parameter] public Sprint? Sprint { get; set; }
+
+    [Parameter] public Guid ProjectId { get; set; }
+
+    [Parameter] public EventCallback<CreateSprintRequest> OnCreate { get; set; }
+
+    [Parameter] public EventCallback<UpdateSprintRequest> OnUpdate { get; set; }
+
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private SprintFormModel _model = new();
+    private bool IsEdit => Sprint != null;
+
+    private List<StatusOption> _availableStatuses = new();
+
+    protected override void OnInitialized()
+    {
+        if (Sprint != null)
+        {
+            _model = new SprintFormModel
+            {
+                Name = Sprint.Name,
+                Goal = Sprint.Goal ?? "",
+                StartDate = Sprint.StartDate,
+                EndDate = Sprint.EndDate,
+                Status = Sprint.Status
+            };
+
+            // Determine available status transitions
+            _availableStatuses = GetAvailableStatuses(Sprint.Status);
+        }
+        else
+        {
+            // Default dates for new sprint
+            _model.StartDate = DateTime.Today;
+            _model.EndDate = DateTime.Today.AddDays(14);
+        }
+    }
+
+    private List<StatusOption> GetAvailableStatuses(SprintStatus current)
+    {
+        var options = new List<StatusOption> { new(current.ToString(), current) };
+
+        return current switch
+        {
+            SprintStatus.Planned => new List<StatusOption>
+            {
+                new("Planned", SprintStatus.Planned),
+                new("Active (Start Sprint)", SprintStatus.Active),
+                new("Cancelled", SprintStatus.Cancelled)
+            },
+            SprintStatus.Active => new List<StatusOption>
+            {
+                new("Active", SprintStatus.Active),
+                new("Completed", SprintStatus.Completed),
+                new("Cancelled", SprintStatus.Cancelled)
+            },
+            _ => options
+        };
+    }
+
+    private async Task OnSubmit()
+    {
+        if (IsEdit)
+        {
+            var request = new UpdateSprintRequest
+            {
+                SprintId = Sprint!.Id,
+                ExpectedVersion = Sprint.Version,
+                Name = _model.Name != Sprint.Name ? _model.Name : null,
+                Goal = _model.Goal != Sprint.Goal ? _model.Goal : null,
+                StartDate = _model.StartDate != Sprint.StartDate ? _model.StartDate : null,
+                EndDate = _model.EndDate != Sprint.EndDate ? _model.EndDate : null,
+                Status = _model.Status != Sprint.Status ? _model.Status : null
+            };
+            await OnUpdate.InvokeAsync(request);
+        }
+        else
+        {
+            var request = new CreateSprintRequest
+            {
+                ProjectId = ProjectId,
+                Name = _model.Name,
+                Goal = string.IsNullOrWhiteSpace(_model.Goal) ? null : _model.Goal,
+                StartDate = _model.StartDate!.Value,
+                EndDate = _model.EndDate!.Value
+            };
+            await OnCreate.InvokeAsync(request);
+        }
+    }
+
+    private class SprintFormModel
+    {
+        public string Name { get; set; } = "";
+        public string Goal { get; set; } = "";
+        public DateTime? StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+        public SprintStatus Status { get; set; } = SprintStatus.Planned;
+    }
+
+    private record StatusOption(string Text, SprintStatus Value);
+
+}

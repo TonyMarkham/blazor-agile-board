@@ -1,0 +1,104 @@
+@using ProjectManagement.Core.Models
+
+<div class="sprint-card @StatusClass" @onclick="OnClick">
+  <div class="sprint-header">
+      <RadzenText TextStyle="TextStyle.Subtitle1" class="sprint-name">
+          @Sprint.Name
+      </RadzenText>
+      <RadzenBadge BadgeStyle="@BadgeStyle" Text="@Sprint.Status.ToString()" />
+  </div>
+
+  @if (!string.IsNullOrEmpty(Sprint.Goal))
+  {
+      <RadzenText TextStyle="TextStyle.Body2" class="sprint-goal">
+          @Sprint.Goal
+      </RadzenText>
+  }
+
+  <div class="sprint-dates">
+      <RadzenIcon Icon="event" />
+      <span>@Sprint.StartDate.ToString("MMM d") - @Sprint.EndDate.ToString("MMM d, yyyy")</span>
+  </div>
+
+  @if (ShowProgress)
+  {
+      <div class="sprint-progress">
+          <RadzenProgressBar Value="@Progress" ShowValue="true" />
+          <RadzenText TextStyle="TextStyle.Caption">
+              @CompletedItems / @TotalItems items
+          </RadzenText>
+      </div>
+  }
+
+  <div class="sprint-actions">
+      @if (Sprint.Status == SprintStatus.Planned && CanStart)
+      {
+          <RadzenButton Text="Start Sprint" ButtonStyle="ButtonStyle.Primary"
+                        Size="ButtonSize.Small" Click="OnStartClick" />
+      }
+      @if (Sprint.Status == SprintStatus.Active && CanComplete)
+      {
+          <RadzenButton Text="Complete" ButtonStyle="ButtonStyle.Success"
+                        Size="ButtonSize.Small" Click="OnCompleteClick" />
+      }
+      @if (CanEdit)
+      {
+          <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light"
+                        Size="ButtonSize.Small" Click="OnEditClick" />
+      }
+      @if (CanDelete && Sprint.Status != SprintStatus.Completed)
+      {
+          <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger"
+                        Size="ButtonSize.Small" Click="OnDeleteClick" />
+      }
+  </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Sprint Sprint { get; set; } = default!;
+
+    [Parameter] public bool ShowProgress { get; set; } = true;
+
+    [Parameter] public int TotalItems { get; set; }
+
+    [Parameter] public int CompletedItems { get; set; }
+
+    [Parameter] public bool CanStart { get; set; }
+
+    [Parameter] public bool CanComplete { get; set; }
+
+    [Parameter] public bool CanEdit { get; set; }
+
+    [Parameter] public bool CanDelete { get; set; }
+
+    [Parameter] public EventCallback OnClick { get; set; }
+
+    [Parameter] public EventCallback OnStartClick { get; set; }
+
+    [Parameter] public EventCallback OnCompleteClick { get; set; }
+
+    [Parameter] public EventCallback OnEditClick { get; set; }
+
+    [Parameter] public EventCallback OnDeleteClick { get; set; }
+
+    private double Progress => TotalItems > 0 ? (double)CompletedItems / TotalItems * 100 : 0;
+
+    private string StatusClass => Sprint.Status switch
+    {
+        SprintStatus.Planned => "status-planned",
+        SprintStatus.Active => "status-active",
+        SprintStatus.Completed => "status-completed",
+        SprintStatus.Cancelled => "status-cancelled",
+        _ => ""
+    };
+
+    private BadgeStyle BadgeStyle => Sprint.Status switch
+    {
+        SprintStatus.Planned => BadgeStyle.Secondary,
+        SprintStatus.Active => BadgeStyle.Primary,
+        SprintStatus.Completed => BadgeStyle.Success,
+        SprintStatus.Cancelled => BadgeStyle.Warning,
+        _ => BadgeStyle.Light
+    };
+
+}

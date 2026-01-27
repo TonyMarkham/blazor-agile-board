@@ -3,6 +3,7 @@ using Moq;
 using ProjectManagement.Core.Interfaces;
 using ProjectManagement.Core.Models;
 using ProjectManagement.Core.ViewModels;
+using Sprint = ProjectManagement.Core.Models.Sprint;
 
 namespace ProjectManagement.Components.Tests.ViewModels;
 

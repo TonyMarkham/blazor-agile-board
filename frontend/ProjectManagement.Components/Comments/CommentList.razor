@@ -1,0 +1,149 @@
+@using ProjectManagement.Core.Interfaces
+@using ProjectManagement.Core.Models
+@inject ICommentStore CommentStore
+@implements IDisposable
+
+<div class="comment-list">
+  @if (IsLoading)
+  {
+      <RadzenProgressBar Mode="ProgressBarMode.Indeterminate" />
+  }
+  else if (!Comments.Any())
+  {
+      <RadzenText TextStyle="TextStyle.Body2" class="no-comments">
+          No comments yet. Be the first to comment!
+      </RadzenText>
+  }
+  else
+  {
+      @foreach (var comment in Comments)
+      {
+          <div class="comment @(CommentStore.IsPending(comment.Id) ? "pending" : "")">
+              <div class="comment-header">
+                  <RadzenText TextStyle="TextStyle.Subtitle2">
+                      @GetUserName(comment.CreatedBy)
+                  </RadzenText>
+                  <RadzenText TextStyle="TextStyle.Caption" class="comment-time">
+                      @FormatTime(comment.CreatedAt)
+                      @if (comment.UpdatedAt > comment.CreatedAt.AddSeconds(1))
+                      {
+                          <span class="edited">(edited)</span>
+                      }
+                  </RadzenText>
+              </div>
+
+              @if (_editingCommentId == comment.Id)
+              {
+                  <CommentEditor InitialContent="@comment.Content"
+                                 OnSubmit="content => HandleUpdateComment(comment.Id, content)"
+                                 OnCancel="() => _editingCommentId = null"
+                                 SubmitText="Save" />
+              }
+              else
+              {
+                  <RadzenText TextStyle="TextStyle.Body2" class="comment-content">
+                      @comment.Content
+                  </RadzenText>
+
+                  @if (CanEditComment(comment))
+                  {
+                      <div class="comment-actions">
+                          <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light"
+                                        Size="ButtonSize.ExtraSmall"
+                                        Click="() => _editingCommentId = comment.Id" />
+                          <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger"
+                                        Size="ButtonSize.ExtraSmall"
+                                        Click="() => HandleDeleteComment(comment.Id)" />
+                      </div>
+                  }
+              }
+          </div>
+      }
+  }
+
+  <div class="new-comment">
+      <CommentEditor OnSubmit="HandleCreateComment"
+                     Placeholder="Write a comment..." />
+  </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Guid WorkItemId { get; set; }
+
+    [Parameter] public Guid CurrentUserId { get; set; }
+
+    [Parameter] public Func<Guid, string>? UserNameResolver { get; set; }
+
+    private IReadOnlyList<Comment> Comments => CommentStore.GetComments(WorkItemId);
+    private bool IsLoading { get; set; }
+    private Guid? _editingCommentId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        CommentStore.OnChanged += StateHasChanged;
+        await LoadComments();
+    }
+
+    private async Task LoadComments()
+    {
+        IsLoading = true;
+        try
+        {
+            await CommentStore.RefreshAsync(WorkItemId);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private string GetUserName(Guid userId)
+    {
+        return UserNameResolver?.Invoke(userId) ?? userId.ToString()[..8];
+    }
+
+    private string FormatTime(DateTime time)
+    {
+        var diff = DateTime.UtcNow - time;
+        return diff.TotalMinutes < 1 ? "just now" :
+            diff.TotalHours < 1 ? $"{(int)diff.TotalMinutes}m ago" :
+            diff.TotalDays < 1 ? $"{(int)diff.TotalHours}h ago" :
+            diff.TotalDays < 7 ? $"{(int)diff.TotalDays}d ago" :
+            time.ToString("MMM d");
+    }
+
+    private bool CanEditComment(Comment comment)
+    {
+        return comment.CreatedBy == CurrentUserId;
+    }
+
+    private async Task HandleCreateComment(string content)
+    {
+        await CommentStore.CreateAsync(new CreateCommentRequest
+        {
+            WorkItemId = WorkItemId,
+            Content = content
+        });
+    }
+
+    private async Task HandleUpdateComment(Guid commentId, string content)
+    {
+        await CommentStore.UpdateAsync(new UpdateCommentRequest
+        {
+            CommentId = commentId,
+            Content = content
+        });
+        _editingCommentId = null;
+    }
+
+    private async Task HandleDeleteComment(Guid commentId)
+    {
+        await CommentStore.DeleteAsync(commentId);
+    }
+
+    public void Dispose()
+    {
+        CommentStore.OnChanged -= StateHasChanged;
+    }
+
+}
