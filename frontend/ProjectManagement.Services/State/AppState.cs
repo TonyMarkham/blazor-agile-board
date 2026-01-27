@@ -25,6 +25,7 @@ public sealed class AppState : IDisposable
         IWorkItemStore workItems,
         ISprintStore sprints,
         IProjectStore projects,
+        ICommentStore comments,
         ILogger<AppState> logger)
     {
         _client = client;
@@ -33,6 +34,7 @@ public sealed class AppState : IDisposable
         WorkItems = workItems;
         Sprints = sprints;
         Projects = projects;
+        Comments = comments;
 
         // Forward events                                                                                             
         _client.OnStateChanged += state =>
@@ -46,11 +48,13 @@ public sealed class AppState : IDisposable
         sprints.OnChanged += () => OnStateChanged?.Invoke();
         projects.OnCurrentProjectChanged += () => OnStateChanged?.Invoke();
         projects.OnProjectsChanged += () => OnStateChanged?.Invoke();
+        comments.OnChanged += () => OnStateChanged?.Invoke();
     }
 
     public IWorkItemStore WorkItems { get; }
     public ISprintStore Sprints { get; }
     public IProjectStore Projects { get; }
+    public ICommentStore Comments { get; }
     public IConnectionHealth ConnectionHealth => _client.Health;
     public ConnectionState ConnectionState => _client.State;
 
@@ -65,6 +69,8 @@ public sealed class AppState : IDisposable
             sprintsDisposable.Dispose();
         if (Projects is IDisposable projectsDisposable)
             projectsDisposable.Dispose();
+        if (Comments is IDisposable commentsDisposable)
+            commentsDisposable.Dispose();
     }
     
     public void SetCurrentUser(UserIdentity user)

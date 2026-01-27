@@ -18,19 +18,24 @@ This plan has been split into sub-sessions to fit within token budgets:
 
 | Session | Scope | Est. Tokens | Status |
 |---------|-------|-------------|--------|
-| **[51.1](51.1-Session-Plan.md)** | AppState + Test Helpers | ~20-25k | Pending |
+| **[51.1](51.1-Session-Plan.md)** | AppState + Test Helpers | ~20-25k | ✅ Complete |
 | **[51.2](51.2-Session-Plan.md)** | UI Integration + Tests | ~35-40k | Pending |
 
 ---
 
-## Session 51.1: AppState + Test Helpers
+## Session 51.1: AppState + Test Helpers ✅
 
-**Files Modified:**
+**Status**: Complete (2026-01-27)
+
+**Files Modified (6):**
 - `ProjectManagement.Services/State/AppState.cs` - Add ICommentStore property
 - `ProjectManagement.Components.Tests/Pages/PageIntegrationTests.cs` - Update AppState mock
 - `ProjectManagement.Components.Tests/Shared/SharedComponentTests.cs` - Update CreateMockAppState
+- `ProjectManagement.Components.Tests/WorkItems/WorkItemListTests.cs` - Add ICommentStore mock
+- `ProjectManagement.Components.Tests/WorkItems/KanbanBoardTests.cs` - Add ICommentStore mock
+- `ProjectManagement.Components.Tests/WorkItems/DialogTests.cs` - Add ICommentStore mock
 
-**Verification:** `just test-frontend`
+**Verification:** ✅ `just test-frontend` (615/615 tests passing)
 
 ---
 
@@ -61,13 +66,16 @@ Before starting **any** sub-session:
 
 ## Files Summary
 
-### Modify (6 files)
+### Modify (9 files)
 
 | File | Purpose | Session |
 |------|---------|---------|
-| `ProjectManagement.Services/State/AppState.cs` | Add ICommentStore property | 51.1 |
-| `ProjectManagement.Components.Tests/Pages/PageIntegrationTests.cs` | Update mock + add tests | 51.1, 51.2 |
-| `ProjectManagement.Components.Tests/Shared/SharedComponentTests.cs` | Update CreateMockAppState | 51.1 |
+| `ProjectManagement.Services/State/AppState.cs` | Add ICommentStore property | 51.1 ✅ |
+| `ProjectManagement.Components.Tests/Pages/PageIntegrationTests.cs` | Update mock + add tests | 51.1 ✅, 51.2 |
+| `ProjectManagement.Components.Tests/Shared/SharedComponentTests.cs` | Update CreateMockAppState | 51.1 ✅ |
+| `ProjectManagement.Components.Tests/WorkItems/WorkItemListTests.cs` | Add ICommentStore mock | 51.1 ✅ |
+| `ProjectManagement.Components.Tests/WorkItems/KanbanBoardTests.cs` | Add ICommentStore mock | 51.1 ✅ |
+| `ProjectManagement.Components.Tests/WorkItems/DialogTests.cs` | Add ICommentStore mock | 51.1 ✅ |
 | `ProjectManagement.Wasm/Pages/ProjectDetail.razor` | Add Sprints tab | 51.2 |
 | `ProjectManagement.Wasm/Pages/WorkItemDetail.razor` | Add Comments section | 51.2 |
 | `ProjectManagement.Wasm/Pages/Home.razor` | Fix active sprints count | 51.2 |

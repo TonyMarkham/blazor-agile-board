@@ -39,6 +39,7 @@ public class KanbanBoardTests : BunitContext
             _workItemStoreMock.Object,
             _sprintStoreMock.Object,
             projectStoreMock.Object,
+            Mock.Of<ICommentStore>(),
             Mock.Of<Microsoft.Extensions.Logging.ILogger<AppState>>());
 
         Services.AddSingleton(_appState);

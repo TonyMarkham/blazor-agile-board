@@ -363,6 +363,7 @@ public class DialogTests : BunitContext
             workItemStore.Object,
             sprintStore.Object,
             projectStore.Object,
+            Mock.Of<ICommentStore>(),
             Mock.Of<Microsoft.Extensions.Logging.ILogger<AppState>>());
         
         Services.AddSingleton(appState);

@@ -19,6 +19,7 @@ public class PageIntegrationTests : BunitContext
     private readonly Mock<ISprintStore> _sprintStoreMock;
     private readonly AppState _appState;
     private readonly Mock<IProjectStore> _projectStoreMock;
+    private readonly Mock<ICommentStore> _commentStoreMock;
 
     public PageIntegrationTests()
     {
@@ -31,6 +32,9 @@ public class PageIntegrationTests : BunitContext
         _sprintStoreMock = new Mock<ISprintStore>();
         _projectStoreMock = new Mock<IProjectStore>();
         _projectStoreMock.Setup(p => p.Projects).Returns(new List<ProjectViewModel>());
+        _commentStoreMock = new Mock<ICommentStore>();
+        _commentStoreMock.Setup(c => c.GetComments(It.IsAny<Guid>()))
+            .Returns(new List<Comment>());
 
         var mockClient = new Mock<IWebSocketClient>();
         mockClient.Setup(c => c.State).Returns(ConnectionState.Connected);
@@ -41,6 +45,7 @@ public class PageIntegrationTests : BunitContext
             _workItemStoreMock.Object,
             _sprintStoreMock.Object,
             _projectStoreMock.Object,
+            _commentStoreMock.Object,
             Mock.Of<Microsoft.Extensions.Logging.ILogger<AppState>>());
         
         // Set current user for AppState (required for Session 42.2)
@@ -51,6 +56,7 @@ public class PageIntegrationTests : BunitContext
         Services.AddSingleton(_workItemStoreMock.Object);
         Services.AddSingleton(_sprintStoreMock.Object);
         Services.AddSingleton<IProjectStore>(_projectStoreMock.Object);
+        Services.AddSingleton<ICommentStore>(_commentStoreMock.Object);
         Services.AddScoped<ViewModelFactory>();
 
         JSInterop.Mode = JSRuntimeMode.Loose;
