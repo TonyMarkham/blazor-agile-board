@@ -20,7 +20,7 @@ This plan has been split into sub-sessions to fit within token budgets:
 |---------|-------|-------------|--------|
 | **[60.1](60.1-Session-Plan.md)** | Protocol Definition & Backend Infrastructure | ~40-50k | ✅ Complete (2026-01-27) |
 | **[60.2](60.2-Session-Plan.md)** | Backend Handlers (Time Entry & Dependency) | ~45-55k | ✅ Complete (2026-01-27) |
-| **[60.3](60.3-Session-Plan.md)** | Frontend Models & WebSocket Integration | ~35-45k | Pending |
+| **[60.3](60.3-Session-Plan.md)** | Frontend Models & WebSocket Integration | ~35-45k | ✅ Complete (2026-01-27) |
 | **[60.4](60.4-Session-Plan.md)** | Frontend State Management & UI Components | ~40-50k | Pending |
 | **[60.5](60.5-Session-Plan.md)** | Tests & Integration Verification | ~35-45k | Pending |
 
@@ -100,20 +100,35 @@ This plan has been split into sub-sessions to fit within token budgets:
 
 ---
 
-## Session 60.3: Frontend Models & WebSocket
+## Session 60.3: Frontend Models & WebSocket ✅
 
-**Files Created:**
-- `frontend/ProjectManagement.Core/Models/TimeEntry.cs` - Domain model
-- `frontend/ProjectManagement.Core/Models/Dependency.cs` - Domain model + enum
-- `frontend/ProjectManagement.Core/Models/TimeEntryRequests.cs` - Request DTOs
-- `frontend/ProjectManagement.Core/Models/DependencyRequests.cs` - Request DTOs
+**Status**: Complete (2026-01-27)
 
-**Files Modified:**
-- `frontend/ProjectManagement.Core/Converters/ProtoConverter.cs` - Add TimeEntry/Dependency converters
-- `frontend/ProjectManagement.Services/WebSocket/IWebSocketClient.cs` - Add 10 operations + events
-- `frontend/ProjectManagement.Services/WebSocket/WebSocketClient.cs` - Implement operations
+**Files Created (7):**
+- `frontend/ProjectManagement.Core/Models/TimeEntry.cs` - Domain model with computed properties
+- `frontend/ProjectManagement.Core/Models/Dependency.cs` - Domain model for dependency relationships
+- `frontend/ProjectManagement.Core/Models/DependencyType.cs` - Enum for Blocks/RelatesTo (separated for clarity)
+- `frontend/ProjectManagement.Core/Models/StartTimerRequest.cs` - Request DTO for starting timer
+- `frontend/ProjectManagement.Core/Models/CreateTimeEntryRequest.cs` - Request DTO for manual entry
+- `frontend/ProjectManagement.Core/Models/UpdateTimeEntryRequest.cs` - Request DTO for updating entry
+- `frontend/ProjectManagement.Core/Models/CreateDependencyRequest.cs` - Request DTO for creating dependency
 
-**Verification:** `just build-frontend`
+**Files Modified (4):**
+- `frontend/ProjectManagement.Core/Converters/ProtoConverter.cs` - Added 6 conversion methods (TimeEntry ↔ Proto, Dependency ↔ Proto, enum conversions)
+- `frontend/ProjectManagement.Core/Interfaces/IWebSocketClient.cs` - Added 10 operations + 7 events
+- `frontend/ProjectManagement.Services/WebSocket/WebSocketClient.cs` - Implemented event declarations, 10 operations, 7 broadcast handlers
+- `frontend/ProjectManagement.Services/Resilience/ResilientWebSocketClient.cs` - Added event pass-throughs + operation wrappers
+
+**What Was Delivered:**
+- ✅ Domain models with computed properties (`IsRunning`, `Elapsed`, `ElapsedFormatted`)
+- ✅ Request DTOs following existing codebase pattern (individual files)
+- ✅ Proto converters with proper null checks for optional message fields
+- ✅ WebSocket operations matching backend protocol exactly
+- ✅ Broadcast event handlers for real-time updates
+- ✅ Tuple return types for multi-value operations (`StartTimerAsync`)
+- ✅ Resilience layer integration
+
+**Verification:** ✅ `just build-frontend && just test-frontend` passes
 
 ---
 
@@ -166,16 +181,19 @@ Before starting **any** sub-session:
 
 ## Files Summary
 
-### Create (22 files)
+### Create (25 files)
 
 | File | Purpose |
 |------|---------|
 | `pm-ws/src/handlers/time_entry.rs` | Time entry handlers with atomic timer |
 | `pm-ws/src/handlers/dependency.rs` | Dependency handlers with cycle detection |
-| `TimeEntry.cs` | C# domain model |
-| `Dependency.cs` | C# domain model + DependencyType enum |
-| `TimeEntryRequests.cs` | C# request DTOs |
-| `DependencyRequests.cs` | C# request DTOs |
+| `TimeEntry.cs` | C# domain model with computed properties |
+| `Dependency.cs` | C# domain model for dependency relationships |
+| `DependencyType.cs` | C# enum for Blocks/RelatesTo |
+| `StartTimerRequest.cs` | C# request DTO for starting timer |
+| `CreateTimeEntryRequest.cs` | C# request DTO for manual time entry |
+| `UpdateTimeEntryRequest.cs` | C# request DTO for updating time entry |
+| `CreateDependencyRequest.cs` | C# request DTO for creating dependency |
 | `ITimeEntryStore.cs` | Store interface |
 | `IDependencyStore.cs` | Store interface |
 | `TimeEntryStore.cs` | Optimistic update store |
@@ -195,7 +213,7 @@ Before starting **any** sub-session:
 | `TimeEntryStoreTests.cs` | Store unit tests |
 | `DependencyStoreTests.cs` | Store unit tests |
 
-### Modify (12 files)
+### Modify (13 files)
 
 | File | Change |
 |------|--------|
@@ -207,9 +225,10 @@ Before starting **any** sub-session:
 | `pm-ws/src/handlers/mod.rs` | Export new modules |
 | `pm-db/src/repositories/time_entry_repository.rs` | Add pagination |
 | `pm-db/src/repositories/dependency_repository.rs` | Add helper methods |
-| `ProtoConverter.cs` | Add TimeEntry/Dependency converters |
-| `IWebSocketClient.cs` | Add operations + events |
-| `WebSocketClient.cs` | Implement operations |
+| `ProtoConverter.cs` | Add TimeEntry/Dependency converters (6 methods) |
+| `IWebSocketClient.cs` | Add operations + events (10 ops + 7 events) |
+| `WebSocketClient.cs` | Implement operations + event handlers |
+| `ResilientWebSocketClient.cs` | Add resilience wrappers for new operations |
 | `Program.cs` | Register stores |
 
 ---

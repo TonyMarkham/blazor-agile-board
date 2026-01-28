@@ -138,10 +138,7 @@ async fn given_valid_request_when_create_sprint_then_succeeds() {
         Some(Payload::SprintCreated(created)) => {
             let sprint = created.sprint.as_ref().unwrap();
             assert_eq!(sprint.name, "Sprint 1");
-            assert_eq!(
-                sprint.goal.as_deref(),
-                Some("Complete MVP")
-            );
+            assert_eq!(sprint.goal.as_deref(), Some("Complete MVP"));
             assert_eq!(sprint.status, ProtoSprintStatus::Planned as i32);
             assert_eq!(sprint.version, 1);
         }

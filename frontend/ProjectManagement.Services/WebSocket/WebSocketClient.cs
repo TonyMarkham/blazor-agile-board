@@ -85,6 +85,21 @@ public sealed class WebSocketClient : IWebSocketClient
     public event Action<Comment>? OnCommentCreated;
     public event Action<Comment>? OnCommentUpdated;
     public event Action<Guid>? OnCommentDeleted;
+    
+    // ==========================================================================
+    // Time Entry Events
+    // ==========================================================================
+    public event Action<TimeEntry, TimeEntry?>? OnTimerStarted;
+    public event Action<TimeEntry>? OnTimerStopped;
+    public event Action<TimeEntry>? OnTimeEntryCreated;
+    public event Action<TimeEntry>? OnTimeEntryUpdated;
+    public event Action<Guid, Guid>? OnTimeEntryDeleted;
+
+    // ==========================================================================
+    // Dependency Events
+    // ==========================================================================
+    public event Action<Dependency>? OnDependencyCreated;
+    public event Action<Guid, Guid, Guid>? OnDependencyDeleted;
 
     public async Task ConnectAsync(CancellationToken ct = default)
     {
@@ -717,6 +732,43 @@ public sealed class WebSocketClient : IWebSocketClient
                 if (Guid.TryParse(message.CommentDeleted.CommentId, out var deletedCommentId))
                     OnCommentDeleted?.Invoke(deletedCommentId);
                 break;
+            
+            case Pm.WebSocketMessage.PayloadOneofCase.TimerStarted:
+                var startedTimer = ProtoConverter.ToDomain(message.TimerStarted.TimeEntry);
+                var stoppedTimer = message.TimerStarted.StoppedEntry != null
+                    ? ProtoConverter.ToDomain(message.TimerStarted.StoppedEntry)
+                    : null;
+                OnTimerStarted?.Invoke(startedTimer, stoppedTimer);
+                break;
+
+            case Pm.WebSocketMessage.PayloadOneofCase.TimerStopped:
+                OnTimerStopped?.Invoke(ProtoConverter.ToDomain(message.TimerStopped.TimeEntry));
+                break;
+
+            case Pm.WebSocketMessage.PayloadOneofCase.TimeEntryCreated:
+                OnTimeEntryCreated?.Invoke(ProtoConverter.ToDomain(message.TimeEntryCreated.TimeEntry));
+                break;
+
+            case Pm.WebSocketMessage.PayloadOneofCase.TimeEntryUpdated:
+                OnTimeEntryUpdated?.Invoke(ProtoConverter.ToDomain(message.TimeEntryUpdated.TimeEntry));
+                break;
+
+            case Pm.WebSocketMessage.PayloadOneofCase.TimeEntryDeleted:
+                OnTimeEntryDeleted?.Invoke(
+                    Guid.Parse(message.TimeEntryDeleted.TimeEntryId),
+                    Guid.Parse(message.TimeEntryDeleted.WorkItemId));
+                break;
+
+            case Pm.WebSocketMessage.PayloadOneofCase.DependencyCreated:
+                OnDependencyCreated?.Invoke(ProtoConverter.ToDomain(message.DependencyCreated.Dependency));
+                break;
+
+            case Pm.WebSocketMessage.PayloadOneofCase.DependencyDeleted:
+                OnDependencyDeleted?.Invoke(
+                    Guid.Parse(message.DependencyDeleted.DependencyId),
+                    Guid.Parse(message.DependencyDeleted.BlockingItemId),
+                    Guid.Parse(message.DependencyDeleted.BlockedItemId));
+                break;
 
             default:
                 _logger.LogWarning("Unhandled broadcast message type: {Type}",
@@ -1048,4 +1100,316 @@ public sealed class WebSocketClient : IWebSocketClient
     }
 
     #endregion
+    
+    #region Time Entry Operations
+
+      public async Task<(TimeEntry Started, TimeEntry? Stopped)> StartTimerAsync(
+          StartTimerRequest request,
+          CancellationToken ct = default)
+      {
+          ThrowIfDisposed();
+          EnsureConnected();
+
+          var message = new Pm.WebSocketMessage
+          {
+              MessageId = Guid.NewGuid().ToString(),
+              Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+              StartTimerRequest = new Pm.StartTimerRequest
+              {
+                  WorkItemId = request.WorkItemId.ToString(),
+              }
+          };
+
+          if (request.Description != null)
+              message.StartTimerRequest.Description = request.Description;
+
+          var response = await SendRequestAsync(message, ct);
+
+          if (response.PayloadCase == Pm.WebSocketMessage.PayloadOneofCase.Error)
+              throw new ServerRejectedException(response.Error.Code, response.Error.Message);
+
+          if (response.PayloadCase != Pm.WebSocketMessage.PayloadOneofCase.TimerStarted)
+              throw new InvalidOperationException($"Unexpected response type: {response.PayloadCase}");
+
+          var started = ProtoConverter.ToDomain(response.TimerStarted.TimeEntry);
+          var stopped = response.TimerStarted.StoppedEntry != null
+              ? ProtoConverter.ToDomain(response.TimerStarted.StoppedEntry)
+              : null;
+          return (started, stopped);
+      }
+
+      public async Task<TimeEntry> StopTimerAsync(Guid timeEntryId, CancellationToken ct = default)
+      {
+          ThrowIfDisposed();
+          EnsureConnected();
+
+          var message = new Pm.WebSocketMessage
+          {
+              MessageId = Guid.NewGuid().ToString(),
+              Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+              StopTimerRequest = new Pm.StopTimerRequest
+              {
+                  TimeEntryId = timeEntryId.ToString(),
+              }
+          };
+
+          var response = await SendRequestAsync(message, ct);
+
+          if (response.PayloadCase == Pm.WebSocketMessage.PayloadOneofCase.Error)
+              throw new ServerRejectedException(response.Error.Code, response.Error.Message);
+
+          if (response.PayloadCase != Pm.WebSocketMessage.PayloadOneofCase.TimerStopped)
+              throw new InvalidOperationException($"Unexpected response type: {response.PayloadCase}");
+
+          return ProtoConverter.ToDomain(response.TimerStopped.TimeEntry);
+      }
+
+      public async Task<TimeEntry> CreateTimeEntryAsync(
+          CreateTimeEntryRequest request,
+          CancellationToken ct = default)
+      {
+          ThrowIfDisposed();
+          EnsureConnected();
+
+          var message = new Pm.WebSocketMessage
+          {
+              MessageId = Guid.NewGuid().ToString(),
+              Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+              CreateTimeEntryRequest = new Pm.CreateTimeEntryRequest
+              {
+                  WorkItemId = request.WorkItemId.ToString(),
+                  StartedAt = new DateTimeOffset(request.StartedAt, TimeSpan.Zero).ToUnixTimeSeconds(),
+                  EndedAt = new DateTimeOffset(request.EndedAt, TimeSpan.Zero).ToUnixTimeSeconds(),
+              }
+          };
+
+          if (request.Description != null)
+              message.CreateTimeEntryRequest.Description = request.Description;
+
+          var response = await SendRequestAsync(message, ct);
+
+          if (response.PayloadCase == Pm.WebSocketMessage.PayloadOneofCase.Error)
+              throw new ServerRejectedException(response.Error.Code, response.Error.Message);
+
+          if (response.PayloadCase != Pm.WebSocketMessage.PayloadOneofCase.TimeEntryCreated)
+              throw new InvalidOperationException($"Unexpected response type: {response.PayloadCase}");
+
+          return ProtoConverter.ToDomain(response.TimeEntryCreated.TimeEntry);
+      }
+
+      public async Task<TimeEntry> UpdateTimeEntryAsync(
+          UpdateTimeEntryRequest request,
+          CancellationToken ct = default)
+      {
+          ThrowIfDisposed();
+          EnsureConnected();
+
+          var message = new Pm.WebSocketMessage
+          {
+              MessageId = Guid.NewGuid().ToString(),
+              Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+              UpdateTimeEntryRequest = new Pm.UpdateTimeEntryRequest
+              {
+                  TimeEntryId = request.TimeEntryId.ToString(),
+              }
+          };
+
+          if (request.StartedAt.HasValue)
+              message.UpdateTimeEntryRequest.StartedAt = new DateTimeOffset(request.StartedAt.Value, TimeSpan.Zero).ToUnixTimeSeconds();
+          if (request.EndedAt.HasValue)
+              message.UpdateTimeEntryRequest.EndedAt = new DateTimeOffset(request.EndedAt.Value, TimeSpan.Zero).ToUnixTimeSeconds();
+          if (request.Description != null)
+              message.UpdateTimeEntryRequest.Description = request.Description;
+
+          var response = await SendRequestAsync(message, ct);
+
+          if (response.PayloadCase == Pm.WebSocketMessage.PayloadOneofCase.Error)
+              throw new ServerRejectedException(response.Error.Code, response.Error.Message);
+
+          if (response.PayloadCase != Pm.WebSocketMessage.PayloadOneofCase.TimeEntryUpdated)
+              throw new InvalidOperationException($"Unexpected response type: {response.PayloadCase}");
+
+          return ProtoConverter.ToDomain(response.TimeEntryUpdated.TimeEntry);
+      }
+
+      public async Task DeleteTimeEntryAsync(Guid timeEntryId, CancellationToken ct = default)
+      {
+          ThrowIfDisposed();
+          EnsureConnected();
+
+          var message = new Pm.WebSocketMessage
+          {
+              MessageId = Guid.NewGuid().ToString(),
+              Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+              DeleteTimeEntryRequest = new Pm.DeleteTimeEntryRequest
+              {
+                  TimeEntryId = timeEntryId.ToString(),
+              }
+          };
+
+          var response = await SendRequestAsync(message, ct);
+
+          if (response.PayloadCase == Pm.WebSocketMessage.PayloadOneofCase.Error)
+              throw new ServerRejectedException(response.Error.Code, response.Error.Message);
+
+          if (response.PayloadCase != Pm.WebSocketMessage.PayloadOneofCase.TimeEntryDeleted)
+              throw new InvalidOperationException($"Unexpected response type: {response.PayloadCase}");
+      }
+
+      public async Task<(IReadOnlyList<TimeEntry> Entries, int TotalCount)> GetTimeEntriesAsync(
+          Guid workItemId,
+          int? limit = null,
+          int? offset = null,
+          CancellationToken ct = default)
+      {
+          ThrowIfDisposed();
+          EnsureConnected();
+
+          var message = new Pm.WebSocketMessage
+          {
+              MessageId = Guid.NewGuid().ToString(),
+              Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+              GetTimeEntriesRequest = new Pm.GetTimeEntriesRequest
+              {
+                  WorkItemId = workItemId.ToString(),
+              }
+          };
+
+          if (limit.HasValue)
+              message.GetTimeEntriesRequest.Limit = limit.Value;
+          if (offset.HasValue)
+              message.GetTimeEntriesRequest.Offset = offset.Value;
+
+          var response = await SendRequestAsync(message, ct);
+
+          if (response.PayloadCase == Pm.WebSocketMessage.PayloadOneofCase.Error)
+              throw new ServerRejectedException(response.Error.Code, response.Error.Message);
+
+          if (response.PayloadCase != Pm.WebSocketMessage.PayloadOneofCase.TimeEntriesList)
+              throw new InvalidOperationException($"Unexpected response type: {response.PayloadCase}");
+
+          var entries = response.TimeEntriesList.TimeEntries
+              .Select(ProtoConverter.ToDomain)
+              .ToList();
+          return (entries, response.TimeEntriesList.TotalCount);
+      }
+
+      public async Task<TimeEntry?> GetRunningTimerAsync(CancellationToken ct = default)
+      {
+          ThrowIfDisposed();
+          EnsureConnected();
+
+          var message = new Pm.WebSocketMessage
+          {
+              MessageId = Guid.NewGuid().ToString(),
+              Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+              GetRunningTimerRequest = new Pm.GetRunningTimerRequest(),
+          };
+
+          var response = await SendRequestAsync(message, ct);
+
+          if (response.PayloadCase == Pm.WebSocketMessage.PayloadOneofCase.Error)
+              throw new ServerRejectedException(response.Error.Code, response.Error.Message);
+
+          if (response.PayloadCase != Pm.WebSocketMessage.PayloadOneofCase.RunningTimerResponse)
+              throw new InvalidOperationException($"Unexpected response type: {response.PayloadCase}");
+
+          return response.RunningTimerResponse.TimeEntry != null
+              ? ProtoConverter.ToDomain(response.RunningTimerResponse.TimeEntry)
+              : null;
+      }
+
+      #endregion
+
+      #region Dependency Operations
+
+      public async Task<Dependency> CreateDependencyAsync(
+          CreateDependencyRequest request,
+          CancellationToken ct = default)
+      {
+          ThrowIfDisposed();
+          EnsureConnected();
+
+          var message = new Pm.WebSocketMessage
+          {
+              MessageId = Guid.NewGuid().ToString(),
+              Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+              CreateDependencyRequest = new Pm.CreateDependencyRequest
+              {
+                  BlockingItemId = request.BlockingItemId.ToString(),
+                  BlockedItemId = request.BlockedItemId.ToString(),
+                  DependencyType = ProtoConverter.ToProto(request.Type),
+              }
+          };
+
+          var response = await SendRequestAsync(message, ct);
+
+          if (response.PayloadCase == Pm.WebSocketMessage.PayloadOneofCase.Error)
+              throw new ServerRejectedException(response.Error.Code, response.Error.Message);
+
+          if (response.PayloadCase != Pm.WebSocketMessage.PayloadOneofCase.DependencyCreated)
+              throw new InvalidOperationException($"Unexpected response type: {response.PayloadCase}");
+
+          return ProtoConverter.ToDomain(response.DependencyCreated.Dependency);
+      }
+
+      public async Task DeleteDependencyAsync(Guid dependencyId, CancellationToken ct = default)
+      {
+          ThrowIfDisposed();
+          EnsureConnected();
+
+          var message = new Pm.WebSocketMessage
+          {
+              MessageId = Guid.NewGuid().ToString(),
+              Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+              DeleteDependencyRequest = new Pm.DeleteDependencyRequest
+              {
+                  DependencyId = dependencyId.ToString(),
+              }
+          };
+
+          var response = await SendRequestAsync(message, ct);
+
+          if (response.PayloadCase == Pm.WebSocketMessage.PayloadOneofCase.Error)
+              throw new ServerRejectedException(response.Error.Code, response.Error.Message);
+
+          if (response.PayloadCase != Pm.WebSocketMessage.PayloadOneofCase.DependencyDeleted)
+              throw new InvalidOperationException($"Unexpected response type: {response.PayloadCase}");
+      }
+
+      public async Task<(IReadOnlyList<Dependency> Blocking, IReadOnlyList<Dependency> Blocked)> GetDependenciesAsync(
+          Guid workItemId,
+          CancellationToken ct = default)
+      {
+          ThrowIfDisposed();
+          EnsureConnected();
+
+          var message = new Pm.WebSocketMessage
+          {
+              MessageId = Guid.NewGuid().ToString(),
+              Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+              GetDependenciesRequest = new Pm.GetDependenciesRequest
+              {
+                  WorkItemId = workItemId.ToString(),
+              }
+          };
+
+          var response = await SendRequestAsync(message, ct);
+
+          if (response.PayloadCase == Pm.WebSocketMessage.PayloadOneofCase.Error)
+              throw new ServerRejectedException(response.Error.Code, response.Error.Message);
+
+          if (response.PayloadCase != Pm.WebSocketMessage.PayloadOneofCase.DependenciesList)
+              throw new InvalidOperationException($"Unexpected response type: {response.PayloadCase}");
+
+          var blocking = response.DependenciesList.Blocking
+              .Select(ProtoConverter.ToDomain)
+              .ToList();
+          var blocked = response.DependenciesList.Blocked
+              .Select(ProtoConverter.ToDomain)
+              .ToList();
+          return (blocking, blocked);
+      }
+
+      #endregion
 }

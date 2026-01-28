@@ -245,6 +245,48 @@ public sealed class ResilientWebSocketClient : IWebSocketClient
         remove => _inner.OnCommentDeleted -= value;
     }
 
+    public event Action<TimeEntry, TimeEntry?>? OnTimerStarted
+    {
+        add => _inner.OnTimerStarted += value;
+        remove => _inner.OnTimerStarted -= value;
+    }
+
+    public event Action<TimeEntry>? OnTimerStopped
+    {
+        add => _inner.OnTimerStopped += value;
+        remove => _inner.OnTimerStopped -= value;
+    }
+
+    public event Action<TimeEntry>? OnTimeEntryCreated
+    {
+        add => _inner.OnTimeEntryCreated += value;
+        remove => _inner.OnTimeEntryCreated -= value;
+    }
+
+    public event Action<TimeEntry>? OnTimeEntryUpdated
+    {
+        add => _inner.OnTimeEntryUpdated += value;
+        remove => _inner.OnTimeEntryUpdated -= value;
+    }
+
+    public event Action<Guid, Guid>? OnTimeEntryDeleted
+    {
+        add => _inner.OnTimeEntryDeleted += value;
+        remove => _inner.OnTimeEntryDeleted -= value;
+    }
+
+    public event Action<Dependency>? OnDependencyCreated
+    {
+        add => _inner.OnDependencyCreated += value;
+        remove => _inner.OnDependencyCreated -= value;
+    }
+
+    public event Action<Guid, Guid, Guid>? OnDependencyDeleted
+    {
+        add => _inner.OnDependencyDeleted += value;
+        remove => _inner.OnDependencyDeleted -= value;
+    }
+
     public Task<Sprint> CreateSprintAsync(
         CreateSprintRequest request,
         CancellationToken ct = default)
@@ -318,6 +360,98 @@ public sealed class ResilientWebSocketClient : IWebSocketClient
     {
         return ExecuteWithResilienceAsync(
             token => _inner.GetCommentsAsync(workItemId, token),
+            ct);
+    }
+
+    public Task<(TimeEntry Started, TimeEntry? Stopped)> StartTimerAsync(
+        StartTimerRequest request,
+        CancellationToken ct = default)
+    {
+        return ExecuteWithResilienceAsync(
+            token => _inner.StartTimerAsync(request, token),
+            ct);
+    }
+
+    public Task<TimeEntry> StopTimerAsync(Guid timeEntryId, CancellationToken ct = default)
+    {
+        return ExecuteWithResilienceAsync(
+            token => _inner.StopTimerAsync(timeEntryId, token),
+            ct);
+    }
+
+    public Task<TimeEntry> CreateTimeEntryAsync(
+        CreateTimeEntryRequest request,
+        CancellationToken ct = default)
+    {
+        return ExecuteWithResilienceAsync(
+            token => _inner.CreateTimeEntryAsync(request, token),
+            ct);
+    }
+
+    public Task<TimeEntry> UpdateTimeEntryAsync(
+        UpdateTimeEntryRequest request,
+        CancellationToken ct = default)
+    {
+        return ExecuteWithResilienceAsync(
+            token => _inner.UpdateTimeEntryAsync(request, token),
+            ct);
+    }
+
+    public Task DeleteTimeEntryAsync(Guid timeEntryId, CancellationToken ct = default)
+    {
+        return ExecuteWithResilienceAsync(
+            async token =>
+            {
+                await _inner.DeleteTimeEntryAsync(timeEntryId, token);
+                return true;
+            },
+            ct);
+    }
+
+    public Task<(IReadOnlyList<TimeEntry> Entries, int TotalCount)> GetTimeEntriesAsync(
+        Guid workItemId,
+        int? limit = null,
+        int? offset = null,
+        CancellationToken ct = default)
+    {
+        return ExecuteWithResilienceAsync(
+            token => _inner.GetTimeEntriesAsync(workItemId, limit, offset, token),
+            ct);
+    }
+
+    public Task<TimeEntry?> GetRunningTimerAsync(CancellationToken ct = default)
+    {
+        return ExecuteWithResilienceAsync(
+            token => _inner.GetRunningTimerAsync(token),
+            ct);
+    }
+
+    public Task<Dependency> CreateDependencyAsync(
+        CreateDependencyRequest request,
+        CancellationToken ct = default)
+    {
+        return ExecuteWithResilienceAsync(
+            token => _inner.CreateDependencyAsync(request, token),
+            ct);
+    }
+
+    public Task DeleteDependencyAsync(Guid dependencyId, CancellationToken ct = default)
+    {
+        return ExecuteWithResilienceAsync(
+            async token =>
+            {
+                await _inner.DeleteDependencyAsync(dependencyId, token);
+                return true;
+            },
+            ct);
+    }
+
+    public Task<(IReadOnlyList<Dependency> Blocking, IReadOnlyList<Dependency> Blocked)> GetDependenciesAsync(
+        Guid workItemId,
+        CancellationToken ct = default)
+    {
+        return ExecuteWithResilienceAsync(
+            token => _inner.GetDependenciesAsync(workItemId, token),
             ct);
     }
 }

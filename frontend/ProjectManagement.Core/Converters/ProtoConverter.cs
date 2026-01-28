@@ -376,4 +376,158 @@ public static class ProtoConverter
     }
 
     #endregion
+
+    #region TimeEntry Conversions
+
+    // ==========================================================================
+    // Time Entry Conversions
+    // ==========================================================================
+
+    /// <summary>
+    /// Convert protobuf TimeEntry to domain TimeEntry.
+    /// </summary>
+    public static TimeEntry ToDomain(Proto.TimeEntry proto)
+    {
+        ArgumentNullException.ThrowIfNull(proto);
+
+        return new TimeEntry
+        {
+            Id = ParseGuid(proto.Id, "TimeEntry.Id"),
+            WorkItemId = ParseGuid(proto.WorkItemId, "TimeEntry.WorkItemId"),
+            UserId = ParseGuid(proto.UserId, "TimeEntry.UserId"),
+            StartedAt = FromUnixTimestamp(proto.StartedAt),
+            EndedAt = proto.HasEndedAt
+                ? FromUnixTimestamp(proto.EndedAt)
+                : null,
+            DurationSeconds = proto.HasDurationSeconds ? proto.DurationSeconds : null,
+            Description = proto.HasDescription ? proto.Description : null,
+            CreatedAt = FromUnixTimestamp(proto.CreatedAt),
+            UpdatedAt = FromUnixTimestamp(proto.UpdatedAt),
+            DeletedAt = proto.HasDeletedAt
+                ? FromUnixTimestamp(proto.DeletedAt)
+                : null,
+        };
+    }
+
+    /// <summary>
+    /// Convert domain TimeEntry to protobuf TimeEntry.
+    /// </summary>
+    public static Proto.TimeEntry ToProto(TimeEntry entry)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+
+        var proto = new Proto.TimeEntry
+        {
+            Id = entry.Id.ToString(),
+            WorkItemId = entry.WorkItemId.ToString(),
+            UserId = entry.UserId.ToString(),
+            StartedAt = ToUnixTimestamp(entry.StartedAt),
+            CreatedAt = ToUnixTimestamp(entry.CreatedAt),
+            UpdatedAt = ToUnixTimestamp(entry.UpdatedAt),
+        };
+
+        if (entry.EndedAt.HasValue)
+        {
+            proto.EndedAt = ToUnixTimestamp(entry.EndedAt.Value);
+        }
+
+        if (entry.DurationSeconds.HasValue)
+        {
+            proto.DurationSeconds = entry.DurationSeconds.Value;
+        }
+
+        if (entry.Description != null)
+        {
+            proto.Description = entry.Description;
+        }
+
+        if (entry.DeletedAt.HasValue)
+        {
+            proto.DeletedAt = ToUnixTimestamp(entry.DeletedAt.Value);
+        }
+
+        return proto;
+    }
+
+    #endregion
+
+    #region Dependency Conversions
+
+    // ==========================================================================
+    // Dependency Conversions
+    // ==========================================================================
+
+    /// <summary>
+    /// Convert protobuf Dependency to domain Dependency.
+    /// </summary>
+    public static Dependency ToDomain(Proto.Dependency proto)
+    {
+        ArgumentNullException.ThrowIfNull(proto);
+
+        return new Dependency
+        {
+            Id = ParseGuid(proto.Id, "Dependency.Id"),
+            BlockingItemId = ParseGuid(proto.BlockingItemId, "Dependency.BlockingItemId"),
+            BlockedItemId = ParseGuid(proto.BlockedItemId, "Dependency.BlockedItemId"),
+            Type = ToDomain(proto.DependencyType),
+            CreatedAt = FromUnixTimestamp(proto.CreatedAt),
+            CreatedBy = ParseGuid(proto.CreatedBy, "Dependency.CreatedBy"),
+            DeletedAt = proto.HasDeletedAt
+                ? FromUnixTimestamp(proto.DeletedAt)
+                : null,
+        };
+    }
+
+    /// <summary>
+    /// Convert domain Dependency to protobuf Dependency.
+    /// </summary>
+    public static Proto.Dependency ToProto(Dependency dep)
+    {
+        ArgumentNullException.ThrowIfNull(dep);
+
+        var proto = new Proto.Dependency
+        {
+            Id = dep.Id.ToString(),
+            BlockingItemId = dep.BlockingItemId.ToString(),
+            BlockedItemId = dep.BlockedItemId.ToString(),
+            DependencyType = ToProto(dep.Type),
+            CreatedAt = ToUnixTimestamp(dep.CreatedAt),
+            CreatedBy = dep.CreatedBy.ToString(),
+        };
+
+        if (dep.DeletedAt.HasValue)
+        {
+            proto.DeletedAt = ToUnixTimestamp(dep.DeletedAt.Value);
+        }
+
+        return proto;
+    }
+
+    /// <summary>
+    /// Convert protobuf DependencyType to domain DependencyType.
+    /// </summary>
+    public static DependencyType ToDomain(Proto.DependencyType proto)
+    {
+        return proto switch
+        {
+            Proto.DependencyType.Blocks => DependencyType.Blocks,
+            Proto.DependencyType.RelatesTo => DependencyType.RelatesTo,
+            _ => throw new ArgumentOutOfRangeException(nameof(proto), proto, "Unknown dependency type")
+        };
+    }
+
+    /// <summary>
+    /// Convert domain DependencyType to protobuf DependencyType.
+    /// </summary>
+    public static Proto.DependencyType ToProto(DependencyType type)
+    {
+        return type switch
+        {
+            DependencyType.Blocks => Proto.DependencyType.Blocks,
+            DependencyType.RelatesTo => Proto.DependencyType.RelatesTo,
+            _ => throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown dependency type")
+        };
+    }
+
+    #endregion
 }
