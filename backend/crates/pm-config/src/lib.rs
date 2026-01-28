@@ -27,8 +27,10 @@ pub use rate_limit_config::RateLimitConfig;
 pub use retry_config::RetryConfig;
 pub use server_config::ServerConfig;
 pub use validation_config::{
-    MAX_FUTURE_TIMESTAMP_TOLERANCE_SECONDS, MAX_TIME_ENTRY_DESCRIPTION_LENGTH,
-    MAX_TIME_ENTRY_DURATION_SECONDS, ValidationConfig,
+    DEFAULT_TIME_ENTRIES_LIMIT, MAX_BLOCKED_DEPENDENCIES_PER_ITEM,
+    MAX_BLOCKING_DEPENDENCIES_PER_ITEM, MAX_FUTURE_TIMESTAMP_TOLERANCE_SECONDS,
+    MAX_TIME_ENTRIES_LIMIT, MAX_TIME_ENTRY_DESCRIPTION_LENGTH, MAX_TIME_ENTRY_DURATION_SECONDS,
+    ValidationConfig,
 };
 pub use websocket_config::WebSocketConfig;
 

@@ -139,7 +139,7 @@ async fn given_valid_request_when_create_sprint_then_succeeds() {
             let sprint = created.sprint.as_ref().unwrap();
             assert_eq!(sprint.name, "Sprint 1");
             assert_eq!(
-                sprint.goal.as_ref().map(|s| s.as_str()),
+                sprint.goal.as_deref(),
                 Some("Complete MVP")
             );
             assert_eq!(sprint.status, ProtoSprintStatus::Planned as i32);

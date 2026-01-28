@@ -1,13 +1,17 @@
 use crate::{Result as WsErrorResult, WsError};
 
 use pm_db::IdempotencyRepository;
+use pm_proto::WebSocketMessage;
 
 use std::panic::Location;
 
+use base64::Engine;
 use error_location::ErrorLocation;
+use log::warn;
+use prost::Message;
 use sqlx::SqlitePool;
 
-/// Check if a message has already been processed.                                                     
+/// Check if a message has already been processed.
 /// Returns Some(cached_result) if replay, None if new request.                                        
 pub async fn check_idempotency(
     pool: &SqlitePool,
@@ -36,4 +40,36 @@ pub async fn store_idempotency(
             message: format!("Failed to store idempotency: {e}"),
             location: ErrorLocation::from(Location::caller()),
         })
+}
+
+/// Decode a cached protobuf response from base64-encoded string.
+/// Returns the decoded WebSocketMessage.
+pub fn decode_cached_response(cached_b64: &str) -> WsErrorResult<WebSocketMessage> {
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(cached_b64)
+        .map_err(|e| WsError::Internal {
+            message: format!("Failed to decode cached response: {e}"),
+            location: ErrorLocation::from(Location::caller()),
+        })?;
+
+    WebSocketMessage::decode(&*bytes).map_err(|e| WsError::Internal {
+        message: format!("Failed to decode cached protobuf: {e}"),
+        location: ErrorLocation::from(Location::caller()),
+    })
+}
+
+/// Store idempotency with non-fatal error handling.
+/// Logs a warning if storage fails but doesn't propagate the error.
+pub async fn store_idempotency_non_fatal(
+    pool: &SqlitePool,
+    message_id: &str,
+    operation: &str,
+    response: &WebSocketMessage,
+) {
+    let response_bytes = response.encode_to_vec();
+    let response_b64 = base64::engine::general_purpose::STANDARD.encode(&response_bytes);
+
+    if let Err(e) = store_idempotency(pool, message_id, operation, &response_b64).await {
+        warn!("Failed to store idempotency for {operation} (non-fatal): {e}");
+    }
 }

@@ -19,7 +19,7 @@ This plan has been split into sub-sessions to fit within token budgets:
 | Session | Scope | Est. Tokens | Status |
 |---------|-------|-------------|--------|
 | **[60.1](60.1-Session-Plan.md)** | Protocol Definition & Backend Infrastructure | ~40-50k | ✅ Complete (2026-01-27) |
-| **[60.2](60.2-Session-Plan.md)** | Backend Handlers (Time Entry & Dependency) | ~45-55k | Pending |
+| **[60.2](60.2-Session-Plan.md)** | Backend Handlers (Time Entry & Dependency) | ~45-55k | ✅ Complete (2026-01-27) |
 | **[60.3](60.3-Session-Plan.md)** | Frontend Models & WebSocket Integration | ~35-45k | Pending |
 | **[60.4](60.4-Session-Plan.md)** | Frontend State Management & UI Components | ~40-50k | Pending |
 | **[60.5](60.5-Session-Plan.md)** | Tests & Integration Verification | ~35-45k | Pending |
@@ -72,17 +72,31 @@ This plan has been split into sub-sessions to fit within token budgets:
 
 ---
 
-## Session 60.2: Backend Handlers
+## Session 60.2: Backend Handlers ✅
 
-**Files Created:**
-- `pm-ws/src/handlers/time_entry.rs` - 7 handlers with atomic timer operations
-- `pm-ws/src/handlers/dependency.rs` - 3 handlers with cycle detection
+**Status**: Complete (2026-01-27)
 
-**Files Modified:**
-- `pm-ws/src/handlers/dispatcher.rs` - Wire 10 new handlers to dispatcher
-- `pm-ws/src/handlers/mod.rs` - Export new handler modules
+**Files Created (2):**
+- `pm-ws/src/handlers/time_entry.rs` - 7 handlers with atomic timer operations (582 lines)
+- `pm-ws/src/handlers/dependency.rs` - 3 handlers with BFS cycle detection (456 lines)
 
-**Verification:** `just check-backend && just clippy-backend`
+**Files Modified (4):**
+- `pm-config/src/lib.rs` - Exported MAX_BLOCKING/BLOCKED_DEPENDENCIES constants
+- `pm-ws/src/handlers/dispatcher.rs` - Added 10 handler dispatch cases
+- `pm-ws/src/handlers/mod.rs` - Exported time_entry and dependency modules
+- `pm-ws/tests/sprint_handler_tests.rs` - Fixed clippy warning (as_deref)
+
+**What Was Delivered:**
+- ✅ Atomic timer operations (check-stop-create in single transaction)
+- ✅ Owner-only mutations for time entries (update, delete)
+- ✅ BFS cycle detection with path reconstruction
+- ✅ Complete business rule validation (self-ref, same-project, duplicates, limits)
+- ✅ Activity logging for all mutations
+- ✅ Idempotency support
+- ✅ Permission checks (Edit for mutations, View for queries)
+- ✅ Soft deletes throughout
+
+**Verification:** ✅ `just check-backend && just clippy-backend && just test-backend` (219 tests passing, 0 warnings)
 
 ---
 

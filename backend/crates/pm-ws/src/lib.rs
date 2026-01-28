@@ -37,6 +37,7 @@ pub use handlers::{
     connection::extract_user_id,
     context::HandlerContext,
     db_ops::{db_read, db_transaction, db_write},
+    dependency::{handle_create_dependency, handle_delete_dependency, handle_get_dependencies},
     dispatcher::dispatch,
     error_boundary::{sanitize_error_message, with_error_boundary},
     error_codes::{
@@ -45,7 +46,9 @@ pub use handlers::{
     },
     field_change_builder::FieldChangeBuilder,
     hierarchy_validator::validate_hierarchy,
-    idempotency::{check_idempotency, store_idempotency},
+    idempotency::{
+        check_idempotency, decode_cached_response, store_idempotency, store_idempotency_non_fatal,
+    },
     project::{
         handle_create as handle_create_project, handle_delete as handle_delete_project,
         handle_list, handle_update as handle_update_project,
@@ -66,6 +69,10 @@ pub use handlers::{
     },
     sprint::{
         handle_create_sprint, handle_delete_sprint, handle_get_sprints, handle_update_sprint,
+    },
+    time_entry::{
+        handle_create_time_entry, handle_delete_time_entry, handle_get_running_timer,
+        handle_get_time_entries, handle_start_timer, handle_stop_timer, handle_update_time_entry,
     },
     work_item::{
         handle_create, handle_delete, handle_update, sanitize_string, validate_priority,
