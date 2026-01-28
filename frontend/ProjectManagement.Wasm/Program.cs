@@ -73,6 +73,8 @@ builder.Services.AddSingleton<IWorkItemStore, WorkItemStore>();
 builder.Services.AddSingleton<ISprintStore, SprintStore>();
 builder.Services.AddSingleton<IProjectStore, ProjectStore>();
 builder.Services.AddSingleton<ICommentStore, CommentStore>();
+builder.Services.AddSingleton<ITimeEntryStore, TimeEntryStore>();
+builder.Services.AddSingleton<IDependencyStore, DependencyStore>();
 builder.Services.AddSingleton<AppState>();
 
 // === ViewModels ===

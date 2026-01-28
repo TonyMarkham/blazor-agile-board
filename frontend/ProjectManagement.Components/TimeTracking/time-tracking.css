@@ -1,0 +1,111 @@
+/* Timer Widget */
+.timer-widget {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border-radius: 0.375rem;
+    background: var(--rz-base-200, #f3f4f6);
+}
+
+.timer-widget.running {
+    background: var(--rz-success-light, #d1fae5);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.85; }
+}
+
+.timer-display {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.timer-display .elapsed {
+    font-family: ui-monospace, SFMono-Regular, monospace;
+    font-size: 1.125rem;
+    font-weight: 600;
+    min-width: 5rem;
+}
+
+.timer-widget .description {
+    color: var(--rz-text-secondary, #6b7280);
+    font-size: 0.875rem;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Time Entry List */
+.time-entry-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.time-entry-list .entry {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    gap: 0.75rem;
+    align-items: center;
+    padding: 0.75rem;
+    border-radius: 0.25rem;
+    background: var(--rz-base-100, #ffffff);
+    border: 1px solid var(--rz-base-300, #e5e7eb);
+}
+
+.time-entry-list .entry.pending {
+    opacity: 0.6;
+}
+
+.time-entry-list .entry-time {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    min-width: 100px;
+}
+
+.time-entry-list .entry-time .duration {
+    font-family: ui-monospace, SFMono-Regular, monospace;
+    font-weight: 600;
+}
+
+.time-entry-list .entry-time .range {
+    font-size: 0.75rem;
+    color: var(--rz-text-secondary, #6b7280);
+}
+
+.time-entry-list .entry-description {
+    color: var(--rz-text-secondary, #6b7280);
+    font-size: 0.875rem;
+}
+
+.time-entry-list .total {
+    display: flex;
+    justify-content: space-between;
+    padding-top: 0.75rem;
+    margin-top: 0.5rem;
+    border-top: 1px solid var(--rz-base-300, #e5e7eb);
+    font-weight: 600;
+}
+
+/* Time Entry Dialog */
+.time-entry-dialog .form-group {
+    margin-bottom: 1rem;
+}
+
+.time-entry-dialog .form-group label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-weight: 500;
+}
+
+.time-entry-dialog .datetime-inputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}

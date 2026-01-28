@@ -1,0 +1,38 @@
+@using ProjectManagement.Core.Interfaces
+@inject IDependencyStore DependencyStore
+@implements IDisposable
+
+@if (IsBlocked)
+{
+    <div class="blocked-indicator" title="@BlockedByText">
+        <RadzenIcon Icon="block" />
+        <span>Blocked@(BlockedByCount > 1 ? $" ({BlockedByCount})" : "")</span>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public Guid WorkItemId { get; set; }
+
+    private bool IsBlocked => DependencyStore.IsBlocked(WorkItemId);
+    private int BlockedByCount => DependencyStore.GetBlockingCount(WorkItemId);
+
+    private string BlockedByText => BlockedByCount == 1
+        ? "Blocked by 1 item"
+        : $"Blocked by {BlockedByCount} items";
+
+    protected override void OnInitialized()
+    {
+        DependencyStore.OnChanged += HandleChanged;
+    }
+
+    private void HandleChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        DependencyStore.OnChanged -= HandleChanged;
+    }
+
+}

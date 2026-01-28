@@ -1,0 +1,131 @@
+@using ProjectManagement.Core.Interfaces
+@using ProjectManagement.Core.Models
+@inject ITimeEntryStore TimeEntryStore
+@implements IDisposable
+
+<div class="timer-widget @(IsRunningOnThis ? "running" : "")">
+  @if (IsRunningOnThis)
+  {
+      <div class="timer-display">
+          <RadzenIcon Icon="timer" />
+          <span class="elapsed">@FormatElapsed()</span>
+      </div>
+      @if (!string.IsNullOrEmpty(RunningTimer?.Description))
+      {
+          <span class="description" title="@RunningTimer.Description">
+              @RunningTimer.Description
+          </span>
+      }
+      <RadzenButton Icon="stop"
+                    ButtonStyle="ButtonStyle.Danger"
+                    Size="ButtonSize.Small"
+                    Click="HandleStopTimer"
+                    IsBusy="@_isBusy"
+                    title="Stop timer" />
+  }
+  else if (HasRunningTimerElsewhere)
+  {
+      <RadzenButton Icon="swap_horiz"
+                    Text="Switch here"
+                    ButtonStyle="ButtonStyle.Warning"
+                    Size="ButtonSize.Small"
+                    Click="HandleStartTimer"
+                    IsBusy="@_isBusy"
+                    title="Stop current timer and start here" />
+  }
+  else
+  {
+      <RadzenButton Icon="play_arrow"
+                    Text="Start Timer"
+                    ButtonStyle="ButtonStyle.Primary"
+                    Size="ButtonSize.Small"
+                    Click="HandleStartTimer"
+                    IsBusy="@_isBusy" />
+  }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Guid WorkItemId { get; set; }
+
+    [Parameter] public string? DefaultDescription { get; set; }
+
+    private TimeEntry? RunningTimer => TimeEntryStore.GetRunningTimer();
+    private bool IsRunningOnThis => RunningTimer?.WorkItemId == WorkItemId;
+    private bool HasRunningTimerElsewhere => RunningTimer != null && !IsRunningOnThis;
+
+    private bool _isBusy;
+    private Timer? _refreshTimer;
+
+    protected override void OnInitialized()
+    {
+        TimeEntryStore.OnChanged += HandleStoreChanged;
+
+        // Refresh display every second when any timer is running
+        _refreshTimer = new Timer(_ =>
+        {
+            if (RunningTimer != null)
+            {
+                InvokeAsync(StateHasChanged);
+            }
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+    }
+
+    private async Task HandleStartTimer()
+    {
+        _isBusy = true;
+        try
+        {
+            await TimeEntryStore.StartTimerAsync(new StartTimerRequest
+            {
+                WorkItemId = WorkItemId,
+                Description = DefaultDescription
+            });
+        }
+        catch (Exception ex)
+        {
+            // TODO: Show error toast
+            Console.Error.WriteLine($"Failed to start timer: {ex.Message}");
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private async Task HandleStopTimer()
+    {
+        if (RunningTimer == null) return;
+
+        _isBusy = true;
+        try
+        {
+            await TimeEntryStore.StopTimerAsync(RunningTimer.Id);
+        }
+        catch (Exception ex)
+        {
+            // TODO: Show error toast
+            Console.Error.WriteLine($"Failed to stop timer: {ex.Message}");
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private string FormatElapsed()
+    {
+        return RunningTimer?.ElapsedFormatted ?? "00:00";
+    }
+
+    private void HandleStoreChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        TimeEntryStore.OnChanged -= HandleStoreChanged;
+        _refreshTimer?.Dispose();
+    }
+
+}
