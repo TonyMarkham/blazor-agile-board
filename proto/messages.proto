@@ -111,6 +111,116 @@ message Comment {
   optional int64 deleted_at = 8;
 }
 
+// === Time Entry Commands ===
+
+message StartTimerRequest {
+  string work_item_id = 1;
+  optional string description = 2;
+}
+
+message StopTimerRequest {
+  string time_entry_id = 1;
+}
+
+message CreateTimeEntryRequest {
+  string work_item_id = 1;
+  int64 started_at = 2;      // UTC Unix seconds
+  int64 ended_at = 3;        // UTC Unix seconds
+  optional string description = 4;
+}
+
+message UpdateTimeEntryRequest {
+  string time_entry_id = 1;
+  optional int64 started_at = 2;
+  optional int64 ended_at = 3;
+  optional string description = 4;
+}
+
+message DeleteTimeEntryRequest {
+  string time_entry_id = 1;
+}
+
+message GetTimeEntriesRequest {
+  string work_item_id = 1;
+  optional int32 limit = 2;   // Default 100, max 500
+  optional int32 offset = 3;  // For pagination
+}
+
+message GetRunningTimerRequest {}
+
+// === Time Entry Events ===
+
+message TimerStarted {
+  TimeEntry time_entry = 1;
+  string user_id = 2;
+  optional TimeEntry stopped_entry = 3;  // Previous timer that was auto-stopped
+}
+
+message TimerStopped {
+  TimeEntry time_entry = 1;
+  string user_id = 2;
+}
+
+message TimeEntryCreated {
+  TimeEntry time_entry = 1;
+  string user_id = 2;
+}
+
+message TimeEntryUpdated {
+  TimeEntry time_entry = 1;
+  string user_id = 2;
+}
+
+message TimeEntryDeleted {
+  string time_entry_id = 1;
+  string work_item_id = 2;  // For UI to know which list to update
+  string user_id = 3;
+}
+
+message TimeEntriesList {
+  repeated TimeEntry time_entries = 1;
+  int32 total_count = 2;  // For pagination
+}
+
+message RunningTimerResponse {
+  optional TimeEntry time_entry = 1;
+}
+
+// === Dependency Commands ===
+
+message CreateDependencyRequest {
+  string blocking_item_id = 1;
+  string blocked_item_id = 2;
+  DependencyType dependency_type = 3;
+}
+
+message DeleteDependencyRequest {
+  string dependency_id = 1;
+}
+
+message GetDependenciesRequest {
+  string work_item_id = 1;
+}
+
+// === Dependency Events ===
+
+message DependencyCreated {
+  Dependency dependency = 1;
+  string user_id = 2;
+}
+
+message DependencyDeleted {
+  string dependency_id = 1;
+  string blocking_item_id = 2;  // For UI to know which lists to update
+  string blocked_item_id = 3;
+  string user_id = 4;
+}
+
+message DependenciesList {
+  repeated Dependency blocking = 1;  // Items blocking this one
+  repeated Dependency blocked = 2;   // Items blocked by this one
+}
+
 message TimeEntry {
   string id = 1;
   string work_item_id = 2;
@@ -274,6 +384,34 @@ message WebSocketMessage {
 
     // Error
     Error error = 100;
+
+    // Time Entry Commands (110-119)
+    StartTimerRequest start_timer_request = 110;
+    StopTimerRequest stop_timer_request = 111;
+    CreateTimeEntryRequest create_time_entry_request = 112;
+    UpdateTimeEntryRequest update_time_entry_request = 113;
+    DeleteTimeEntryRequest delete_time_entry_request = 114;
+    GetTimeEntriesRequest get_time_entries_request = 115;
+    GetRunningTimerRequest get_running_timer_request = 116;
+
+    // Time Entry Events (120-129)
+    TimerStarted timer_started = 120;
+    TimerStopped timer_stopped = 121;
+    TimeEntryCreated time_entry_created = 122;
+    TimeEntryUpdated time_entry_updated = 123;
+    TimeEntryDeleted time_entry_deleted = 124;
+    TimeEntriesList time_entries_list = 125;
+    RunningTimerResponse running_timer_response = 126;
+
+    // Dependency Commands (130-134)
+    CreateDependencyRequest create_dependency_request = 130;
+    DeleteDependencyRequest delete_dependency_request = 131;
+    GetDependenciesRequest get_dependencies_request = 132;
+
+    // Dependency Events (135-139)
+    DependencyCreated dependency_created = 135;
+    DependencyDeleted dependency_deleted = 136;
+    DependenciesList dependencies_list = 137;
   }
 }
 

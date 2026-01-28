@@ -1,8 +1,11 @@
-use crate::Result as DbErrorResult;
+use crate::{DbError, Result as DbErrorResult};
 
 use pm_core::SwimLane;
 
+use std::panic::Location;
+
 use chrono::DateTime;
+use error_location::ErrorLocation;
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
@@ -61,17 +64,42 @@ impl SwimLaneRepository {
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(row.map(|r| SwimLane {
-            id: Uuid::parse_str(r.id.as_ref().unwrap()).unwrap(),
-            project_id: Uuid::parse_str(&r.project_id).unwrap(),
-            name: r.name,
-            status_value: r.status_value,
-            position: r.position as i32,
-            is_default: r.is_default,
-            created_at: DateTime::from_timestamp(r.created_at, 0).unwrap(),
-            updated_at: DateTime::from_timestamp(r.updated_at, 0).unwrap(),
-            deleted_at: r.deleted_at.and_then(|ts| DateTime::from_timestamp(ts, 0)),
-        }))
+        row.map(|r| -> DbErrorResult<SwimLane> {
+            Ok(SwimLane {
+                id: Uuid::parse_str(r.id.as_ref().ok_or_else(|| DbError::Initialization {
+                    message: "swim_lane.id is NULL".to_string(),
+                    location: ErrorLocation::from(Location::caller()),
+                })?)
+                .map_err(|e| DbError::Initialization {
+                    message: format!("Invalid UUID in swim_lane.id: {}", e),
+                    location: ErrorLocation::from(Location::caller()),
+                })?,
+                project_id: Uuid::parse_str(&r.project_id).map_err(|e| {
+                    DbError::Initialization {
+                        message: format!("Invalid UUID in swim_lane.project_id: {}", e),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                name: r.name,
+                status_value: r.status_value,
+                position: r.position as i32,
+                is_default: r.is_default,
+                created_at: DateTime::from_timestamp(r.created_at, 0).ok_or_else(|| {
+                    DbError::Initialization {
+                        message: "Invalid timestamp in swim_lane.created_at".to_string(),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                updated_at: DateTime::from_timestamp(r.updated_at, 0).ok_or_else(|| {
+                    DbError::Initialization {
+                        message: "Invalid timestamp in swim_lane.updated_at".to_string(),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                deleted_at: r.deleted_at.and_then(|ts| DateTime::from_timestamp(ts, 0)),
+            })
+        })
+        .transpose()
     }
 
     pub async fn find_by_project(&self, project_id: Uuid) -> DbErrorResult<Vec<SwimLane>> {
@@ -90,20 +118,43 @@ impl SwimLaneRepository {
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(rows
-            .into_iter()
-            .map(|r| SwimLane {
-                id: Uuid::parse_str(r.id.as_ref().unwrap()).unwrap(),
-                project_id: Uuid::parse_str(&r.project_id).unwrap(),
-                name: r.name,
-                status_value: r.status_value,
-                position: r.position as i32,
-                is_default: r.is_default,
-                created_at: DateTime::from_timestamp(r.created_at, 0).unwrap(),
-                updated_at: DateTime::from_timestamp(r.updated_at, 0).unwrap(),
-                deleted_at: r.deleted_at.and_then(|ts| DateTime::from_timestamp(ts, 0)),
+        rows.into_iter()
+            .map(|r| -> DbErrorResult<SwimLane> {
+                Ok(SwimLane {
+                    id: Uuid::parse_str(r.id.as_ref().ok_or_else(|| DbError::Initialization {
+                        message: "swim_lane.id is NULL".to_string(),
+                        location: ErrorLocation::from(Location::caller()),
+                    })?)
+                    .map_err(|e| DbError::Initialization {
+                        message: format!("Invalid UUID in swim_lane.id: {}", e),
+                        location: ErrorLocation::from(Location::caller()),
+                    })?,
+                    project_id: Uuid::parse_str(&r.project_id).map_err(|e| {
+                        DbError::Initialization {
+                            message: format!("Invalid UUID in swim_lane.project_id: {}", e),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    name: r.name,
+                    status_value: r.status_value,
+                    position: r.position as i32,
+                    is_default: r.is_default,
+                    created_at: DateTime::from_timestamp(r.created_at, 0).ok_or_else(|| {
+                        DbError::Initialization {
+                            message: "Invalid timestamp in swim_lane.created_at".to_string(),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    updated_at: DateTime::from_timestamp(r.updated_at, 0).ok_or_else(|| {
+                        DbError::Initialization {
+                            message: "Invalid timestamp in swim_lane.updated_at".to_string(),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    deleted_at: r.deleted_at.and_then(|ts| DateTime::from_timestamp(ts, 0)),
+                })
             })
-            .collect())
+            .collect::<DbErrorResult<Vec<_>>>()
     }
 
     pub async fn update(&self, lane: &SwimLane) -> DbErrorResult<()> {

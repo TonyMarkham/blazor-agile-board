@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n              SELECT id, blocking_item_id, blocked_item_id, dependency_type,\n                     created_at, created_by, deleted_at\n              FROM pm_dependencies\n              WHERE id = ? AND deleted_at IS NULL\n              ",
+  "query": "\n                SELECT id, blocking_item_id, blocked_item_id, dependency_type,\n                       created_at, created_by, deleted_at\n                FROM pm_dependencies\n                WHERE id = ? AND deleted_at IS NULL\n                ",
   "describe": {
     "columns": [
       {
@@ -52,5 +52,5 @@
       true
     ]
   },
-  "hash": "d17b705cda212c579d6197989b7028cb41b01c183759fb986633b605632165f0"
+  "hash": "645fa6e2feee1722b8877fc45d936a787302e2d07db68185daab96f4f6e83218"
 }

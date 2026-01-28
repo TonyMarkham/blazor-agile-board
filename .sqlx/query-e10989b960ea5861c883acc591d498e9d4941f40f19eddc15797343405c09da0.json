@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n              SELECT id, entity_type, entity_id, action,\n                     field_name, old_value, new_value,\n                     user_id, timestamp, comment\n              FROM pm_activity_log\n              WHERE user_id = ?\n              ORDER BY timestamp DESC\n              LIMIT ?\n              ",
+  "query": "\n                SELECT id, entity_type, entity_id, action,\n                       field_name, old_value, new_value,\n                       user_id, timestamp, comment\n                FROM pm_activity_log\n                WHERE entity_type = ? AND entity_id = ?\n                ORDER BY timestamp DESC\n                ",
   "describe": {
     "columns": [
       {
@@ -70,5 +70,5 @@
       true
     ]
   },
-  "hash": "80240b7ca5fc1db6f89d9107330f0d198f0d542ed8e2f06c83437da5242680e9"
+  "hash": "e10989b960ea5861c883acc591d498e9d4941f40f19eddc15797343405c09da0"
 }

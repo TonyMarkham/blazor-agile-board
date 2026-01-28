@@ -1,10 +1,12 @@
-use crate::Result as DbErrorResult;
+use crate::{DbError, Result as DbErrorResult};
 
 use pm_core::{Sprint, SprintStatus};
 
+use std::panic::Location;
 use std::str::FromStr;
 
 use chrono::DateTime;
+use error_location::ErrorLocation;
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
@@ -72,21 +74,69 @@ impl SprintRepository {
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(row.map(|r| Sprint {
-            id: Uuid::parse_str(r.id.as_ref().unwrap()).unwrap(),
-            project_id: Uuid::parse_str(&r.project_id).unwrap(),
-            name: r.name,
-            goal: r.goal,
-            start_date: DateTime::from_timestamp(r.start_date, 0).unwrap(),
-            end_date: DateTime::from_timestamp(r.end_date, 0).unwrap(),
-            status: SprintStatus::from_str(&r.status).unwrap(),
-            version: r.version as i32,
-            created_at: DateTime::from_timestamp(r.created_at, 0).unwrap(),
-            updated_at: DateTime::from_timestamp(r.updated_at, 0).unwrap(),
-            created_by: Uuid::parse_str(&r.created_by).unwrap(),
-            updated_by: Uuid::parse_str(&r.updated_by).unwrap(),
-            deleted_at: r.deleted_at.and_then(|ts| DateTime::from_timestamp(ts, 0)),
-        }))
+        row.map(|r| -> DbErrorResult<Sprint> {
+            Ok(Sprint {
+                id: Uuid::parse_str(r.id.as_ref().ok_or_else(|| DbError::Initialization {
+                    message: "sprint.id is NULL".to_string(),
+                    location: ErrorLocation::from(Location::caller()),
+                })?)
+                .map_err(|e| DbError::Initialization {
+                    message: format!("Invalid UUID in sprint.id: {}", e),
+                    location: ErrorLocation::from(Location::caller()),
+                })?,
+                project_id: Uuid::parse_str(&r.project_id).map_err(|e| {
+                    DbError::Initialization {
+                        message: format!("Invalid UUID in sprint.project_id: {}", e),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                name: r.name,
+                goal: r.goal,
+                start_date: DateTime::from_timestamp(r.start_date, 0).ok_or_else(|| {
+                    DbError::Initialization {
+                        message: "Invalid timestamp in sprint.start_date".to_string(),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                end_date: DateTime::from_timestamp(r.end_date, 0).ok_or_else(|| {
+                    DbError::Initialization {
+                        message: "Invalid timestamp in sprint.end_date".to_string(),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                status: SprintStatus::from_str(&r.status).map_err(|e| DbError::Initialization {
+                    message: format!("Invalid SprintStatus in sprint.status: {}", e),
+                    location: ErrorLocation::from(Location::caller()),
+                })?,
+                version: r.version as i32,
+                created_at: DateTime::from_timestamp(r.created_at, 0).ok_or_else(|| {
+                    DbError::Initialization {
+                        message: "Invalid timestamp in sprint.created_at".to_string(),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                updated_at: DateTime::from_timestamp(r.updated_at, 0).ok_or_else(|| {
+                    DbError::Initialization {
+                        message: "Invalid timestamp in sprint.updated_at".to_string(),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                created_by: Uuid::parse_str(&r.created_by).map_err(|e| {
+                    DbError::Initialization {
+                        message: format!("Invalid UUID in sprint.created_by: {}", e),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                updated_by: Uuid::parse_str(&r.updated_by).map_err(|e| {
+                    DbError::Initialization {
+                        message: format!("Invalid UUID in sprint.updated_by: {}", e),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                deleted_at: r.deleted_at.and_then(|ts| DateTime::from_timestamp(ts, 0)),
+            })
+        })
+        .transpose()
     }
 
     pub async fn find_by_project(&self, project_id: Uuid) -> DbErrorResult<Vec<Sprint>> {
@@ -105,24 +155,72 @@ impl SprintRepository {
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(rows
-            .into_iter()
-            .map(|r| Sprint {
-                id: Uuid::parse_str(r.id.as_ref().unwrap()).unwrap(),
-                project_id: Uuid::parse_str(&r.project_id).unwrap(),
-                name: r.name,
-                goal: r.goal,
-                start_date: DateTime::from_timestamp(r.start_date, 0).unwrap(),
-                end_date: DateTime::from_timestamp(r.end_date, 0).unwrap(),
-                status: SprintStatus::from_str(&r.status).unwrap(),
-                version: r.version as i32,
-                created_at: DateTime::from_timestamp(r.created_at, 0).unwrap(),
-                updated_at: DateTime::from_timestamp(r.updated_at, 0).unwrap(),
-                created_by: Uuid::parse_str(&r.created_by).unwrap(),
-                updated_by: Uuid::parse_str(&r.updated_by).unwrap(),
-                deleted_at: r.deleted_at.and_then(|ts| DateTime::from_timestamp(ts, 0)),
+        rows.into_iter()
+            .map(|r| -> DbErrorResult<Sprint> {
+                Ok(Sprint {
+                    id: Uuid::parse_str(r.id.as_ref().ok_or_else(|| DbError::Initialization {
+                        message: "sprint.id is NULL".to_string(),
+                        location: ErrorLocation::from(Location::caller()),
+                    })?)
+                    .map_err(|e| DbError::Initialization {
+                        message: format!("Invalid UUID in sprint.id: {}", e),
+                        location: ErrorLocation::from(Location::caller()),
+                    })?,
+                    project_id: Uuid::parse_str(&r.project_id).map_err(|e| {
+                        DbError::Initialization {
+                            message: format!("Invalid UUID in sprint.project_id: {}", e),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    name: r.name,
+                    goal: r.goal,
+                    start_date: DateTime::from_timestamp(r.start_date, 0).ok_or_else(|| {
+                        DbError::Initialization {
+                            message: "Invalid timestamp in sprint.start_date".to_string(),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    end_date: DateTime::from_timestamp(r.end_date, 0).ok_or_else(|| {
+                        DbError::Initialization {
+                            message: "Invalid timestamp in sprint.end_date".to_string(),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    status: SprintStatus::from_str(&r.status).map_err(|e| {
+                        DbError::Initialization {
+                            message: format!("Invalid SprintStatus in sprint.status: {}", e),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    version: r.version as i32,
+                    created_at: DateTime::from_timestamp(r.created_at, 0).ok_or_else(|| {
+                        DbError::Initialization {
+                            message: "Invalid timestamp in sprint.created_at".to_string(),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    updated_at: DateTime::from_timestamp(r.updated_at, 0).ok_or_else(|| {
+                        DbError::Initialization {
+                            message: "Invalid timestamp in sprint.updated_at".to_string(),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    created_by: Uuid::parse_str(&r.created_by).map_err(|e| {
+                        DbError::Initialization {
+                            message: format!("Invalid UUID in sprint.created_by: {}", e),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    updated_by: Uuid::parse_str(&r.updated_by).map_err(|e| {
+                        DbError::Initialization {
+                            message: format!("Invalid UUID in sprint.updated_by: {}", e),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    deleted_at: r.deleted_at.and_then(|ts| DateTime::from_timestamp(ts, 0)),
+                })
             })
-            .collect())
+            .collect::<DbErrorResult<Vec<_>>>()
     }
 
     pub async fn find_active_by_project(&self, project_id: Uuid) -> DbErrorResult<Option<Sprint>> {
@@ -142,21 +240,69 @@ impl SprintRepository {
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(row.map(|r| Sprint {
-            id: Uuid::parse_str(r.id.as_ref().unwrap()).unwrap(),
-            project_id: Uuid::parse_str(&r.project_id).unwrap(),
-            name: r.name,
-            goal: r.goal,
-            start_date: DateTime::from_timestamp(r.start_date, 0).unwrap(),
-            end_date: DateTime::from_timestamp(r.end_date, 0).unwrap(),
-            status: SprintStatus::from_str(&r.status).unwrap(),
-            version: r.version as i32,
-            created_at: DateTime::from_timestamp(r.created_at, 0).unwrap(),
-            updated_at: DateTime::from_timestamp(r.updated_at, 0).unwrap(),
-            created_by: Uuid::parse_str(&r.created_by).unwrap(),
-            updated_by: Uuid::parse_str(&r.updated_by).unwrap(),
-            deleted_at: r.deleted_at.and_then(|ts| DateTime::from_timestamp(ts, 0)),
-        }))
+        row.map(|r| -> DbErrorResult<Sprint> {
+            Ok(Sprint {
+                id: Uuid::parse_str(r.id.as_ref().ok_or_else(|| DbError::Initialization {
+                    message: "sprint.id is NULL".to_string(),
+                    location: ErrorLocation::from(Location::caller()),
+                })?)
+                .map_err(|e| DbError::Initialization {
+                    message: format!("Invalid UUID in sprint.id: {}", e),
+                    location: ErrorLocation::from(Location::caller()),
+                })?,
+                project_id: Uuid::parse_str(&r.project_id).map_err(|e| {
+                    DbError::Initialization {
+                        message: format!("Invalid UUID in sprint.project_id: {}", e),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                name: r.name,
+                goal: r.goal,
+                start_date: DateTime::from_timestamp(r.start_date, 0).ok_or_else(|| {
+                    DbError::Initialization {
+                        message: "Invalid timestamp in sprint.start_date".to_string(),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                end_date: DateTime::from_timestamp(r.end_date, 0).ok_or_else(|| {
+                    DbError::Initialization {
+                        message: "Invalid timestamp in sprint.end_date".to_string(),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                status: SprintStatus::from_str(&r.status).map_err(|e| DbError::Initialization {
+                    message: format!("Invalid SprintStatus in sprint.status: {}", e),
+                    location: ErrorLocation::from(Location::caller()),
+                })?,
+                version: r.version as i32,
+                created_at: DateTime::from_timestamp(r.created_at, 0).ok_or_else(|| {
+                    DbError::Initialization {
+                        message: "Invalid timestamp in sprint.created_at".to_string(),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                updated_at: DateTime::from_timestamp(r.updated_at, 0).ok_or_else(|| {
+                    DbError::Initialization {
+                        message: "Invalid timestamp in sprint.updated_at".to_string(),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                created_by: Uuid::parse_str(&r.created_by).map_err(|e| {
+                    DbError::Initialization {
+                        message: format!("Invalid UUID in sprint.created_by: {}", e),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                updated_by: Uuid::parse_str(&r.updated_by).map_err(|e| {
+                    DbError::Initialization {
+                        message: format!("Invalid UUID in sprint.updated_by: {}", e),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                deleted_at: r.deleted_at.and_then(|ts| DateTime::from_timestamp(ts, 0)),
+            })
+        })
+        .transpose()
     }
 
     pub async fn update(&self, sprint: &Sprint) -> DbErrorResult<()> {

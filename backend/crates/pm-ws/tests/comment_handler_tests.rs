@@ -5,15 +5,15 @@
 //! - Author-only edit/delete permissions
 //! - Comment attachment to work items
 
+use chrono::Utc;
 use pm_proto::{
-    CreateCommentRequest, UpdateCommentRequest, DeleteCommentRequest, GetCommentsRequest,
+    CreateCommentRequest, DeleteCommentRequest, GetCommentsRequest, UpdateCommentRequest,
     WebSocketMessage, web_socket_message::Payload,
 };
 use pm_ws::{CircuitBreaker, CircuitBreakerConfig, HandlerContext, dispatch};
 use sqlx::SqlitePool;
 use std::sync::Arc;
 use uuid::Uuid;
-use chrono::Utc;
 
 // =========================================================================
 // Test Fixtures
@@ -24,6 +24,7 @@ struct TestFixture {
     circuit_breaker: Arc<CircuitBreaker>,
     user_id: Uuid,
     other_user_id: Uuid,
+    #[allow(dead_code)]
     project_id: Uuid,
     work_item_id: Uuid,
 }
@@ -49,25 +50,25 @@ impl TestFixture {
             r#"
               INSERT INTO users (id, email, name, created_at)
               VALUES (?, 'test@example.com', 'Test User', ?)
-              "#
+              "#,
         )
-            .bind(user_id.to_string())
-            .bind(Utc::now().timestamp())
-            .execute(&pool)
-            .await
-            .expect("Failed to create test user");
+        .bind(user_id.to_string())
+        .bind(Utc::now().timestamp())
+        .execute(&pool)
+        .await
+        .expect("Failed to create test user");
 
         sqlx::query(
             r#"
               INSERT INTO users (id, email, name, created_at)
               VALUES (?, 'other@example.com', 'Other User', ?)
-              "#
+              "#,
         )
-            .bind(other_user_id.to_string())
-            .bind(Utc::now().timestamp())
-            .execute(&pool)
-            .await
-            .expect("Failed to create other user");
+        .bind(other_user_id.to_string())
+        .bind(Utc::now().timestamp())
+        .execute(&pool)
+        .await
+        .expect("Failed to create other user");
 
         // Create test project in pm_projects table
         sqlx::query(
@@ -90,15 +91,15 @@ impl TestFixture {
             r#"
               INSERT INTO pm_project_members (id, project_id, user_id, role, created_at)
               VALUES (?, ?, ?, 'editor', ?)
-              "#
+              "#,
         )
-            .bind(Uuid::new_v4().to_string())
-            .bind(project_id.to_string())
-            .bind(user_id.to_string())
-            .bind(Utc::now().timestamp())
-            .execute(&pool)
-            .await
-            .expect("Failed to add project member");
+        .bind(Uuid::new_v4().to_string())
+        .bind(project_id.to_string())
+        .bind(user_id.to_string())
+        .bind(Utc::now().timestamp())
+        .execute(&pool)
+        .await
+        .expect("Failed to add project member");
 
         // Create test work item (task)
         sqlx::query(
@@ -179,7 +180,10 @@ async fn given_valid_request_when_create_comment_then_succeeds() {
             assert_eq!(comment.created_by, fixture.user_id.to_string());
         }
         Some(Payload::Error(err)) => {
-            panic!("Got error response: code={}, message={}", err.code, err.message);
+            panic!(
+                "Got error response: code={}, message={}",
+                err.code, err.message
+            );
         }
         _ => panic!("Expected CommentCreated response"),
     }
@@ -282,7 +286,10 @@ async fn given_author_when_update_comment_then_succeeds() {
             assert_eq!(comment.content, "Updated content");
         }
         Some(Payload::Error(err)) => {
-            panic!("Got error response: code={}, message={}", err.code, err.message);
+            panic!(
+                "Got error response: code={}, message={}",
+                err.code, err.message
+            );
         }
         _ => panic!("Expected CommentUpdated response"),
     }
@@ -371,7 +378,10 @@ async fn given_author_when_delete_comment_then_succeeds() {
             assert_eq!(deleted.comment_id, comment_id);
         }
         Some(Payload::Error(err)) => {
-            panic!("Got error response: code={}, message={}", err.code, err.message);
+            panic!(
+                "Got error response: code={}, message={}",
+                err.code, err.message
+            );
         }
         _ => panic!("Expected CommentDeleted response"),
     }

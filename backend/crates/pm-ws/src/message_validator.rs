@@ -1,7 +1,15 @@
 use crate::{Result as WsErrorResult, WsError};
 
+use pm_config::{
+    MAX_FUTURE_TIMESTAMP_TOLERANCE_SECONDS, MAX_TIME_ENTRY_DESCRIPTION_LENGTH,
+    MAX_TIME_ENTRY_DURATION_SECONDS,
+};
+use pm_core::DependencyType;
+use pm_proto::DependencyType as ProtoDependencyType;
+
 use std::panic::Location;
 
+use chrono::Utc;
 use error_location::ErrorLocation;
 
 /// Validates protobuf messages from clients                                                                                                                                     
@@ -211,5 +219,79 @@ impl MessageValidator {
         }
 
         Ok(())
+    }
+
+    /// Validate time entry description (optional, max 1000 chars)
+    #[track_caller]
+    pub fn validate_time_entry_description(description: Option<&str>) -> WsErrorResult<()> {
+        if let Some(desc) = description {
+            Self::validate_string(desc, "description", 0, MAX_TIME_ENTRY_DESCRIPTION_LENGTH)?;
+        }
+        Ok(())
+    }
+
+    /// Validate time entry timestamps for manual entry creation.
+    /// Ensures:
+    /// - Neither timestamp is in the future (with tolerance)
+    /// - started_at is before ended_at
+    /// - Duration doesn't exceed maximum (24 hours)
+    #[track_caller]
+    pub fn validate_time_entry_timestamps(started_at: i64, ended_at: i64) -> WsErrorResult<()> {
+        let now = Utc::now().timestamp();
+
+        // Cannot be in future (with tolerance for clock drift)
+        if started_at > now + MAX_FUTURE_TIMESTAMP_TOLERANCE_SECONDS {
+            return Err(WsError::ValidationError {
+                message: "started_at cannot be in the future".into(),
+                field: Some("started_at".into()),
+                location: ErrorLocation::from(Location::caller()),
+            });
+        }
+        if ended_at > now + MAX_FUTURE_TIMESTAMP_TOLERANCE_SECONDS {
+            return Err(WsError::ValidationError {
+                message: "ended_at cannot be in the future".into(),
+                field: Some("ended_at".into()),
+                location: ErrorLocation::from(Location::caller()),
+            });
+        }
+
+        // Start must be before end
+        if started_at >= ended_at {
+            return Err(WsError::ValidationError {
+                message: "started_at must be before ended_at".into(),
+                field: Some("started_at".into()),
+                location: ErrorLocation::from(Location::caller()),
+            });
+        }
+
+        // Max duration check
+        let duration = ended_at - started_at;
+        if duration > MAX_TIME_ENTRY_DURATION_SECONDS {
+            return Err(WsError::ValidationError {
+                message: format!(
+                    "Duration cannot exceed {} hours",
+                    MAX_TIME_ENTRY_DURATION_SECONDS / 3600
+                ),
+                field: Some("ended_at".into()),
+                location: ErrorLocation::from(Location::caller()),
+            });
+        }
+
+        Ok(())
+    }
+
+    /// Validate dependency type enum from protobuf i32.
+    /// Converts to domain DependencyType on success.
+    #[track_caller]
+    pub fn validate_dependency_type(value: i32) -> WsErrorResult<DependencyType> {
+        match value {
+            x if x == ProtoDependencyType::Blocks as i32 => Ok(DependencyType::Blocks),
+            x if x == ProtoDependencyType::RelatesTo as i32 => Ok(DependencyType::RelatesTo),
+            _ => Err(WsError::ValidationError {
+                message: "Invalid dependency_type. Must be BLOCKS or RELATES_TO".into(),
+                field: Some("dependency_type".into()),
+                location: ErrorLocation::from(Location::caller()),
+            }),
+        }
     }
 }

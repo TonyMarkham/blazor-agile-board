@@ -19,6 +19,24 @@ pub const MIN_ERROR_MESSAGE_LENGTH: usize = 50;
 pub const MAX_ERROR_MESSAGE_LENGTH: usize = 1000;
 pub const DEFAULT_MAX_ERROR_MESSAGE_LENGTH: usize = 200;
 
+// === Time Entry Limits ===
+/// Maximum length for time entry description
+pub const MAX_TIME_ENTRY_DESCRIPTION_LENGTH: usize = 1000;
+/// Maximum duration for a single time entry (24 hours in seconds)
+pub const MAX_TIME_ENTRY_DURATION_SECONDS: i64 = 86400;
+/// Tolerance for future timestamps (60 seconds for clock drift)
+pub const MAX_FUTURE_TIMESTAMP_TOLERANCE_SECONDS: i64 = 60;
+/// Default number of time entries to return per page
+pub const DEFAULT_TIME_ENTRIES_LIMIT: i32 = 100;
+/// Maximum number of time entries to return per page
+pub const MAX_TIME_ENTRIES_LIMIT: i32 = 500;
+
+// === Dependency Limits ===
+/// Maximum number of dependencies that can block a single item
+pub const MAX_BLOCKING_DEPENDENCIES_PER_ITEM: usize = 50;
+/// Maximum number of items that a single item can block
+pub const MAX_BLOCKED_DEPENDENCIES_PER_ITEM: usize = 50;
+
 /// Validation configuration for field limits.
 ///
 /// These limits are applied during input validation to prevent

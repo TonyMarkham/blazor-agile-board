@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n              SELECT id, blocking_item_id, blocked_item_id, dependency_type,\n                     created_at, created_by, deleted_at\n              FROM pm_dependencies\n              WHERE blocking_item_id = ? AND deleted_at IS NULL\n              ",
+  "query": "\n                SELECT id, work_item_id, content,\n                       created_at, updated_at, created_by, updated_by, deleted_at\n                FROM pm_comments\n                WHERE work_item_id = ? AND deleted_at IS NULL\n                ORDER BY created_at ASC\n                ",
   "describe": {
     "columns": [
       {
@@ -9,22 +9,22 @@
         "type_info": "Text"
       },
       {
-        "name": "blocking_item_id",
+        "name": "work_item_id",
         "ordinal": 1,
         "type_info": "Text"
       },
       {
-        "name": "blocked_item_id",
+        "name": "content",
         "ordinal": 2,
         "type_info": "Text"
       },
       {
-        "name": "dependency_type",
+        "name": "created_at",
         "ordinal": 3,
-        "type_info": "Text"
+        "type_info": "Integer"
       },
       {
-        "name": "created_at",
+        "name": "updated_at",
         "ordinal": 4,
         "type_info": "Integer"
       },
@@ -34,8 +34,13 @@
         "type_info": "Text"
       },
       {
-        "name": "deleted_at",
+        "name": "updated_by",
         "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "deleted_at",
+        "ordinal": 7,
         "type_info": "Integer"
       }
     ],
@@ -49,8 +54,9 @@
       false,
       false,
       false,
+      false,
       true
     ]
   },
-  "hash": "991c023a26508cdf187243c73a7e6ccf555a5c2d15ed3ccfe53931168fefc47f"
+  "hash": "76e11d294306c32772e4111c65ce0d2e636975f4dc257105541b72994501970c"
 }

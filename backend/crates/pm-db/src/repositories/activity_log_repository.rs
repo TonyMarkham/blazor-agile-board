@@ -1,8 +1,11 @@
-use crate::Result as DbErrorResult;
+use crate::{DbError, Result as DbErrorResult};
 
 use pm_core::ActivityLog;
 
+use std::panic::Location;
+
 use chrono::DateTime;
+use error_location::ErrorLocation;
 use uuid::Uuid;
 
 pub struct ActivityLogRepository;
@@ -54,34 +57,55 @@ impl ActivityLogRepository {
 
         let rows = sqlx::query!(
             r#"
-              SELECT id, entity_type, entity_id, action,
-                     field_name, old_value, new_value,
-                     user_id, timestamp, comment
-              FROM pm_activity_log
-              WHERE entity_type = ? AND entity_id = ?
-              ORDER BY timestamp DESC
-              "#,
+                SELECT id, entity_type, entity_id, action,
+                       field_name, old_value, new_value,
+                       user_id, timestamp, comment
+                FROM pm_activity_log
+                WHERE entity_type = ? AND entity_id = ?
+                ORDER BY timestamp DESC
+                "#,
             entity_type,
             entity_id_str
         )
         .fetch_all(executor)
         .await?;
 
-        Ok(rows
-            .into_iter()
-            .map(|r| ActivityLog {
-                id: Uuid::parse_str(r.id.as_ref().unwrap()).unwrap(),
-                entity_type: r.entity_type,
-                entity_id: Uuid::parse_str(&r.entity_id).unwrap(),
-                action: r.action,
-                field_name: r.field_name,
-                old_value: r.old_value,
-                new_value: r.new_value,
-                user_id: Uuid::parse_str(&r.user_id).unwrap(),
-                timestamp: DateTime::from_timestamp(r.timestamp, 0).unwrap(),
-                comment: r.comment,
+        rows.into_iter()
+            .map(|r| -> DbErrorResult<ActivityLog> {
+                Ok(ActivityLog {
+                    id: Uuid::parse_str(r.id.as_ref().ok_or_else(|| DbError::Initialization {
+                        message: "activity_log.id is NULL".to_string(),
+                        location: ErrorLocation::from(Location::caller()),
+                    })?)
+                    .map_err(|e| DbError::Initialization {
+                        message: format!("Invalid UUID in activity_log.id: {}", e),
+                        location: ErrorLocation::from(Location::caller()),
+                    })?,
+                    entity_type: r.entity_type,
+                    entity_id: Uuid::parse_str(&r.entity_id).map_err(|e| {
+                        DbError::Initialization {
+                            message: format!("Invalid UUID in activity_log.entity_id: {}", e),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    action: r.action,
+                    field_name: r.field_name,
+                    old_value: r.old_value,
+                    new_value: r.new_value,
+                    user_id: Uuid::parse_str(&r.user_id).map_err(|e| DbError::Initialization {
+                        message: format!("Invalid UUID in activity_log.user_id: {}", e),
+                        location: ErrorLocation::from(Location::caller()),
+                    })?,
+                    timestamp: DateTime::from_timestamp(r.timestamp, 0).ok_or_else(|| {
+                        DbError::Initialization {
+                            message: "Invalid timestamp in activity_log.timestamp".to_string(),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    comment: r.comment,
+                })
             })
-            .collect())
+            .collect::<DbErrorResult<Vec<_>>>()
     }
 
     pub async fn find_by_user<'e, E>(
@@ -96,34 +120,55 @@ impl ActivityLogRepository {
 
         let rows = sqlx::query!(
             r#"
-              SELECT id, entity_type, entity_id, action,
-                     field_name, old_value, new_value,
-                     user_id, timestamp, comment
-              FROM pm_activity_log
-              WHERE user_id = ?
-              ORDER BY timestamp DESC
-              LIMIT ?
-              "#,
+                SELECT id, entity_type, entity_id, action,
+                       field_name, old_value, new_value,
+                       user_id, timestamp, comment
+                FROM pm_activity_log
+                WHERE user_id = ?
+                ORDER BY timestamp DESC
+                LIMIT ?
+                "#,
             user_id_str,
             limit
         )
         .fetch_all(executor)
         .await?;
 
-        Ok(rows
-            .into_iter()
-            .map(|r| ActivityLog {
-                id: Uuid::parse_str(r.id.as_ref().unwrap()).unwrap(),
-                entity_type: r.entity_type,
-                entity_id: Uuid::parse_str(&r.entity_id).unwrap(),
-                action: r.action,
-                field_name: r.field_name,
-                old_value: r.old_value,
-                new_value: r.new_value,
-                user_id: Uuid::parse_str(&r.user_id).unwrap(),
-                timestamp: DateTime::from_timestamp(r.timestamp, 0).unwrap(),
-                comment: r.comment,
+        rows.into_iter()
+            .map(|r| -> DbErrorResult<ActivityLog> {
+                Ok(ActivityLog {
+                    id: Uuid::parse_str(r.id.as_ref().ok_or_else(|| DbError::Initialization {
+                        message: "activity_log.id is NULL".to_string(),
+                        location: ErrorLocation::from(Location::caller()),
+                    })?)
+                    .map_err(|e| DbError::Initialization {
+                        message: format!("Invalid UUID in activity_log.id: {}", e),
+                        location: ErrorLocation::from(Location::caller()),
+                    })?,
+                    entity_type: r.entity_type,
+                    entity_id: Uuid::parse_str(&r.entity_id).map_err(|e| {
+                        DbError::Initialization {
+                            message: format!("Invalid UUID in activity_log.entity_id: {}", e),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    action: r.action,
+                    field_name: r.field_name,
+                    old_value: r.old_value,
+                    new_value: r.new_value,
+                    user_id: Uuid::parse_str(&r.user_id).map_err(|e| DbError::Initialization {
+                        message: format!("Invalid UUID in activity_log.user_id: {}", e),
+                        location: ErrorLocation::from(Location::caller()),
+                    })?,
+                    timestamp: DateTime::from_timestamp(r.timestamp, 0).ok_or_else(|| {
+                        DbError::Initialization {
+                            message: "Invalid timestamp in activity_log.timestamp".to_string(),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    comment: r.comment,
+                })
             })
-            .collect())
+            .collect::<DbErrorResult<Vec<_>>>()
     }
 }

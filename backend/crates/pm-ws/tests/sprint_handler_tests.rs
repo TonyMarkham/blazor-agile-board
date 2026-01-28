@@ -6,15 +6,15 @@
 //! - Status transitions (state machine)
 //! - Authorization (permission checks)
 
+use chrono::{Duration, Utc};
 use pm_proto::{
-    CreateSprintRequest, UpdateSprintRequest, GetSprintsRequest,
-    WebSocketMessage, web_socket_message::Payload, SprintStatus as ProtoSprintStatus,
+    CreateSprintRequest, GetSprintsRequest, SprintStatus as ProtoSprintStatus, UpdateSprintRequest,
+    WebSocketMessage, web_socket_message::Payload,
 };
 use pm_ws::{CircuitBreaker, CircuitBreakerConfig, HandlerContext, dispatch};
 use sqlx::SqlitePool;
 use std::sync::Arc;
 use uuid::Uuid;
-use chrono::{Utc, Duration};
 
 // =========================================================================
 // Test Fixtures
@@ -46,13 +46,13 @@ impl TestFixture {
             r#"
               INSERT INTO users (id, email, name, created_at)
               VALUES (?, 'test@example.com', 'Test User', ?)
-              "#
+              "#,
         )
-            .bind(user_id.to_string())
-            .bind(Utc::now().timestamp())
-            .execute(&pool)
-            .await
-            .expect("Failed to create test user");
+        .bind(user_id.to_string())
+        .bind(Utc::now().timestamp())
+        .execute(&pool)
+        .await
+        .expect("Failed to create test user");
 
         // Create test project in pm_projects table
         sqlx::query(
@@ -75,15 +75,15 @@ impl TestFixture {
             r#"
               INSERT INTO pm_project_members (id, project_id, user_id, role, created_at)
               VALUES (?, ?, ?, 'editor', ?)
-              "#
+              "#,
         )
-            .bind(Uuid::new_v4().to_string())
-            .bind(project_id.to_string())
-            .bind(user_id.to_string())
-            .bind(Utc::now().timestamp())
-            .execute(&pool)
-            .await
-            .expect("Failed to add project member");
+        .bind(Uuid::new_v4().to_string())
+        .bind(project_id.to_string())
+        .bind(user_id.to_string())
+        .bind(Utc::now().timestamp())
+        .execute(&pool)
+        .await
+        .expect("Failed to add project member");
 
         Self {
             pool,
@@ -138,14 +138,23 @@ async fn given_valid_request_when_create_sprint_then_succeeds() {
         Some(Payload::SprintCreated(created)) => {
             let sprint = created.sprint.as_ref().unwrap();
             assert_eq!(sprint.name, "Sprint 1");
-            assert_eq!(sprint.goal.as_ref().map(|s| s.as_str()), Some("Complete MVP"));
+            assert_eq!(
+                sprint.goal.as_ref().map(|s| s.as_str()),
+                Some("Complete MVP")
+            );
             assert_eq!(sprint.status, ProtoSprintStatus::Planned as i32);
             assert_eq!(sprint.version, 1);
         }
         Some(Payload::Error(err)) => {
-            panic!("Got error response: code={}, message={}", err.code, err.message);
+            panic!(
+                "Got error response: code={}, message={}",
+                err.code, err.message
+            );
         }
-        _ => panic!("Expected SprintCreated response, got: {:?}", response.payload),
+        _ => panic!(
+            "Expected SprintCreated response, got: {:?}",
+            response.payload
+        ),
     }
 }
 

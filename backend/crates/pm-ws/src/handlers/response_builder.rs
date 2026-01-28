@@ -1,19 +1,30 @@
-use pm_core::{Comment, Project, ProjectStatus, Sprint, SprintStatus, WorkItem};
+use pm_core::{
+    Comment, Dependency, DependencyType, Project, ProjectStatus, Sprint, SprintStatus, TimeEntry,
+    WorkItem,
+};
 use pm_proto::{
     Comment as ProtoComment, CommentCreated, CommentDeleted, CommentUpdated, CommentsList,
-    Error as PmProtoError, FieldChange, Project as ProtoProject, ProjectCreated, ProjectDeleted,
-    ProjectList, ProjectStatus as ProtoProjectStatus, ProjectUpdated, Sprint as ProtoSprint,
-    SprintCreated, SprintDeleted, SprintStatus as ProtoSprintStatus, SprintUpdated, SprintsList,
-    WebSocketMessage, WorkItem as PmProtoWorkItem, WorkItemCreated, WorkItemDeleted,
-    WorkItemUpdated, WorkItemsList,
+    DependenciesList, Dependency as ProtoDependency, DependencyCreated, DependencyDeleted,
+    DependencyType as ProtoDependencyType, Error as PmProtoError, FieldChange,
+    Project as ProtoProject, ProjectCreated, ProjectDeleted, ProjectList,
+    ProjectStatus as ProtoProjectStatus, ProjectUpdated, RunningTimerResponse,
+    Sprint as ProtoSprint, SprintCreated, SprintDeleted, SprintStatus as ProtoSprintStatus,
+    SprintUpdated, SprintsList, TimeEntriesList, TimeEntry as ProtoTimeEntry, TimeEntryCreated,
+    TimeEntryDeleted, TimeEntryUpdated, TimerStarted, TimerStopped, WebSocketMessage,
+    WorkItem as PmProtoWorkItem, WorkItemCreated, WorkItemDeleted, WorkItemUpdated, WorkItemsList,
     web_socket_message::Payload::{
         CommentCreated as ProtoCommentCreated, CommentDeleted as ProtoCommentDeleted,
         CommentUpdated as ProtoCommentUpdated, CommentsList as ProtoCommentsList,
-        Error as ProtoError, ProjectCreated as ProtoProjectCreated,
-        ProjectDeleted as ProtoProjectDeleted, ProjectList as ProtoProjectList,
-        ProjectUpdated as ProtoProjectUpdated, SprintCreated as ProtoSprintCreated,
+        DependenciesList as ProtoDependenciesList, DependencyCreated as ProtoDependencyCreated,
+        DependencyDeleted as ProtoDependencyDeleted, Error as ProtoError,
+        ProjectCreated as ProtoProjectCreated, ProjectDeleted as ProtoProjectDeleted,
+        ProjectList as ProtoProjectList, ProjectUpdated as ProtoProjectUpdated,
+        RunningTimerResponse as ProtoRunningTimerResponse, SprintCreated as ProtoSprintCreated,
         SprintDeleted as ProtoSprintDeleted, SprintUpdated as ProtoSprintUpdated,
-        SprintsList as ProtoSprintsList, WorkItemCreated as ProtoWorkItemCreated,
+        SprintsList as ProtoSprintsList, TimeEntriesList as ProtoTimeEntriesList,
+        TimeEntryCreated as ProtoTimeEntryCreated, TimeEntryDeleted as ProtoTimeEntryDeleted,
+        TimeEntryUpdated as ProtoTimeEntryUpdated, TimerStarted as ProtoTimerStarted,
+        TimerStopped as ProtoTimerStopped, WorkItemCreated as ProtoWorkItemCreated,
         WorkItemDeleted as ProtoWorkItemDeleted, WorkItemUpdated as ProtoWorkItemUpdated,
         WorkItemsList as ProtoWorkItemsList,
     },
@@ -356,6 +367,210 @@ pub fn build_comments_list_response(message_id: &str, comments: Vec<Comment>) ->
         timestamp: Utc::now().timestamp(),
         payload: Some(ProtoCommentsList(CommentsList {
             comments: comments.iter().map(comment_to_proto).collect(),
+        })),
+    }
+}
+
+// === Time Entry Converters ===
+
+/// Convert domain TimeEntry to protobuf TimeEntry
+pub fn time_entry_to_proto(entry: &TimeEntry) -> ProtoTimeEntry {
+    ProtoTimeEntry {
+        id: entry.id.to_string(),
+        work_item_id: entry.work_item_id.to_string(),
+        user_id: entry.user_id.to_string(),
+        started_at: entry.started_at.timestamp(),
+        ended_at: entry.ended_at.map(|dt| dt.timestamp()),
+        duration_seconds: entry.duration_seconds,
+        description: entry.description.clone(),
+        created_at: entry.created_at.timestamp(),
+        updated_at: entry.updated_at.timestamp(),
+        deleted_at: entry.deleted_at.map(|dt| dt.timestamp()),
+    }
+}
+
+/// Convert domain Dependency to protobuf Dependency
+pub fn dependency_to_proto(dep: &Dependency) -> ProtoDependency {
+    ProtoDependency {
+        id: dep.id.to_string(),
+        blocking_item_id: dep.blocking_item_id.to_string(),
+        blocked_item_id: dep.blocked_item_id.to_string(),
+        dependency_type: match dep.dependency_type {
+            DependencyType::Blocks => ProtoDependencyType::Blocks as i32,
+            DependencyType::RelatesTo => ProtoDependencyType::RelatesTo as i32,
+        },
+        created_at: dep.created_at.timestamp(),
+        created_by: dep.created_by.to_string(),
+        deleted_at: dep.deleted_at.map(|dt| dt.timestamp()),
+    }
+}
+
+// === Time Entry Response Builders ===
+
+/// Build TimerStarted response with optional stopped entry
+pub fn build_timer_started_response(
+    message_id: &str,
+    entry: &TimeEntry,
+    stopped_entry: Option<&TimeEntry>,
+    user_id: Uuid,
+) -> WebSocketMessage {
+    WebSocketMessage {
+        message_id: message_id.to_string(),
+        timestamp: Utc::now().timestamp(),
+        payload: Some(ProtoTimerStarted(TimerStarted {
+            time_entry: Some(time_entry_to_proto(entry)),
+            user_id: user_id.to_string(),
+            stopped_entry: stopped_entry.map(time_entry_to_proto),
+        })),
+    }
+}
+
+/// Build TimerStopped response
+pub fn build_timer_stopped_response(
+    message_id: &str,
+    entry: &TimeEntry,
+    user_id: Uuid,
+) -> WebSocketMessage {
+    WebSocketMessage {
+        message_id: message_id.to_string(),
+        timestamp: Utc::now().timestamp(),
+        payload: Some(ProtoTimerStopped(TimerStopped {
+            time_entry: Some(time_entry_to_proto(entry)),
+            user_id: user_id.to_string(),
+        })),
+    }
+}
+
+/// Build TimeEntryCreated response
+pub fn build_time_entry_created_response(
+    message_id: &str,
+    entry: &TimeEntry,
+    user_id: Uuid,
+) -> WebSocketMessage {
+    WebSocketMessage {
+        message_id: message_id.to_string(),
+        timestamp: Utc::now().timestamp(),
+        payload: Some(ProtoTimeEntryCreated(TimeEntryCreated {
+            time_entry: Some(time_entry_to_proto(entry)),
+            user_id: user_id.to_string(),
+        })),
+    }
+}
+
+/// Build TimeEntryUpdated response
+pub fn build_time_entry_updated_response(
+    message_id: &str,
+    entry: &TimeEntry,
+    user_id: Uuid,
+) -> WebSocketMessage {
+    WebSocketMessage {
+        message_id: message_id.to_string(),
+        timestamp: Utc::now().timestamp(),
+        payload: Some(ProtoTimeEntryUpdated(TimeEntryUpdated {
+            time_entry: Some(time_entry_to_proto(entry)),
+            user_id: user_id.to_string(),
+        })),
+    }
+}
+
+/// Build TimeEntryDeleted response
+pub fn build_time_entry_deleted_response(
+    message_id: &str,
+    time_entry_id: Uuid,
+    work_item_id: Uuid,
+    user_id: Uuid,
+) -> WebSocketMessage {
+    WebSocketMessage {
+        message_id: message_id.to_string(),
+        timestamp: Utc::now().timestamp(),
+        payload: Some(ProtoTimeEntryDeleted(TimeEntryDeleted {
+            time_entry_id: time_entry_id.to_string(),
+            work_item_id: work_item_id.to_string(),
+            user_id: user_id.to_string(),
+        })),
+    }
+}
+
+/// Build TimeEntriesList response with pagination info
+pub fn build_time_entries_list_response(
+    message_id: &str,
+    entries: &[TimeEntry],
+    total_count: i32,
+) -> WebSocketMessage {
+    WebSocketMessage {
+        message_id: message_id.to_string(),
+        timestamp: Utc::now().timestamp(),
+        payload: Some(ProtoTimeEntriesList(TimeEntriesList {
+            time_entries: entries.iter().map(time_entry_to_proto).collect(),
+            total_count,
+        })),
+    }
+}
+
+/// Build RunningTimerResponse (may be empty if no running timer)
+pub fn build_running_timer_response(
+    message_id: &str,
+    entry: Option<&TimeEntry>,
+) -> WebSocketMessage {
+    WebSocketMessage {
+        message_id: message_id.to_string(),
+        timestamp: Utc::now().timestamp(),
+        payload: Some(ProtoRunningTimerResponse(RunningTimerResponse {
+            time_entry: entry.map(time_entry_to_proto),
+        })),
+    }
+}
+
+// === Dependency Response Builders ===
+
+/// Build DependencyCreated response
+pub fn build_dependency_created_response(
+    message_id: &str,
+    dependency: &Dependency,
+    user_id: Uuid,
+) -> WebSocketMessage {
+    WebSocketMessage {
+        message_id: message_id.to_string(),
+        timestamp: Utc::now().timestamp(),
+        payload: Some(ProtoDependencyCreated(DependencyCreated {
+            dependency: Some(dependency_to_proto(dependency)),
+            user_id: user_id.to_string(),
+        })),
+    }
+}
+
+/// Build DependencyDeleted response
+pub fn build_dependency_deleted_response(
+    message_id: &str,
+    dependency_id: Uuid,
+    blocking_item_id: Uuid,
+    blocked_item_id: Uuid,
+    user_id: Uuid,
+) -> WebSocketMessage {
+    WebSocketMessage {
+        message_id: message_id.to_string(),
+        timestamp: Utc::now().timestamp(),
+        payload: Some(ProtoDependencyDeleted(DependencyDeleted {
+            dependency_id: dependency_id.to_string(),
+            blocking_item_id: blocking_item_id.to_string(),
+            blocked_item_id: blocked_item_id.to_string(),
+            user_id: user_id.to_string(),
+        })),
+    }
+}
+
+/// Build DependenciesList response with both directions
+pub fn build_dependencies_list_response(
+    message_id: &str,
+    blocking: &[Dependency],
+    blocked: &[Dependency],
+) -> WebSocketMessage {
+    WebSocketMessage {
+        message_id: message_id.to_string(),
+        timestamp: Utc::now().timestamp(),
+        payload: Some(ProtoDependenciesList(DependenciesList {
+            blocking: blocking.iter().map(dependency_to_proto).collect(),
+            blocked: blocked.iter().map(dependency_to_proto).collect(),
         })),
     }
 }

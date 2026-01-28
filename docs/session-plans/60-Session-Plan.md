@@ -18,7 +18,7 @@ This plan has been split into sub-sessions to fit within token budgets:
 
 | Session | Scope | Est. Tokens | Status |
 |---------|-------|-------------|--------|
-| **[60.1](60.1-Session-Plan.md)** | Protocol Definition & Backend Infrastructure | ~40-50k | Pending |
+| **[60.1](60.1-Session-Plan.md)** | Protocol Definition & Backend Infrastructure | ~40-50k | ✅ Complete (2026-01-27) |
 | **[60.2](60.2-Session-Plan.md)** | Backend Handlers (Time Entry & Dependency) | ~45-55k | Pending |
 | **[60.3](60.3-Session-Plan.md)** | Frontend Models & WebSocket Integration | ~35-45k | Pending |
 | **[60.4](60.4-Session-Plan.md)** | Frontend State Management & UI Components | ~40-50k | Pending |
@@ -51,20 +51,24 @@ This plan has been split into sub-sessions to fit within token budgets:
 
 ---
 
-## Session 60.1: Protocol & Backend Infrastructure
+## Session 60.1: Protocol & Backend Infrastructure ✅
+
+**Status**: Complete (2026-01-27)
 
 **Files Created:**
 - None (modifications only)
 
 **Files Modified:**
-- `proto/messages.proto` - Add 20+ new message types for time entry and dependency commands/events
-- `pm-config/src/validation_config.rs` - Add time entry and dependency validation constants
-- `pm-ws/src/handlers/message_validator.rs` - Add timestamp and dependency type validation
-- `pm-ws/src/handlers/response_builder.rs` - Add converters and response builders
-- `pm-db/src/repositories/time_entry_repository.rs` - Add pagination support
-- `pm-db/src/repositories/dependency_repository.rs` - Add find_by_pair, count methods
+- `proto/messages.proto` - Added 20+ message types (138 lines)
+- `pm-config/src/validation_config.rs` - Added 7 validation constants (17 lines)
+- `pm-ws/src/handlers/message_validator.rs` - Added 3 validation methods (76 lines)
+- `pm-ws/src/handlers/response_builder.rs` - Added 2 converters + 10 builders (207 lines)
+- `pm-db/src/repositories/time_entry_repository.rs` - Added pagination (88 lines)
+- `pm-db/src/repositories/dependency_repository.rs` - Added 5 helper methods (92 lines)
 
-**Verification:** `just check-backend`
+**Total**: 6 files modified, ~618 lines added
+
+**Verification:** ✅ `just check-backend` passes
 
 ---
 

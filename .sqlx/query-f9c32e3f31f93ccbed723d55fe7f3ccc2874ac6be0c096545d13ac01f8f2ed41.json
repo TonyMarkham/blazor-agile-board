@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n              SELECT id, project_id, user_id, role, created_at\n              FROM pm_project_members\n              WHERE project_id = ?\n              ",
+  "query": "\n                SELECT id, project_id, user_id, role, created_at\n                FROM pm_project_members\n                WHERE user_id = ? AND project_id = ?\n                ",
   "describe": {
     "columns": [
       {
@@ -30,7 +30,7 @@
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 2
     },
     "nullable": [
       true,
@@ -40,5 +40,5 @@
       false
     ]
   },
-  "hash": "7db79c8377cdc67cb0b4d050f1c84dc0d1ff4e6f66fd4550184a0094aa268636"
+  "hash": "f9c32e3f31f93ccbed723d55fe7f3ccc2874ac6be0c096545d13ac01f8f2ed41"
 }

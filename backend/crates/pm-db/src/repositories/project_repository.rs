@@ -1,10 +1,12 @@
-use crate::Result as DbErrorResult;
+use crate::{DbError, Result as DbErrorResult};
 
 use pm_core::{Project, ProjectStatus};
 
+use std::panic::Location;
 use std::str::FromStr;
 
 use chrono::DateTime;
+use error_location::ErrorLocation;
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
@@ -66,19 +68,54 @@ impl ProjectRepository {
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(row.map(|r| Project {
-            id: Uuid::parse_str(r.id.as_ref().unwrap()).unwrap(),
-            title: r.title,
-            description: r.description,
-            key: r.key,
-            status: ProjectStatus::from_str(&r.status).unwrap(),
-            version: r.version as i32,
-            created_at: DateTime::from_timestamp(r.created_at, 0).unwrap(),
-            updated_at: DateTime::from_timestamp(r.updated_at, 0).unwrap(),
-            created_by: Uuid::parse_str(&r.created_by).unwrap(),
-            updated_by: Uuid::parse_str(&r.updated_by).unwrap(),
-            deleted_at: r.deleted_at.and_then(|ts| DateTime::from_timestamp(ts, 0)),
-        }))
+        row.map(|r| -> DbErrorResult<Project> {
+            Ok(Project {
+                id: Uuid::parse_str(r.id.as_ref().ok_or_else(|| DbError::Initialization {
+                    message: "project.id is NULL".to_string(),
+                    location: ErrorLocation::from(Location::caller()),
+                })?)
+                .map_err(|e| DbError::Initialization {
+                    message: format!("Invalid UUID in project.id: {}", e),
+                    location: ErrorLocation::from(Location::caller()),
+                })?,
+                title: r.title,
+                description: r.description,
+                key: r.key,
+                status: ProjectStatus::from_str(&r.status).map_err(|e| {
+                    DbError::Initialization {
+                        message: format!("Invalid ProjectStatus in project.status: {}", e),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                version: r.version as i32,
+                created_at: DateTime::from_timestamp(r.created_at, 0).ok_or_else(|| {
+                    DbError::Initialization {
+                        message: "Invalid timestamp in project.created_at".to_string(),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                updated_at: DateTime::from_timestamp(r.updated_at, 0).ok_or_else(|| {
+                    DbError::Initialization {
+                        message: "Invalid timestamp in project.updated_at".to_string(),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                created_by: Uuid::parse_str(&r.created_by).map_err(|e| {
+                    DbError::Initialization {
+                        message: format!("Invalid UUID in project.created_by: {}", e),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                updated_by: Uuid::parse_str(&r.updated_by).map_err(|e| {
+                    DbError::Initialization {
+                        message: format!("Invalid UUID in project.updated_by: {}", e),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                deleted_at: r.deleted_at.and_then(|ts| DateTime::from_timestamp(ts, 0)),
+            })
+        })
+        .transpose()
     }
 
     pub async fn find_by_key(&self, key: &str) -> DbErrorResult<Option<Project>> {
@@ -94,19 +131,54 @@ impl ProjectRepository {
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(row.map(|r| Project {
-            id: Uuid::parse_str(r.id.as_ref().unwrap()).unwrap(),
-            title: r.title,
-            description: r.description,
-            key: r.key,
-            status: ProjectStatus::from_str(&r.status).unwrap(),
-            version: r.version as i32,
-            created_at: DateTime::from_timestamp(r.created_at, 0).unwrap(),
-            updated_at: DateTime::from_timestamp(r.updated_at, 0).unwrap(),
-            created_by: Uuid::parse_str(&r.created_by).unwrap(),
-            updated_by: Uuid::parse_str(&r.updated_by).unwrap(),
-            deleted_at: r.deleted_at.and_then(|ts| DateTime::from_timestamp(ts, 0)),
-        }))
+        row.map(|r| -> DbErrorResult<Project> {
+            Ok(Project {
+                id: Uuid::parse_str(r.id.as_ref().ok_or_else(|| DbError::Initialization {
+                    message: "project.id is NULL".to_string(),
+                    location: ErrorLocation::from(Location::caller()),
+                })?)
+                .map_err(|e| DbError::Initialization {
+                    message: format!("Invalid UUID in project.id: {}", e),
+                    location: ErrorLocation::from(Location::caller()),
+                })?,
+                title: r.title,
+                description: r.description,
+                key: r.key,
+                status: ProjectStatus::from_str(&r.status).map_err(|e| {
+                    DbError::Initialization {
+                        message: format!("Invalid ProjectStatus in project.status: {}", e),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                version: r.version as i32,
+                created_at: DateTime::from_timestamp(r.created_at, 0).ok_or_else(|| {
+                    DbError::Initialization {
+                        message: "Invalid timestamp in project.created_at".to_string(),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                updated_at: DateTime::from_timestamp(r.updated_at, 0).ok_or_else(|| {
+                    DbError::Initialization {
+                        message: "Invalid timestamp in project.updated_at".to_string(),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                created_by: Uuid::parse_str(&r.created_by).map_err(|e| {
+                    DbError::Initialization {
+                        message: format!("Invalid UUID in project.created_by: {}", e),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                updated_by: Uuid::parse_str(&r.updated_by).map_err(|e| {
+                    DbError::Initialization {
+                        message: format!("Invalid UUID in project.updated_by: {}", e),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                deleted_at: r.deleted_at.and_then(|ts| DateTime::from_timestamp(ts, 0)),
+            })
+        })
+        .transpose()
     }
 
     pub async fn find_all(&self) -> DbErrorResult<Vec<Project>> {
@@ -122,22 +194,55 @@ impl ProjectRepository {
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(rows
-            .into_iter()
-            .map(|r| Project {
-                id: Uuid::parse_str(r.id.as_ref().unwrap()).unwrap(),
-                title: r.title,
-                description: r.description,
-                key: r.key,
-                status: ProjectStatus::from_str(&r.status).unwrap(),
-                version: r.version as i32,
-                created_at: DateTime::from_timestamp(r.created_at, 0).unwrap(),
-                updated_at: DateTime::from_timestamp(r.updated_at, 0).unwrap(),
-                created_by: Uuid::parse_str(&r.created_by).unwrap(),
-                updated_by: Uuid::parse_str(&r.updated_by).unwrap(),
-                deleted_at: r.deleted_at.and_then(|ts| DateTime::from_timestamp(ts, 0)),
+        rows.into_iter()
+            .map(|r| -> DbErrorResult<Project> {
+                Ok(Project {
+                    id: Uuid::parse_str(r.id.as_ref().ok_or_else(|| DbError::Initialization {
+                        message: "project.id is NULL".to_string(),
+                        location: ErrorLocation::from(Location::caller()),
+                    })?)
+                    .map_err(|e| DbError::Initialization {
+                        message: format!("Invalid UUID in project.id: {}", e),
+                        location: ErrorLocation::from(Location::caller()),
+                    })?,
+                    title: r.title,
+                    description: r.description,
+                    key: r.key,
+                    status: ProjectStatus::from_str(&r.status).map_err(|e| {
+                        DbError::Initialization {
+                            message: format!("Invalid ProjectStatus in project.status: {}", e),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    version: r.version as i32,
+                    created_at: DateTime::from_timestamp(r.created_at, 0).ok_or_else(|| {
+                        DbError::Initialization {
+                            message: "Invalid timestamp in project.created_at".to_string(),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    updated_at: DateTime::from_timestamp(r.updated_at, 0).ok_or_else(|| {
+                        DbError::Initialization {
+                            message: "Invalid timestamp in project.updated_at".to_string(),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    created_by: Uuid::parse_str(&r.created_by).map_err(|e| {
+                        DbError::Initialization {
+                            message: format!("Invalid UUID in project.created_by: {}", e),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    updated_by: Uuid::parse_str(&r.updated_by).map_err(|e| {
+                        DbError::Initialization {
+                            message: format!("Invalid UUID in project.updated_by: {}", e),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    deleted_at: r.deleted_at.and_then(|ts| DateTime::from_timestamp(ts, 0)),
+                })
             })
-            .collect())
+            .collect::<DbErrorResult<Vec<_>>>()
     }
 
     pub async fn find_active(&self) -> DbErrorResult<Vec<Project>> {
@@ -153,22 +258,55 @@ impl ProjectRepository {
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(rows
-            .into_iter()
-            .map(|r| Project {
-                id: Uuid::parse_str(r.id.as_ref().unwrap()).unwrap(),
-                title: r.title,
-                description: r.description,
-                key: r.key,
-                status: ProjectStatus::from_str(&r.status).unwrap(),
-                version: r.version as i32,
-                created_at: DateTime::from_timestamp(r.created_at, 0).unwrap(),
-                updated_at: DateTime::from_timestamp(r.updated_at, 0).unwrap(),
-                created_by: Uuid::parse_str(&r.created_by).unwrap(),
-                updated_by: Uuid::parse_str(&r.updated_by).unwrap(),
-                deleted_at: r.deleted_at.and_then(|ts| DateTime::from_timestamp(ts, 0)),
+        rows.into_iter()
+            .map(|r| -> DbErrorResult<Project> {
+                Ok(Project {
+                    id: Uuid::parse_str(r.id.as_ref().ok_or_else(|| DbError::Initialization {
+                        message: "project.id is NULL".to_string(),
+                        location: ErrorLocation::from(Location::caller()),
+                    })?)
+                    .map_err(|e| DbError::Initialization {
+                        message: format!("Invalid UUID in project.id: {}", e),
+                        location: ErrorLocation::from(Location::caller()),
+                    })?,
+                    title: r.title,
+                    description: r.description,
+                    key: r.key,
+                    status: ProjectStatus::from_str(&r.status).map_err(|e| {
+                        DbError::Initialization {
+                            message: format!("Invalid ProjectStatus in project.status: {}", e),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    version: r.version as i32,
+                    created_at: DateTime::from_timestamp(r.created_at, 0).ok_or_else(|| {
+                        DbError::Initialization {
+                            message: "Invalid timestamp in project.created_at".to_string(),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    updated_at: DateTime::from_timestamp(r.updated_at, 0).ok_or_else(|| {
+                        DbError::Initialization {
+                            message: "Invalid timestamp in project.updated_at".to_string(),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    created_by: Uuid::parse_str(&r.created_by).map_err(|e| {
+                        DbError::Initialization {
+                            message: format!("Invalid UUID in project.created_by: {}", e),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    updated_by: Uuid::parse_str(&r.updated_by).map_err(|e| {
+                        DbError::Initialization {
+                            message: format!("Invalid UUID in project.updated_by: {}", e),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    deleted_at: r.deleted_at.and_then(|ts| DateTime::from_timestamp(ts, 0)),
+                })
             })
-            .collect())
+            .collect::<DbErrorResult<Vec<_>>>()
     }
 
     pub async fn update(&self, project: &Project) -> DbErrorResult<()> {

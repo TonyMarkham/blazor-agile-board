@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n              SELECT id, work_item_id, user_id,\n                     started_at, ended_at, duration_seconds, description,\n                     created_at, updated_at, deleted_at\n              FROM pm_time_entries\n              WHERE id = ? AND deleted_at IS NULL\n              ",
+  "query": "\n                SELECT id, work_item_id, user_id,\n                       started_at, ended_at, duration_seconds, description,\n                       created_at, updated_at, deleted_at\n                FROM pm_time_entries\n                WHERE id = ? AND deleted_at IS NULL\n                ",
   "describe": {
     "columns": [
       {
@@ -70,5 +70,5 @@
       true
     ]
   },
-  "hash": "50ed96dbc32a9d1360b35f2a05b4daba8f8881708a3d578787d05af4ca800e31"
+  "hash": "80ae5b09cb4246a9b9293e6228dc35647e78be3c6c7aeeb0e6e7fd4019e95cc9"
 }

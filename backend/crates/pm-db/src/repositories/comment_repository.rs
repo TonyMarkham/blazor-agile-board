@@ -1,8 +1,11 @@
-use crate::Result as DbErrorResult;
+use crate::{DbError, Result as DbErrorResult};
 
 use pm_core::Comment;
 
+use std::panic::Location;
+
 use chrono::DateTime;
+use error_location::ErrorLocation;
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
@@ -51,26 +54,61 @@ impl CommentRepository {
 
         let row = sqlx::query!(
             r#"
-              SELECT id, work_item_id, content,
-                     created_at, updated_at, created_by, updated_by, deleted_at
-              FROM pm_comments
-              WHERE id = ? AND deleted_at IS NULL
-              "#,
+                SELECT id, work_item_id, content,
+                       created_at, updated_at, created_by, updated_by, deleted_at
+                FROM pm_comments
+                WHERE id = ? AND deleted_at IS NULL
+                "#,
             id_str
         )
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(row.map(|r| Comment {
-            id: Uuid::parse_str(r.id.as_ref().unwrap()).unwrap(),
-            work_item_id: Uuid::parse_str(&r.work_item_id).unwrap(),
-            content: r.content,
-            created_at: DateTime::from_timestamp(r.created_at, 0).unwrap(),
-            updated_at: DateTime::from_timestamp(r.updated_at, 0).unwrap(),
-            created_by: Uuid::parse_str(&r.created_by).unwrap(),
-            updated_by: Uuid::parse_str(&r.updated_by).unwrap(),
-            deleted_at: r.deleted_at.and_then(|ts| DateTime::from_timestamp(ts, 0)),
-        }))
+        row.map(|r| -> DbErrorResult<Comment> {
+            Ok(Comment {
+                id: Uuid::parse_str(r.id.as_ref().ok_or_else(|| DbError::Initialization {
+                    message: "comment.id is NULL".to_string(),
+                    location: ErrorLocation::from(Location::caller()),
+                })?)
+                .map_err(|e| DbError::Initialization {
+                    message: format!("Invalid UUID in comment.id: {}", e),
+                    location: ErrorLocation::from(Location::caller()),
+                })?,
+                work_item_id: Uuid::parse_str(&r.work_item_id).map_err(|e| {
+                    DbError::Initialization {
+                        message: format!("Invalid UUID in comment.work_item_id: {}", e),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                content: r.content,
+                created_at: DateTime::from_timestamp(r.created_at, 0).ok_or_else(|| {
+                    DbError::Initialization {
+                        message: "Invalid timestamp in comment.created_at".to_string(),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                updated_at: DateTime::from_timestamp(r.updated_at, 0).ok_or_else(|| {
+                    DbError::Initialization {
+                        message: "Invalid timestamp in comment.updated_at".to_string(),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                created_by: Uuid::parse_str(&r.created_by).map_err(|e| {
+                    DbError::Initialization {
+                        message: format!("Invalid UUID in comment.created_by: {}", e),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                updated_by: Uuid::parse_str(&r.updated_by).map_err(|e| {
+                    DbError::Initialization {
+                        message: format!("Invalid UUID in comment.updated_by: {}", e),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                deleted_at: r.deleted_at.and_then(|ts| DateTime::from_timestamp(ts, 0)),
+            })
+        })
+        .transpose()
     }
 
     pub async fn find_by_work_item(&self, work_item_id: Uuid) -> DbErrorResult<Vec<Comment>> {
@@ -78,30 +116,63 @@ impl CommentRepository {
 
         let rows = sqlx::query!(
             r#"
-              SELECT id, work_item_id, content,
-                     created_at, updated_at, created_by, updated_by, deleted_at
-              FROM pm_comments
-              WHERE work_item_id = ? AND deleted_at IS NULL
-              ORDER BY created_at ASC
-              "#,
+                SELECT id, work_item_id, content,
+                       created_at, updated_at, created_by, updated_by, deleted_at
+                FROM pm_comments
+                WHERE work_item_id = ? AND deleted_at IS NULL
+                ORDER BY created_at ASC
+                "#,
             work_item_id_str
         )
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(rows
-            .into_iter()
-            .map(|r| Comment {
-                id: Uuid::parse_str(r.id.as_ref().unwrap()).unwrap(),
-                work_item_id: Uuid::parse_str(&r.work_item_id).unwrap(),
-                content: r.content,
-                created_at: DateTime::from_timestamp(r.created_at, 0).unwrap(),
-                updated_at: DateTime::from_timestamp(r.updated_at, 0).unwrap(),
-                created_by: Uuid::parse_str(&r.created_by).unwrap(),
-                updated_by: Uuid::parse_str(&r.updated_by).unwrap(),
-                deleted_at: r.deleted_at.and_then(|ts| DateTime::from_timestamp(ts, 0)),
+        rows.into_iter()
+            .map(|r| -> DbErrorResult<Comment> {
+                Ok(Comment {
+                    id: Uuid::parse_str(r.id.as_ref().ok_or_else(|| DbError::Initialization {
+                        message: "comment.id is NULL".to_string(),
+                        location: ErrorLocation::from(Location::caller()),
+                    })?)
+                    .map_err(|e| DbError::Initialization {
+                        message: format!("Invalid UUID in comment.id: {}", e),
+                        location: ErrorLocation::from(Location::caller()),
+                    })?,
+                    work_item_id: Uuid::parse_str(&r.work_item_id).map_err(|e| {
+                        DbError::Initialization {
+                            message: format!("Invalid UUID in comment.work_item_id: {}", e),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    content: r.content,
+                    created_at: DateTime::from_timestamp(r.created_at, 0).ok_or_else(|| {
+                        DbError::Initialization {
+                            message: "Invalid timestamp in comment.created_at".to_string(),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    updated_at: DateTime::from_timestamp(r.updated_at, 0).ok_or_else(|| {
+                        DbError::Initialization {
+                            message: "Invalid timestamp in comment.updated_at".to_string(),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    created_by: Uuid::parse_str(&r.created_by).map_err(|e| {
+                        DbError::Initialization {
+                            message: format!("Invalid UUID in comment.created_by: {}", e),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    updated_by: Uuid::parse_str(&r.updated_by).map_err(|e| {
+                        DbError::Initialization {
+                            message: format!("Invalid UUID in comment.updated_by: {}", e),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    deleted_at: r.deleted_at.and_then(|ts| DateTime::from_timestamp(ts, 0)),
+                })
             })
-            .collect())
+            .collect::<DbErrorResult<Vec<_>>>()
     }
 
     pub async fn update(&self, comment: &Comment) -> DbErrorResult<()> {
