@@ -13,6 +13,8 @@ use pm_proto::{Pong, WebSocketMessage, web_socket_message::Payload};
 
 use std::panic::Location;
 
+use crate::handlers::activity_log::handle_get_activity_log;
+use crate::handlers::llm_context::handle_get_llm_context;
 use error_location::ErrorLocation;
 use log::{error, info, warn};
 
@@ -108,6 +110,12 @@ async fn dispatch_inner(msg: WebSocketMessage, ctx: HandlerContext) -> WebSocket
         Some(Payload::DeleteDependencyRequest(req)) => handle_delete_dependency(req, ctx).await,
         Some(Payload::GetDependenciesRequest(req)) => handle_get_dependencies(req, ctx).await,
 
+        // Activity Log handlers
+        Some(Payload::GetActivityLogRequest(req)) => handle_get_activity_log(req, ctx).await,
+
+        // LLM Context handlers
+        Some(Payload::GetLlmContextRequest(req)) => handle_get_llm_context(req, ctx).await,
+
         // Ping/Pong
         Some(Payload::Ping(ping)) => {
             return WebSocketMessage {
@@ -186,6 +194,12 @@ fn payload_to_handler_name(payload: &Option<Payload>) -> &'static str {
         Some(Payload::CreateDependencyRequest(_)) => "CreateDependency",
         Some(Payload::DeleteDependencyRequest(_)) => "DeleteDependency",
         Some(Payload::GetDependenciesRequest(_)) => "GetDependencies",
+
+        // Activity Log
+        Some(Payload::GetActivityLogRequest(_)) => "GetActivityLog",
+
+        // LLM Context
+        Some(Payload::GetLlmContextRequest(_)) => "GetLlmContext",
 
         _ => "Unknown",
     }

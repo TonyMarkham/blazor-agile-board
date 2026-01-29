@@ -1,7 +1,7 @@
 use crate::{
-    AuthConfig, CircuitBreakerConfig, ConfigError, ConfigErrorResult, DatabaseConfig,
-    HandlerConfig, LoggingConfig, RateLimitConfig, RetryConfig, ServerConfig, ValidationConfig,
-    WebSocketConfig,
+    ActivityLogConfig, AuthConfig, CircuitBreakerConfig, ConfigError, ConfigErrorResult,
+    DatabaseConfig, HandlerConfig, LoggingConfig, RateLimitConfig, RetryConfig, ServerConfig,
+    ValidationConfig, WebSocketConfig,
 };
 
 use std::path::PathBuf;
@@ -16,6 +16,8 @@ pub struct Config {
     pub database: DatabaseConfig,
     pub auth: AuthConfig,
     pub logging: LoggingConfig,
+    #[serde(default)]
+    pub activity_log: ActivityLogConfig,
     pub websocket: WebSocketConfig,
     pub rate_limit: RateLimitConfig,
     pub circuit_breaker: CircuitBreakerConfig,
@@ -148,6 +150,11 @@ impl Config {
         );
 
         info!(
+            "  activity_log: retention={}d, cleanup={}h",
+            self.activity_log.retention_days, self.activity_log.cleanup_interval_hours
+        );
+
+        info!(
             "  logging: {} (colored: {})",
             *self.logging.level, self.logging.colored
         );
@@ -216,6 +223,16 @@ impl Config {
         Self::apply_env_parse("PM_LOG_LEVEL", &mut self.logging.level);
         Self::apply_env_bool("PM_LOG_COLORED", &mut self.logging.colored);
         Self::apply_env_option_string("PM_LOG_FILE", &mut self.logging.file);
+
+        // Activity Log
+        Self::apply_env_parse(
+            "PM_ACTIVITY_LOG_RETENTION_DAYS",
+            &mut self.activity_log.retention_days,
+        );
+        Self::apply_env_parse(
+            "PM_ACTIVITY_LOG_CLEANUP_INTERVAL_HOURS",
+            &mut self.activity_log.cleanup_interval_hours,
+        );
 
         // WebSocket
         Self::apply_env_parse(

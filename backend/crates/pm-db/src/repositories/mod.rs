@@ -2,6 +2,7 @@ pub mod activity_log_repository;
 pub mod comment_repository;
 pub mod dependency_repository;
 pub mod idempotency_repository;
+pub mod llm_context_repository;
 pub mod project_member_repository;
 pub mod project_repository;
 pub mod sprint_repository;

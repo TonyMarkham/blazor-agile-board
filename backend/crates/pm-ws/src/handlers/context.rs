@@ -1,6 +1,4 @@
-use crate::RequestContext;
-use crate::circuit_breaker::CircuitBreaker;
-use crate::retry::RetryConfig;
+use crate::{CircuitBreaker, ConnectionRegistry, RequestContext, RetryConfig};
 
 use std::sync::Arc;
 
@@ -22,6 +20,8 @@ pub struct HandlerContext {
     pub request_ctx: RequestContext,
     /// Retry configuration
     pub retry_config: RetryConfig,
+    /// Connection registry for broadcasts
+    pub registry: ConnectionRegistry,
 }
 
 impl HandlerContext {
@@ -31,6 +31,7 @@ impl HandlerContext {
         pool: SqlitePool,
         circuit_breaker: Arc<CircuitBreaker>,
         connection_id: String,
+        registry: ConnectionRegistry,
     ) -> Self {
         let request_ctx = RequestContext::new(user_id, connection_id, &message_id);
 
@@ -41,6 +42,7 @@ impl HandlerContext {
             circuit_breaker,
             request_ctx,
             retry_config: RetryConfig::default(),
+            registry,
         }
     }
 

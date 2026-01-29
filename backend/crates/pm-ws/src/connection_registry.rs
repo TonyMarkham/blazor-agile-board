@@ -1,12 +1,16 @@
-use crate::{ConnectionId, ConnectionInfo, ConnectionLimits, Result as WsErrorResult, WsError};
+use crate::{
+    ClientSubscriptions, ConnectionId, ConnectionInfo, ConnectionLimits, Result as WsErrorResult,
+    WsError,
+};
 
 use std::collections::HashMap;
 use std::panic::Location;
 use std::sync::Arc;
 
+use axum::extract::ws::Message;
 use error_location::ErrorLocation;
 use log::{info, warn};
-use tokio::sync::RwLock;
+use tokio::sync::{RwLock, mpsc};
 
 /// Registry for tracking active WebSocket connections                                                                                                                           
 pub struct ConnectionRegistry {
@@ -30,7 +34,11 @@ impl ConnectionRegistry {
     }
 
     /// Register a new connection, returns ConnectionId if successful
-    pub async fn register(&self, user_id: String) -> WsErrorResult<ConnectionId> {
+    pub async fn register(
+        &self,
+        user_id: String,
+        sender: mpsc::Sender<Message>,
+    ) -> WsErrorResult<ConnectionId> {
         let mut inner = self.inner.write().await;
 
         // Check total connection limit
@@ -53,6 +61,8 @@ impl ConnectionRegistry {
             connection_id,
             user_id,
             connected_at: chrono::Utc::now(),
+            sender,
+            subscriptions: ClientSubscriptions::new(),
         };
 
         inner.connections.insert(connection_id, info);

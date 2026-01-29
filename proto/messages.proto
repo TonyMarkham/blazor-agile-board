@@ -412,8 +412,78 @@ message WebSocketMessage {
     DependencyCreated dependency_created = 135;
     DependencyDeleted dependency_deleted = 136;
     DependenciesList dependencies_list = 137;
+
+    // Activity Log (Session 70)
+    GetActivityLogRequest get_activity_log_request = 140;
+    ActivityLogList activity_log_list = 141;
+    ActivityLogCreated activity_log_created = 142;
+
+    // LLM Context (Session 70)
+    GetLlmContextRequest get_llm_context_request = 143;
+    LlmContextList llm_context_list = 144;
   }
 }
+
+// ========================================
+// Activity Log Messages (fields 140-142)
+// ========================================
+
+message GetActivityLogRequest {
+  string entity_type = 1;  // "work_item", "sprint", "comment", "time_entry", "dependency", "project"
+  string entity_id = 2;
+  int32 limit = 3;         // Default 50, max 100, validated
+  int32 offset = 4;        // For pagination, default 0
+}
+
+message ActivityLogEntry {
+  string id = 1;
+  string entity_type = 2;
+  string entity_id = 3;
+  string action = 4;       // "created", "updated", "deleted"
+  optional string field_name = 5;
+  optional string old_value = 6;
+  optional string new_value = 7;
+  string user_id = 8;
+  int64 timestamp = 9;
+  optional string comment = 10;
+}
+
+message ActivityLogList {
+  repeated ActivityLogEntry entries = 1;
+  int32 total_count = 2;   // For pagination UI
+  bool has_more = 3;       // Quick check for "load more"
+}
+
+// Real-time activity broadcast (sent to subscribed clients)
+message ActivityLogCreated {
+  ActivityLogEntry entry = 1;
+}
+
+// ========================================
+// LLM Context Messages (fields 143-145)
+// ========================================
+
+message GetLlmContextRequest {
+  optional string category = 1;      // Filter by category
+  optional string context_type = 2;  // Filter by type
+  optional int32 min_priority = 3;   // Filter by minimum priority
+}
+
+message LlmContextEntry {
+  string id = 1;
+  string context_type = 2;
+  string category = 3;
+  string title = 4;
+  string content = 5;
+  optional string example_sql = 6;
+  optional string example_description = 7;
+  int32 priority = 8;
+}
+
+message LlmContextList {
+  repeated LlmContextEntry entries = 1;
+}
+
 
 // Connection Messages
 message Ping {

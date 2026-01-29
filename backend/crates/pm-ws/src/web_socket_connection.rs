@@ -1,12 +1,10 @@
 use crate::{
-    CircuitBreaker, ClientSubscriptions, ConnectionConfig, ConnectionId, HandlerContext, Metrics,
-    Result as WsErrorResult, ShutdownGuard, WsError, dispatch,
+    CircuitBreaker, ClientSubscriptions, ConnectionConfig, ConnectionId, ConnectionRegistry,
+    HandlerContext, Metrics, Result as WsErrorResult, ShutdownGuard, WsError, dispatch,
 };
 
 use pm_auth::ConnectionRateLimiter;
 use pm_proto::WebSocketMessage;
-use prost::Message as ProstMessage;
-use sqlx::SqlitePool;
 
 use std::panic::Location;
 use std::sync::Arc;
@@ -15,6 +13,8 @@ use axum::extract::ws::{Message, WebSocket};
 use error_location::ErrorLocation;
 use futures::{SinkExt, StreamExt};
 use log::{debug, error, info, warn};
+use prost::Message as ProstMessage;
+use sqlx::SqlitePool;
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
@@ -32,6 +32,9 @@ pub struct WebSocketConnection {
     #[allow(dead_code)]
     subscriptions: ClientSubscriptions,
     rate_limit_violations: u32,
+    registry: ConnectionRegistry,
+    outgoing_rx: mpsc::Receiver<Message>,
+    outgoing_tx: mpsc::Sender<Message>,
 }
 
 impl WebSocketConnection {
@@ -43,6 +46,9 @@ impl WebSocketConnection {
         pool: SqlitePool,
         circuit_breaker: Arc<CircuitBreaker>,
         user_id: Uuid,
+        registry: ConnectionRegistry,
+        outgoing_rx: mpsc::Receiver<Message>,
+        outgoing_tx: mpsc::Sender<Message>,
     ) -> Self {
         Self {
             connection_id,
@@ -54,6 +60,9 @@ impl WebSocketConnection {
             user_id,
             subscriptions: ClientSubscriptions::new(),
             rate_limit_violations: 0,
+            registry,
+            outgoing_rx,
+            outgoing_tx,
         }
     }
 
@@ -69,9 +78,11 @@ impl WebSocketConnection {
         let (mut ws_sender, mut ws_receiver) = socket.split();
 
         // Create bounded channel for outgoing messages (backpressure handling)
-        let (tx, mut rx) = mpsc::channel::<Message>(self.config.send_buffer_size);
+        let mut rx = std::mem::replace(&mut self.outgoing_rx, mpsc::channel::<Message>(1).1);
+        let outgoing_tx = self.outgoing_tx.clone();
+        let mut connection = self;
 
-        // Spawn send task
+        // Spawn send task (forward server messages to client)
         let send_task = tokio::spawn(async move {
             while let Some(msg) = rx.recv().await {
                 if ws_sender.send(msg).await.is_err() {
@@ -82,24 +93,23 @@ impl WebSocketConnection {
 
         let result = loop {
             tokio::select! {
-                // Handle incoming messages from client
                 msg = ws_receiver.next() => {
                     match msg {
                         Some(Ok(msg)) => {
-                            if let Err(e) = self.handle_client_message(msg, &tx).await {
+                            if let Err(e) = connection.handle_client_message(msg, &outgoing_tx).await {
                                 error!(
                                     "Error handling message from connection {}: {}",
-                                    self.connection_id,
+                                    connection.connection_id,
                                     e
                                 );
-                                self.metrics.error_occurred("message_handling");
+                                connection.metrics.error_occurred("message_handling");
                                 break Err(e);
                             }
                         }
                         Some(Err(e)) => {
                             error!(
                                 "WebSocket error on connection {}: {}",
-                                self.connection_id,
+                                connection.connection_id,
                                 e
                             );
                             break Err(WsError::ConnectionClosed {
@@ -108,7 +118,7 @@ impl WebSocketConnection {
                             });
                         }
                         None => {
-                            info!("Connection {} closed by client", self.connection_id);
+                            info!("Connection {} closed by client", connection.connection_id);
                             break Ok(());
                         }
                     }
@@ -116,20 +126,21 @@ impl WebSocketConnection {
 
                 // Handle graceful shutdown
                 _ = shutdown_guard.wait() => {
-                    info!("Shutting down connection {} gracefully", self.connection_id);
+                    info!("Shutting down connection {} gracefully", connection.connection_id);
                     break Ok(());
                 }
             }
         };
 
         // Cleanup
-        drop(tx); // Close channel to terminate send task
+        drop(outgoing_tx); // Close channel to terminate send task
         let _ = send_task.await;
 
-        self.metrics
+        connection
+            .metrics
             .connection_closed(if result.is_ok() { "normal" } else { "error" });
 
-        info!("WebSocket connection {} closed", self.connection_id);
+        info!("WebSocket connection {} closed", connection.connection_id);
 
         result
     }
@@ -244,6 +255,7 @@ impl WebSocketConnection {
             self.pool.clone(),
             self.circuit_breaker.clone(),
             self.connection_id.to_string(),
+            self.registry.clone(),
         );
 
         // Dispatch to appropriate handler

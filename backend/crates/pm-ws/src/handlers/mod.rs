@@ -1,3 +1,4 @@
+pub(crate) mod activity_log;
 pub(crate) mod authorization;
 pub(crate) mod change_tracker;
 pub(crate) mod comment;
@@ -11,6 +12,7 @@ pub(crate) mod error_codes;
 pub(crate) mod field_change_builder;
 pub(crate) mod hierarchy_validator;
 pub(crate) mod idempotency;
+pub(crate) mod llm_context;
 pub(crate) mod project;
 pub(crate) mod query;
 pub(crate) mod response_builder;

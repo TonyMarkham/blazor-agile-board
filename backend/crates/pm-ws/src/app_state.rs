@@ -10,13 +10,14 @@ use std::sync::Arc;
 use axum::{
     extract::{
         Query, State,
-        ws::{WebSocket, WebSocketUpgrade},
+        ws::{Message, WebSocket, WebSocketUpgrade},
     },
     http::{HeaderMap, StatusCode},
     response::Response,
 };
 use log::{debug, error, info, warn};
 use sqlx::SqlitePool;
+use tokio::sync::mpsc;
 
 /// Shared application state for WebSocket handlers
 #[derive(Clone)]
@@ -48,18 +49,6 @@ pub async fn handler(
     )?;
     debug!("WebSocket upgrade request from user {}", user_id);
 
-    // Register connection (enforces connection limits)
-    let connection_id = state
-        .registry
-        .register(user_id.clone())
-        .await
-        .map_err(|e| {
-            error!("Failed to register connection: {}", e);
-            StatusCode::SERVICE_UNAVAILABLE
-        })?;
-
-    info!("Registered connection {}", connection_id);
-
     // Create rate limiter for this connection
     let rate_limiter = state.rate_limiter_factory.create();
 
@@ -80,29 +69,39 @@ pub async fn handler(
     }
 
     // Upgrade to WebSocket
-    Ok(ws.on_upgrade(move |socket| {
-        handle_socket(socket, connection_id, state, rate_limiter, user_uuid)
-    }))
+    Ok(ws.on_upgrade(move |socket| handle_socket(socket, state, rate_limiter, user_uuid)))
 }
 
 /// Handle WebSocket connection after upgrade
 async fn handle_socket(
     socket: WebSocket,
-    connection_id: crate::ConnectionId,
     state: AppState,
     rate_limiter: pm_auth::ConnectionRateLimiter,
     user_id: uuid::Uuid,
 ) {
     let shutdown_guard = state.shutdown.subscribe_guard();
 
+    // Create bounded channel for outgoing messages (backpressure handling)
+    let (tx, rx) = mpsc::channel::<Message>(state.config.send_buffer_size);
+
+    // Register connection (enforces connection limits)
+    let connection_id = state
+        .registry
+        .register(user_id.to_string(), tx.clone())
+        .await
+        .unwrap();
+
     let connection = WebSocketConnection::new(
         connection_id,
         state.config,
         state.metrics.clone(),
         rate_limiter,
-        state.pool.clone(),            // NEW
-        state.circuit_breaker.clone(), // NEW
-        user_id,                       // NEW
+        state.pool.clone(),
+        state.circuit_breaker.clone(),
+        user_id,
+        state.registry.clone(),
+        rx,
+        tx,
     );
 
     // Handle connection lifecycle

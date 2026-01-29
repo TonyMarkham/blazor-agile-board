@@ -1,0 +1,80 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT id, context_type, category, title, content,\n                   example_sql, example_description, priority,\n                   created_at, updated_at, deleted_at\n            FROM pm_llm_context\n            WHERE deleted_at IS NULL\n              AND (?1 IS NULL OR category = ?1)\n              AND (?2 IS NULL OR context_type = ?2)\n              AND (?3 IS NULL OR priority >= ?3)\n            ORDER BY priority DESC, title ASC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "context_type",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "category",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "title",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "content",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "example_sql",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "example_description",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "priority",
+        "ordinal": 7,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 8,
+        "type_info": "Integer"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 9,
+        "type_info": "Integer"
+      },
+      {
+        "name": "deleted_at",
+        "ordinal": 10,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "4d3a84c1ee8ff2d9e4df63fb1da9fb46ab81bffd1635fb56d0c2519821284dae"
+}

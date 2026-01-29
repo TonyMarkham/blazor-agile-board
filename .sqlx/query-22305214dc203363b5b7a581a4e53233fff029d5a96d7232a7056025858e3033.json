@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            DELETE FROM pm_activity_log\n            WHERE timestamp < ?\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "22305214dc203363b5b7a581a4e53233fff029d5a96d7232a7056025858e3033"
+}

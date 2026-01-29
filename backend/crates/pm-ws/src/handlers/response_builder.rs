@@ -1,22 +1,25 @@
 use pm_core::{
-    Comment, Dependency, DependencyType, Project, ProjectStatus, Sprint, SprintStatus, TimeEntry,
-    WorkItem,
+    ActivityLog, Comment, Dependency, DependencyType, LlmContext, Project, ProjectStatus, Sprint,
+    SprintStatus, TimeEntry, WorkItem,
 };
 use pm_proto::{
-    Comment as ProtoComment, CommentCreated, CommentDeleted, CommentUpdated, CommentsList,
-    DependenciesList, Dependency as ProtoDependency, DependencyCreated, DependencyDeleted,
+    ActivityLogEntry as ProtoActivityLogEntry, ActivityLogList, Comment as ProtoComment,
+    CommentCreated, CommentDeleted, CommentUpdated, CommentsList, DependenciesList,
+    Dependency as ProtoDependency, DependencyCreated, DependencyDeleted,
     DependencyType as ProtoDependencyType, Error as PmProtoError, FieldChange,
-    Project as ProtoProject, ProjectCreated, ProjectDeleted, ProjectList,
-    ProjectStatus as ProtoProjectStatus, ProjectUpdated, RunningTimerResponse,
-    Sprint as ProtoSprint, SprintCreated, SprintDeleted, SprintStatus as ProtoSprintStatus,
-    SprintUpdated, SprintsList, TimeEntriesList, TimeEntry as ProtoTimeEntry, TimeEntryCreated,
-    TimeEntryDeleted, TimeEntryUpdated, TimerStarted, TimerStopped, WebSocketMessage,
-    WorkItem as PmProtoWorkItem, WorkItemCreated, WorkItemDeleted, WorkItemUpdated, WorkItemsList,
+    LlmContextEntry as ProtoLlmContextEntry, LlmContextList, Project as ProtoProject,
+    ProjectCreated, ProjectDeleted, ProjectList, ProjectStatus as ProtoProjectStatus,
+    ProjectUpdated, RunningTimerResponse, Sprint as ProtoSprint, SprintCreated, SprintDeleted,
+    SprintStatus as ProtoSprintStatus, SprintUpdated, SprintsList, TimeEntriesList,
+    TimeEntry as ProtoTimeEntry, TimeEntryCreated, TimeEntryDeleted, TimeEntryUpdated,
+    TimerStarted, TimerStopped, WebSocketMessage, WorkItem as PmProtoWorkItem, WorkItemCreated,
+    WorkItemDeleted, WorkItemUpdated, WorkItemsList,
     web_socket_message::Payload::{
-        CommentCreated as ProtoCommentCreated, CommentDeleted as ProtoCommentDeleted,
-        CommentUpdated as ProtoCommentUpdated, CommentsList as ProtoCommentsList,
-        DependenciesList as ProtoDependenciesList, DependencyCreated as ProtoDependencyCreated,
-        DependencyDeleted as ProtoDependencyDeleted, Error as ProtoError,
+        ActivityLogList as ProtoActivityLogList, CommentCreated as ProtoCommentCreated,
+        CommentDeleted as ProtoCommentDeleted, CommentUpdated as ProtoCommentUpdated,
+        CommentsList as ProtoCommentsList, DependenciesList as ProtoDependenciesList,
+        DependencyCreated as ProtoDependencyCreated, DependencyDeleted as ProtoDependencyDeleted,
+        Error as ProtoError, LlmContextList as ProtoLlmContextList,
         ProjectCreated as ProtoProjectCreated, ProjectDeleted as ProtoProjectDeleted,
         ProjectList as ProtoProjectList, ProjectUpdated as ProtoProjectUpdated,
         RunningTimerResponse as ProtoRunningTimerResponse, SprintCreated as ProtoSprintCreated,
@@ -571,6 +574,69 @@ pub fn build_dependencies_list_response(
         payload: Some(ProtoDependenciesList(DependenciesList {
             blocking: blocking.iter().map(dependency_to_proto).collect(),
             blocked: blocked.iter().map(dependency_to_proto).collect(),
+        })),
+    }
+}
+
+// === Activity Log + LLM Context Response Builders ===
+
+fn activity_log_to_proto(entry: &ActivityLog) -> ProtoActivityLogEntry {
+    ProtoActivityLogEntry {
+        id: entry.id.to_string(),
+        entity_type: entry.entity_type.clone(),
+        entity_id: entry.entity_id.to_string(),
+        action: entry.action.clone(),
+        field_name: entry.field_name.clone(),
+        old_value: entry.old_value.clone(),
+        new_value: entry.new_value.clone(),
+        user_id: entry.user_id.to_string(),
+        timestamp: entry.timestamp.timestamp(),
+        comment: entry.comment.clone(),
+    }
+}
+
+pub fn build_activity_log_list_response(
+    message_id: &str,
+    entries: Vec<ActivityLog>,
+    total_count: i64,
+    limit: i64,
+    offset: i64,
+) -> WebSocketMessage {
+    let has_more = (offset + limit) < total_count;
+
+    WebSocketMessage {
+        message_id: message_id.to_string(),
+        timestamp: Utc::now().timestamp(),
+        payload: Some(ProtoActivityLogList(ActivityLogList {
+            entries: entries.iter().map(activity_log_to_proto).collect(),
+            total_count: total_count as i32,
+            has_more,
+        })),
+    }
+}
+
+fn llm_context_to_proto(entry: &LlmContext) -> ProtoLlmContextEntry {
+    ProtoLlmContextEntry {
+        id: entry.id.to_string(),
+        context_type: entry.context_type.as_str().to_string(),
+        category: entry.category.clone(),
+        title: entry.title.clone(),
+        content: entry.content.clone(),
+        example_sql: entry.example_sql.clone(),
+        example_description: entry.example_description.clone(),
+        priority: entry.priority,
+    }
+}
+
+pub fn build_llm_context_list_response(
+    message_id: &str,
+    entries: Vec<LlmContext>,
+) -> WebSocketMessage {
+    WebSocketMessage {
+        message_id: message_id.to_string(),
+        timestamp: Utc::now().timestamp(),
+        payload: Some(ProtoLlmContextList(LlmContextList {
+            entries: entries.iter().map(llm_context_to_proto).collect(),
         })),
     }
 }
