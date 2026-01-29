@@ -4,9 +4,9 @@ use crate::{
     handle_create_time_entry, handle_delete, handle_delete_comment, handle_delete_dependency,
     handle_delete_project, handle_delete_sprint, handle_delete_time_entry, handle_get_comments,
     handle_get_dependencies, handle_get_running_timer, handle_get_sprints, handle_get_time_entries,
-    handle_get_work_items, handle_list, handle_start_timer, handle_stop_timer, handle_update,
-    handle_update_comment, handle_update_project, handle_update_sprint, handle_update_time_entry,
-    log_handler_entry,
+    handle_get_work_items, handle_list, handle_start_timer, handle_stop_timer, handle_subscribe,
+    handle_unsubscribe, handle_update, handle_update_comment, handle_update_project,
+    handle_update_sprint, handle_update_time_entry, log_handler_entry,
 };
 
 use pm_proto::{Pong, WebSocketMessage, web_socket_message::Payload};
@@ -127,17 +127,9 @@ async fn dispatch_inner(msg: WebSocketMessage, ctx: HandlerContext) -> WebSocket
             };
         }
 
-        // Not yet implemented
-        Some(Payload::Subscribe(_)) | Some(Payload::Unsubscribe(_)) => {
-            return build_error_response(
-                &message_id,
-                pm_proto::Error {
-                    code: "NOT_IMPLEMENTED".to_string(),
-                    message: "Subscription handling coming in Session 20".to_string(),
-                    field: None,
-                },
-            );
-        }
+        // Subscription handlers
+        Some(Payload::Subscribe(req)) => handle_subscribe(req, ctx).await,
+        Some(Payload::Unsubscribe(req)) => handle_unsubscribe(req, ctx).await,
 
         // Unknown payload
         _ => Err(WsError::InvalidMessage {

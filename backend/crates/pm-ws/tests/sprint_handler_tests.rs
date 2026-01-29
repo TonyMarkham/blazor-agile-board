@@ -6,14 +6,19 @@
 //! - Status transitions (state machine)
 //! - Authorization (permission checks)
 
-use chrono::{Duration, Utc};
 use pm_proto::{
     CreateSprintRequest, GetSprintsRequest, SprintStatus as ProtoSprintStatus, UpdateSprintRequest,
     WebSocketMessage, web_socket_message::Payload,
 };
-use pm_ws::{CircuitBreaker, CircuitBreakerConfig, HandlerContext, dispatch};
-use sqlx::SqlitePool;
+use pm_ws::{
+    CircuitBreaker, CircuitBreakerConfig, ConnectionLimits, ConnectionRegistry, HandlerContext,
+    dispatch,
+};
+
 use std::sync::Arc;
+
+use chrono::{Duration, Utc};
+use sqlx::SqlitePool;
 use uuid::Uuid;
 
 // =========================================================================
@@ -94,12 +99,14 @@ impl TestFixture {
     }
 
     fn create_context(&self, message_id: &str) -> HandlerContext {
+        let registry = ConnectionRegistry::new(ConnectionLimits::default());
         HandlerContext::new(
             message_id.to_string(),
             self.user_id,
             self.pool.clone(),
             self.circuit_breaker.clone(),
             "test-connection".to_string(),
+            registry,
         )
     }
 }

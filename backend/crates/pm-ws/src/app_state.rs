@@ -15,7 +15,7 @@ use axum::{
     http::{HeaderMap, StatusCode},
     response::Response,
 };
-use log::{debug, error, info, warn};
+use log::{debug, error, warn};
 use sqlx::SqlitePool;
 use tokio::sync::mpsc;
 
@@ -48,6 +48,11 @@ pub async fn handler(
         &state.desktop_user_id,
     )?;
     debug!("WebSocket upgrade request from user {}", user_id);
+
+    if state.registry.is_at_total_limit().await {
+        warn!("WebSocket connection rejected: total limit reached");
+        return Err(StatusCode::SERVICE_UNAVAILABLE);
+    }
 
     // Create rate limiter for this connection
     let rate_limiter = state.rate_limiter_factory.create();

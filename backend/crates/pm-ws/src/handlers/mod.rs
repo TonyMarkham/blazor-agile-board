@@ -17,5 +17,6 @@ pub(crate) mod project;
 pub(crate) mod query;
 pub(crate) mod response_builder;
 pub(crate) mod sprint;
+pub(crate) mod subscription;
 pub(crate) mod time_entry;
 pub(crate) mod work_item;

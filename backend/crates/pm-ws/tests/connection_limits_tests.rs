@@ -50,8 +50,16 @@ async fn given_server_at_limit_when_one_disconnects_then_new_can_connect() {
     // When - One client disconnects
     client1.close().await;
 
-    // Give server time to process disconnect
-    sleep(Duration::from_millis(100)).await;
+    // Wait until registry reflects the disconnect
+    let mut disconnected = false;
+    for _ in 0..40 {
+        if test_server.app_state.registry.total_count().await == 4 {
+            disconnected = true;
+            break;
+        }
+        sleep(Duration::from_millis(25)).await;
+    }
+    assert!(disconnected, "registry did not drop to 4 after close");
 
     // Then - New connection succeeds (slot freed)
     let client6 = WsTestClient::connect(&test_server.server, "user-6", TEST_JWT_SECRET).await;

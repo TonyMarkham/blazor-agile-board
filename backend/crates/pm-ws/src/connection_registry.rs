@@ -1,6 +1,6 @@
 use crate::{
     ClientSubscriptions, ConnectionId, ConnectionInfo, ConnectionLimits, Result as WsErrorResult,
-    WsError,
+    SubscriptionFilter, WsError,
 };
 
 use std::collections::HashMap;
@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use axum::extract::ws::Message;
 use error_location::ErrorLocation;
-use log::{info, warn};
+use log::{debug, info, warn};
 use tokio::sync::{RwLock, mpsc};
 
 /// Registry for tracking active WebSocket connections                                                                                                                           
@@ -96,6 +96,113 @@ impl ConnectionRegistry {
     pub async fn total_count(&self) -> usize {
         let inner = self.inner.read().await;
         inner.connections.len()
+    }
+
+    /// True if total connections reached max_total
+    pub async fn is_at_total_limit(&self) -> bool {
+        let inner = self.inner.read().await;
+        inner.connections.len() >= self.limits.max_total
+    }
+
+    /// Subscribe a connection to project/sprint updates
+    pub async fn subscribe(
+        &self,
+        connection_id: &str,
+        projects: &[String],
+        sprints: &[String],
+    ) -> WsErrorResult<()> {
+        let mut inner = self.inner.write().await;
+        let connection_id = ConnectionId::parse(connection_id)?;
+        let info = inner
+            .connections
+            .get_mut(&connection_id)
+            .ok_or_else(|| WsError::NotFound {
+                message: format!("Connection {} not found", connection_id),
+                location: ErrorLocation::from(Location::caller()),
+            })?;
+
+        for project_id in projects {
+            info.subscriptions.subscribe_project(project_id.clone());
+        }
+        for sprint_id in sprints {
+            info.subscriptions.subscribe_sprint(sprint_id.clone());
+        }
+
+        Ok(())
+    }
+
+    /// Unsubscribe a connection from project/sprint updates
+    pub async fn unsubscribe(
+        &self,
+        connection_id: &str,
+        projects: &[String],
+        sprints: &[String],
+    ) -> WsErrorResult<()> {
+        let mut inner = self.inner.write().await;
+        let connection_id = ConnectionId::parse(connection_id)?;
+        let info = inner
+            .connections
+            .get_mut(&connection_id)
+            .ok_or_else(|| WsError::NotFound {
+                message: format!("Connection {} not found", connection_id),
+                location: ErrorLocation::from(Location::caller()),
+            })?;
+
+        for project_id in projects {
+            info.subscriptions.unsubscribe_project(project_id);
+        }
+        for sprint_id in sprints {
+            info.subscriptions.unsubscribe_sprint(sprint_id);
+        }
+
+        Ok(())
+    }
+
+    /// Broadcast ActivityLogCreated event to matching subscribers
+    pub async fn broadcast_activity_log_created(
+        &self,
+        project_id: &str,
+        work_item_id: Option<&str>,
+        sprint_id: Option<&str>,
+        message: Message,
+    ) -> WsErrorResult<usize> {
+        // Clone senders first to avoid holding lock across .await
+        let inner = self.inner.read().await;
+        let connections: Vec<(ClientSubscriptions, mpsc::Sender<Message>)> = inner
+            .connections
+            .values()
+            .map(|info| (info.subscriptions.clone(), info.sender.clone()))
+            .collect();
+        drop(inner);
+
+        let mut delivered = 0;
+        for (subscriptions, sender) in connections {
+            let should_receive = if let Some(work_item_id) = work_item_id {
+                SubscriptionFilter::should_receive_work_item_event(
+                    &subscriptions,
+                    project_id,
+                    work_item_id,
+                )
+            } else if let Some(sprint_id) = sprint_id {
+                SubscriptionFilter::should_receive_sprint_event(
+                    &subscriptions,
+                    project_id,
+                    sprint_id,
+                )
+            } else {
+                subscriptions.is_subscribed_to_project(project_id)
+            };
+
+            if should_receive {
+                if sender.send(message.clone()).await.is_ok() {
+                    delivered += 1;
+                } else {
+                    debug!("Broadcast send failed; skipping connection");
+                }
+            }
+        }
+
+        Ok(delivered)
     }
 }
 

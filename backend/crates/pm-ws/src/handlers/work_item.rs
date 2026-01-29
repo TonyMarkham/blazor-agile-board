@@ -1,13 +1,9 @@
-use crate::handlers::{
-    authorization::check_permission,
-    change_tracker::track_changes,
-    context::HandlerContext,
-    db_ops::{db_read, db_write},
-    hierarchy_validator::validate_hierarchy,
-    idempotency::{check_idempotency, store_idempotency},
-    response_builder::*,
+use crate::{
+    HandlerContext, MessageValidator, Result as WsErrorResult, WsError,
+    build_activity_log_created_event, build_work_item_created_response,
+    build_work_item_deleted_response, build_work_item_updated_response, check_idempotency,
+    check_permission, db_read, db_write, store_idempotency, track_changes, validate_hierarchy,
 };
-use crate::{MessageValidator, Result as WsErrorResult, WsError};
 
 use pm_core::{ActivityLog, Permission, WorkItem, WorkItemType};
 use pm_db::{ActivityLogRepository, WorkItemRepository};
@@ -18,8 +14,12 @@ use pm_proto::{
 
 use std::panic::Location;
 
+use axum::extract::ws::Message;
+use base64::Engine;
 use chrono::Utc;
 use error_location::ErrorLocation;
+use log::{debug, info, warn};
+use prost::Message as ProstMessage;
 use uuid::Uuid;
 
 /// Convert proto WorkItemType (i32) to domain WorkItemType
@@ -41,7 +41,7 @@ pub async fn handle_create(
     req: CreateWorkItemRequest,
     ctx: HandlerContext,
 ) -> WsErrorResult<WebSocketMessage> {
-    log::debug!("{} CreateWorkItem starting", ctx.log_prefix());
+    debug!("{} CreateWorkItem starting", ctx.log_prefix());
 
     // 1. Convert and validate item_type
     let item_type = proto_to_domain_item_type(req.item_type)?;
@@ -60,7 +60,7 @@ pub async fn handle_create(
     .await?;
 
     if let Some(cached_response) = cached {
-        log::info!("{} Returning cached idempotent response", ctx.log_prefix());
+        info!("{} Returning cached idempotent response", ctx.log_prefix());
         use base64::Engine;
         use prost::Message as ProstMessage;
         let bytes = base64::engine::general_purpose::STANDARD
@@ -129,26 +129,34 @@ pub async fn handle_create(
     };
 
     // 9. Execute transaction with circuit breaker
+    let activity = ActivityLog::created("work_item", work_item.id, ctx.user_id);
     let work_item_clone = work_item.clone();
+    let activity_clone = activity.clone();
     db_write(&ctx, "create_work_item_tx", || async {
         let mut tx = ctx.pool.begin().await?;
 
         WorkItemRepository::create(&mut *tx, &work_item_clone).await?;
-
-        let activity = ActivityLog::created("work_item", work_item_clone.id, ctx.user_id);
-        ActivityLogRepository::create(&mut *tx, &activity).await?;
+        ActivityLogRepository::create(&mut *tx, &activity_clone).await?;
 
         tx.commit().await?;
         Ok::<_, WsError>(())
     })
     .await?;
 
-    // 10. Build response
+    // 10. Broadcast ActivityLogCreated
+    let event = build_activity_log_created_event(&activity);
+    let bytes = event.encode_to_vec();
+    let message = Message::Binary(bytes.into());
+    let project_id_str = work_item.project_id.to_string();
+    let work_item_id_str = work_item.id.to_string();
+    ctx.registry
+        .broadcast_activity_log_created(&project_id_str, Some(&work_item_id_str), None, message)
+        .await?;
+
+    // 11. Build response
     let response = build_work_item_created_response(&ctx.message_id, &work_item, ctx.user_id);
 
-    // 11. Store idempotency (after commit, failure here is non-fatal)
-    use base64::Engine;
-    use prost::Message as ProstMessage;
+    // 12. Store idempotency (after commit, failure here is non-fatal)
     let response_bytes = response.encode_to_vec();
     let response_b64 = base64::engine::general_purpose::STANDARD.encode(&response_bytes);
 
@@ -160,14 +168,14 @@ pub async fn handle_create(
     )
     .await
     {
-        log::warn!(
+        warn!(
             "{} Failed to store idempotency (non-fatal): {}",
             ctx.log_prefix(),
             e
         );
     }
 
-    log::info!(
+    info!(
         "{} Created work item {} ({:?}) in project {}",
         ctx.log_prefix(),
         work_item.id,
@@ -183,7 +191,7 @@ pub async fn handle_update(
     req: UpdateWorkItemRequest,
     ctx: HandlerContext,
 ) -> WsErrorResult<WebSocketMessage> {
-    log::debug!("{} UpdateWorkItem starting", ctx.log_prefix());
+    debug!("{} UpdateWorkItem starting", ctx.log_prefix());
 
     // 1. Parse work item ID
     let work_item_id = parse_uuid(&req.work_item_id, "work_item_id")?;
@@ -236,23 +244,31 @@ pub async fn handle_update(
     work_item.version += 1;
 
     // 8. Transaction with circuit breaker
+    let activity = ActivityLog::updated("work_item", work_item.id, ctx.user_id, &changes);
     let work_item_clone = work_item.clone();
-    let changes_clone = changes.clone();
+    let activity_clone = activity.clone();
     db_write(&ctx, "update_work_item_tx", || async {
         let mut tx = ctx.pool.begin().await?;
 
         WorkItemRepository::update(&mut *tx, &work_item_clone).await?;
-
-        let activity =
-            ActivityLog::updated("work_item", work_item_clone.id, ctx.user_id, &changes_clone);
-        ActivityLogRepository::create(&mut *tx, &activity).await?;
+        ActivityLogRepository::create(&mut *tx, &activity_clone).await?;
 
         tx.commit().await?;
         Ok::<_, WsError>(())
     })
     .await?;
 
-    log::info!(
+    // 9. Broadcast ActivityLogCreated
+    let event = build_activity_log_created_event(&activity);
+    let bytes = event.encode_to_vec();
+    let message = Message::Binary(bytes.into());
+    let project_id_str = work_item.project_id.to_string();
+    let work_item_id_str = work_item.id.to_string();
+    ctx.registry
+        .broadcast_activity_log_created(&project_id_str, Some(&work_item_id_str), None, message)
+        .await?;
+
+    info!(
         "{} Updated work item {} (version {})",
         ctx.log_prefix(),
         work_item.id,
@@ -272,7 +288,7 @@ pub async fn handle_delete(
     req: DeleteWorkItemRequest,
     ctx: HandlerContext,
 ) -> WsErrorResult<WebSocketMessage> {
-    log::debug!("{} DeleteWorkItem starting", ctx.log_prefix());
+    debug!("{} DeleteWorkItem starting", ctx.log_prefix());
 
     // 1. Parse work item ID
     let work_item_id = parse_uuid(&req.work_item_id, "work_item_id")?;
@@ -314,20 +330,30 @@ pub async fn handle_delete(
     }
 
     // 5. Transaction
+    let activity = ActivityLog::deleted("work_item", work_item_id, ctx.user_id);
+    let activity_clone = activity.clone();
     db_write(&ctx, "delete_work_item_tx", || async {
         let mut tx = ctx.pool.begin().await?;
 
         WorkItemRepository::soft_delete(&mut *tx, work_item_id, ctx.user_id).await?;
-
-        let activity = ActivityLog::deleted("work_item", work_item_id, ctx.user_id);
-        ActivityLogRepository::create(&mut *tx, &activity).await?;
+        ActivityLogRepository::create(&mut *tx, &activity_clone).await?;
 
         tx.commit().await?;
         Ok::<_, WsError>(())
     })
     .await?;
 
-    log::info!("{} Deleted work item {}", ctx.log_prefix(), work_item_id);
+    // 6. Broadcast ActivityLogCreated
+    let event = build_activity_log_created_event(&activity);
+    let bytes = event.encode_to_vec();
+    let message = Message::Binary(bytes.into());
+    let project_id_str = work_item.project_id.to_string();
+    let work_item_id_str = work_item_id.to_string();
+    ctx.registry
+        .broadcast_activity_log_created(&project_id_str, Some(&work_item_id_str), None, message)
+        .await?;
+
+    info!("{} Deleted work item {}", ctx.log_prefix(), work_item_id);
 
     Ok(build_work_item_deleted_response(
         &ctx.message_id,

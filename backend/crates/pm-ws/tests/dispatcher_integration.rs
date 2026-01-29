@@ -8,7 +8,8 @@ use pm_proto::{
     WorkItemType as ProtoWorkItemType, web_socket_message::Payload,
 };
 use pm_ws::{
-    CircuitBreaker, CircuitBreakerConfig, CircuitState, HandlerContext, RequestContext, dispatch,
+    CircuitBreaker, CircuitBreakerConfig, CircuitState, ConnectionLimits, ConnectionRegistry,
+    HandlerContext, RequestContext, dispatch,
 };
 
 use std::sync::Arc;
@@ -114,12 +115,14 @@ impl DispatcherTestFixture {
     }
 
     fn create_context(&self, message_id: &str) -> HandlerContext {
+        let registry = ConnectionRegistry::new(ConnectionLimits::default());
         HandlerContext::new(
             message_id.to_string(),
             self.user_id,
             self.db.pool(),
             self.circuit_breaker.arc(),
             "test-connection".to_string(),
+            registry,
         )
     }
 

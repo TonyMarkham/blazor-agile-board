@@ -2,11 +2,12 @@
 
 use crate::{
     HandlerContext, MessageValidator, Result as WsErrorResult, WsError,
-    build_running_timer_response, build_time_entries_list_response,
-    build_time_entry_created_response, build_time_entry_deleted_response,
-    build_time_entry_updated_response, build_timer_started_response, build_timer_stopped_response,
-    check_idempotency, check_permission, db_read, db_write, decode_cached_response,
-    sanitize_string, store_idempotency_non_fatal,
+    build_activity_log_created_event, build_running_timer_response,
+    build_time_entries_list_response, build_time_entry_created_response,
+    build_time_entry_deleted_response, build_time_entry_updated_response,
+    build_timer_started_response, build_timer_stopped_response, check_idempotency,
+    check_permission, db_read, db_write, decode_cached_response, sanitize_string,
+    store_idempotency_non_fatal,
 };
 
 use pm_config::{DEFAULT_TIME_ENTRIES_LIMIT, MAX_TIME_ENTRIES_LIMIT};
@@ -20,9 +21,11 @@ use pm_proto::{
 
 use std::panic::Location;
 
+use axum::extract::ws::Message;
 use chrono::{DateTime, Utc};
 use error_location::ErrorLocation;
 use log::{debug, info};
+use prost::Message as ProstMessage;
 use uuid::Uuid;
 
 fn parse_uuid(s: &str, field: &str) -> WsErrorResult<Uuid> {
@@ -84,7 +87,7 @@ pub async fn handle_start_timer(
     .await?;
 
     // 6. ATOMIC TRANSACTION: Stop existing timer + Create new timer
-    let (new_entry, stopped_entry) = db_write(&ctx, "start_timer_atomic", || async {
+    let (new_entry, stopped_entry, activity) = db_write(&ctx, "start_timer_atomic", || async {
         let repo = TimeEntryRepository::new(ctx.pool.clone());
 
         // Find and stop any running timer for this user
@@ -127,9 +130,19 @@ pub async fn handle_start_timer(
         let activity = ActivityLog::created("time_entry", new_timer.id, ctx.user_id);
         ActivityLogRepository::create(&ctx.pool, &activity).await?;
 
-        Ok::<_, WsError>((new_timer, stopped))
+        Ok::<_, WsError>((new_timer, stopped, activity))
     })
     .await?;
+
+    // 6b. Broadcast ActivityLogCreated (new timer)
+    let event = build_activity_log_created_event(&activity);
+    let bytes = event.encode_to_vec();
+    let message = Message::Binary(bytes.into());
+    let project_id_str = work_item.project_id.to_string();
+    let work_item_id_str = work_item.id.to_string();
+    ctx.registry
+        .broadcast_activity_log_created(&project_id_str, Some(&work_item_id_str), None, message)
+        .await?;
 
     // 7. Build response
     let response = build_timer_started_response(
@@ -214,25 +227,44 @@ pub async fn handle_stop_timer(
     entry.duration_seconds = Some((now.timestamp() - entry.started_at.timestamp()) as i32);
     entry.updated_at = now;
 
+    let activity = ActivityLog::updated(
+        "time_entry",
+        entry.id,
+        ctx.user_id,
+        &[FieldChange {
+            field_name: "ended_at".to_string(),
+            old_value: None,
+            new_value: Some(entry.ended_at.unwrap().to_rfc3339()),
+        }],
+    );
+    let activity_clone = activity.clone();
     db_write(&ctx, "stop_timer", || async {
         let repo = TimeEntryRepository::new(ctx.pool.clone());
         repo.update(&entry).await?;
-
-        let activity = ActivityLog::updated(
-            "time_entry",
-            entry.id,
-            ctx.user_id,
-            &[FieldChange {
-                field_name: "ended_at".to_string(),
-                old_value: None,
-                new_value: Some(entry.ended_at.unwrap().to_rfc3339()),
-            }],
-        );
-        ActivityLogRepository::create(&ctx.pool, &activity).await?;
-
+        ActivityLogRepository::create(&ctx.pool, &activity_clone).await?;
         Ok::<_, WsError>(())
     })
     .await?;
+
+    let work_item = db_read(&ctx, "find_work_item_for_time_entry", || async {
+        WorkItemRepository::find_by_id(&ctx.pool, entry.work_item_id)
+            .await
+            .map_err(WsError::from)
+    })
+    .await?
+    .ok_or_else(|| WsError::NotFound {
+        message: format!("Work item {} not found", entry.work_item_id),
+        location: ErrorLocation::from(Location::caller()),
+    })?;
+
+    let event = build_activity_log_created_event(&activity);
+    let bytes = event.encode_to_vec();
+    let message = Message::Binary(bytes.into());
+    let project_id_str = work_item.project_id.to_string();
+    let work_item_id_str = work_item.id.to_string();
+    ctx.registry
+        .broadcast_activity_log_created(&project_id_str, Some(&work_item_id_str), None, message)
+        .await?;
 
     // 7. Build response
     let response = build_timer_stopped_response(&ctx.message_id, &entry, ctx.user_id);
@@ -324,16 +356,26 @@ pub async fn handle_create_time_entry(
     };
 
     // 6. Save with activity log
+    let activity = ActivityLog::created("time_entry", entry.id, ctx.user_id);
     let entry_clone = entry.clone();
+    let activity_clone = activity.clone();
     db_write(&ctx, "create_time_entry", || async {
         TimeEntryRepository::new(ctx.pool.clone())
             .create(&entry_clone)
             .await?;
-        let activity = ActivityLog::created("time_entry", entry_clone.id, ctx.user_id);
-        ActivityLogRepository::create(&ctx.pool, &activity).await?;
+        ActivityLogRepository::create(&ctx.pool, &activity_clone).await?;
         Ok::<_, WsError>(())
     })
     .await?;
+
+    let event = build_activity_log_created_event(&activity);
+    let bytes = event.encode_to_vec();
+    let message = Message::Binary(bytes.into());
+    let project_id_str = work_item.project_id.to_string();
+    let work_item_id_str = work_item.id.to_string();
+    ctx.registry
+        .broadcast_activity_log_created(&project_id_str, Some(&work_item_id_str), None, message)
+        .await?;
 
     // 7. Build response
     let response = build_time_entry_created_response(&ctx.message_id, &entry, ctx.user_id);
@@ -439,14 +481,34 @@ pub async fn handle_update_time_entry(
 
     // Save
     if !field_changes.is_empty() {
+        let activity = ActivityLog::updated("time_entry", entry.id, ctx.user_id, &field_changes);
+        let activity_clone = activity.clone();
         db_write(&ctx, "update_time_entry", || async {
             repo.update(&entry).await?;
-            let activity =
-                ActivityLog::updated("time_entry", entry.id, ctx.user_id, &field_changes);
-            ActivityLogRepository::create(&ctx.pool, &activity).await?;
+            ActivityLogRepository::create(&ctx.pool, &activity_clone).await?;
             Ok::<_, WsError>(())
         })
         .await?;
+
+        let work_item = db_read(&ctx, "find_work_item_for_time_entry", || async {
+            WorkItemRepository::find_by_id(&ctx.pool, entry.work_item_id)
+                .await
+                .map_err(WsError::from)
+        })
+        .await?
+        .ok_or_else(|| WsError::NotFound {
+            message: format!("Work item {} not found", entry.work_item_id),
+            location: ErrorLocation::from(Location::caller()),
+        })?;
+
+        let event = build_activity_log_created_event(&activity);
+        let bytes = event.encode_to_vec();
+        let message = Message::Binary(bytes.into());
+        let project_id_str = work_item.project_id.to_string();
+        let work_item_id_str = work_item.id.to_string();
+        ctx.registry
+            .broadcast_activity_log_created(&project_id_str, Some(&work_item_id_str), None, message)
+            .await?;
     }
 
     info!("{} Updated time entry {}", ctx.log_prefix(), entry.id);
@@ -488,13 +550,34 @@ pub async fn handle_delete_time_entry(
 
     // Soft delete
     let now = Utc::now().timestamp();
+    let activity = ActivityLog::deleted("time_entry", time_entry_id, ctx.user_id);
+    let activity_clone = activity.clone();
     db_write(&ctx, "delete_time_entry", || async {
         repo.delete(time_entry_id, now).await?;
-        let activity = ActivityLog::deleted("time_entry", time_entry_id, ctx.user_id);
-        ActivityLogRepository::create(&ctx.pool, &activity).await?;
+        ActivityLogRepository::create(&ctx.pool, &activity_clone).await?;
         Ok::<_, WsError>(())
     })
     .await?;
+
+    let work_item = db_read(&ctx, "find_work_item_for_time_entry", || async {
+        WorkItemRepository::find_by_id(&ctx.pool, entry.work_item_id)
+            .await
+            .map_err(WsError::from)
+    })
+    .await?
+    .ok_or_else(|| WsError::NotFound {
+        message: format!("Work item {} not found", entry.work_item_id),
+        location: ErrorLocation::from(Location::caller()),
+    })?;
+
+    let event = build_activity_log_created_event(&activity);
+    let bytes = event.encode_to_vec();
+    let message = Message::Binary(bytes.into());
+    let project_id_str = work_item.project_id.to_string();
+    let work_item_id_str = work_item.id.to_string();
+    ctx.registry
+        .broadcast_activity_log_created(&project_id_str, Some(&work_item_id_str), None, message)
+        .await?;
 
     info!("{} Deleted time entry {}", ctx.log_prefix(), time_entry_id);
 

@@ -23,6 +23,7 @@ pub const MAX_VIOLATIONS: u32 = 5;
 /// Manages a single WebSocket connection
 pub struct WebSocketConnection {
     connection_id: ConnectionId,
+    #[allow(dead_code)]
     config: ConnectionConfig,
     metrics: Metrics,
     rate_limiter: ConnectionRateLimiter,
@@ -96,14 +97,22 @@ impl WebSocketConnection {
                 msg = ws_receiver.next() => {
                     match msg {
                         Some(Ok(msg)) => {
-                            if let Err(e) = connection.handle_client_message(msg, &outgoing_tx).await {
-                                error!(
-                                    "Error handling message from connection {}: {}",
-                                    connection.connection_id,
-                                    e
-                                );
-                                connection.metrics.error_occurred("message_handling");
-                                break Err(e);
+                            match msg {
+                                Message::Close(_) => {
+                                    info!("Connection {} closed by client", connection.connection_id);
+                                    break Ok(());
+                                }
+                                _ => {
+                                    if let Err(e) = connection.handle_client_message(msg, &outgoing_tx).await {
+                                        error!(
+                                            "Error handling message from connection {}: {}",
+                                            connection.connection_id,
+                                            e
+                                        );
+                                        connection.metrics.error_occurred("message_handling");
+                                        break Err(e);
+                                    }
+                                }
                             }
                         }
                         Some(Err(e)) => {
@@ -132,8 +141,17 @@ impl WebSocketConnection {
             }
         };
 
+        // Unregister early to drop registry-held sender clone
+        connection
+            .registry
+            .unregister(connection.connection_id)
+            .await;
+
         // Cleanup
-        drop(outgoing_tx); // Close channel to terminate send task
+        drop(outgoing_tx); // Drop the local clone
+        let (dummy_tx, _dummy_rx) = mpsc::channel::<Message>(1);
+        let _old_tx = std::mem::replace(&mut connection.outgoing_tx, dummy_tx);
+        drop(_old_tx); // Drop the connection-held sender
         let _ = send_task.await;
 
         connection

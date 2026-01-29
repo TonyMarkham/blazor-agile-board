@@ -3,9 +3,9 @@ use pm_core::{
     SprintStatus, TimeEntry, WorkItem,
 };
 use pm_proto::{
-    ActivityLogEntry as ProtoActivityLogEntry, ActivityLogList, Comment as ProtoComment,
-    CommentCreated, CommentDeleted, CommentUpdated, CommentsList, DependenciesList,
-    Dependency as ProtoDependency, DependencyCreated, DependencyDeleted,
+    ActivityLogCreated, ActivityLogEntry as ProtoActivityLogEntry, ActivityLogList,
+    Comment as ProtoComment, CommentCreated, CommentDeleted, CommentUpdated, CommentsList,
+    DependenciesList, Dependency as ProtoDependency, DependencyCreated, DependencyDeleted,
     DependencyType as ProtoDependencyType, Error as PmProtoError, FieldChange,
     LlmContextEntry as ProtoLlmContextEntry, LlmContextList, Project as ProtoProject,
     ProjectCreated, ProjectDeleted, ProjectList, ProjectStatus as ProtoProjectStatus,
@@ -15,21 +15,21 @@ use pm_proto::{
     TimerStarted, TimerStopped, WebSocketMessage, WorkItem as PmProtoWorkItem, WorkItemCreated,
     WorkItemDeleted, WorkItemUpdated, WorkItemsList,
     web_socket_message::Payload::{
-        ActivityLogList as ProtoActivityLogList, CommentCreated as ProtoCommentCreated,
-        CommentDeleted as ProtoCommentDeleted, CommentUpdated as ProtoCommentUpdated,
-        CommentsList as ProtoCommentsList, DependenciesList as ProtoDependenciesList,
-        DependencyCreated as ProtoDependencyCreated, DependencyDeleted as ProtoDependencyDeleted,
-        Error as ProtoError, LlmContextList as ProtoLlmContextList,
-        ProjectCreated as ProtoProjectCreated, ProjectDeleted as ProtoProjectDeleted,
-        ProjectList as ProtoProjectList, ProjectUpdated as ProtoProjectUpdated,
-        RunningTimerResponse as ProtoRunningTimerResponse, SprintCreated as ProtoSprintCreated,
-        SprintDeleted as ProtoSprintDeleted, SprintUpdated as ProtoSprintUpdated,
-        SprintsList as ProtoSprintsList, TimeEntriesList as ProtoTimeEntriesList,
-        TimeEntryCreated as ProtoTimeEntryCreated, TimeEntryDeleted as ProtoTimeEntryDeleted,
-        TimeEntryUpdated as ProtoTimeEntryUpdated, TimerStarted as ProtoTimerStarted,
-        TimerStopped as ProtoTimerStopped, WorkItemCreated as ProtoWorkItemCreated,
-        WorkItemDeleted as ProtoWorkItemDeleted, WorkItemUpdated as ProtoWorkItemUpdated,
-        WorkItemsList as ProtoWorkItemsList,
+        ActivityLogCreated as ProtoActivityLogCreated, ActivityLogList as ProtoActivityLogList,
+        CommentCreated as ProtoCommentCreated, CommentDeleted as ProtoCommentDeleted,
+        CommentUpdated as ProtoCommentUpdated, CommentsList as ProtoCommentsList,
+        DependenciesList as ProtoDependenciesList, DependencyCreated as ProtoDependencyCreated,
+        DependencyDeleted as ProtoDependencyDeleted, Error as ProtoError,
+        LlmContextList as ProtoLlmContextList, ProjectCreated as ProtoProjectCreated,
+        ProjectDeleted as ProtoProjectDeleted, ProjectList as ProtoProjectList,
+        ProjectUpdated as ProtoProjectUpdated, RunningTimerResponse as ProtoRunningTimerResponse,
+        SprintCreated as ProtoSprintCreated, SprintDeleted as ProtoSprintDeleted,
+        SprintUpdated as ProtoSprintUpdated, SprintsList as ProtoSprintsList,
+        TimeEntriesList as ProtoTimeEntriesList, TimeEntryCreated as ProtoTimeEntryCreated,
+        TimeEntryDeleted as ProtoTimeEntryDeleted, TimeEntryUpdated as ProtoTimeEntryUpdated,
+        TimerStarted as ProtoTimerStarted, TimerStopped as ProtoTimerStopped,
+        WorkItemCreated as ProtoWorkItemCreated, WorkItemDeleted as ProtoWorkItemDeleted,
+        WorkItemUpdated as ProtoWorkItemUpdated, WorkItemsList as ProtoWorkItemsList,
     },
 };
 
@@ -611,6 +611,16 @@ pub fn build_activity_log_list_response(
             entries: entries.iter().map(activity_log_to_proto).collect(),
             total_count: total_count as i32,
             has_more,
+        })),
+    }
+}
+
+pub fn build_activity_log_created_event(entry: &ActivityLog) -> WebSocketMessage {
+    WebSocketMessage {
+        message_id: Uuid::new_v4().to_string(),
+        timestamp: Utc::now().timestamp(),
+        payload: Some(ProtoActivityLogCreated(ActivityLogCreated {
+            entry: Some(activity_log_to_proto(entry)),
         })),
     }
 }

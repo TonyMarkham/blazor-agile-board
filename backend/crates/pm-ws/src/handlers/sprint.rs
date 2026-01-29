@@ -1,9 +1,10 @@
 #![allow(dead_code)]
 
 use crate::{
-    FieldChangeBuilder, HandlerContext, build_sprint_created_response,
-    build_sprint_deleted_response, build_sprint_updated_response, build_sprints_list_response,
-    check_idempotency, check_permission, db_read, db_write, sanitize_string, store_idempotency,
+    FieldChangeBuilder, HandlerContext, build_activity_log_created_event,
+    build_sprint_created_response, build_sprint_deleted_response, build_sprint_updated_response,
+    build_sprints_list_response, check_idempotency, check_permission, db_read, db_write,
+    sanitize_string, store_idempotency,
 };
 use crate::{MessageValidator, Result as WsErrorResult, WsError};
 
@@ -16,6 +17,7 @@ use pm_proto::{
 
 use std::panic::Location;
 
+use axum::extract::ws::Message;
 use base64::Engine;
 use chrono::{DateTime, Utc};
 use error_location::ErrorLocation;
@@ -117,22 +119,29 @@ pub async fn handle_create_sprint(
     );
 
     // 7. Execute transaction
+    let activity = ActivityLog::created("sprint", sprint.id, ctx.user_id);
     let sprint_clone = sprint.clone();
+    let activity_clone = activity.clone();
     db_write(&ctx, "create_sprint_tx", || async {
         let repo = SprintRepository::new(ctx.pool.clone());
         repo.create(&sprint_clone).await?;
-
-        let activity = ActivityLog::created("sprint", sprint_clone.id, ctx.user_id);
-        ActivityLogRepository::create(&ctx.pool, &activity).await?;
-
+        ActivityLogRepository::create(&ctx.pool, &activity_clone).await?;
         Ok::<_, WsError>(())
     })
     .await?;
 
-    // 8. Build response
-    let response = build_sprint_created_response(&ctx.message_id, &sprint, ctx.user_id);
+    // 8. Broadcast ActivityLogCreated
+    let event = build_activity_log_created_event(&activity);
+    let bytes = event.encode_to_vec();
+    let message = Message::Binary(bytes.into());
+    let project_id_str = sprint.project_id.to_string();
+    let sprint_id_str = sprint.id.to_string();
+    ctx.registry
+        .broadcast_activity_log_created(&project_id_str, None, Some(&sprint_id_str), message)
+        .await?;
 
-    // 9. Store idempotency
+    // 9. Build response
+    let response = build_sprint_created_response(&ctx.message_id, &sprint, ctx.user_id);
     let response_bytes = response.encode_to_vec();
     let response_b64 = base64::engine::general_purpose::STANDARD.encode(&response_bytes);
 
@@ -269,18 +278,26 @@ pub async fn handle_update_sprint(
     sprint.version += 1;
 
     // 8. Transaction
+    let activity = ActivityLog::updated("sprint", sprint.id, ctx.user_id, &field_changes);
     let sprint_clone = sprint.clone();
-    let changes_clone = field_changes.clone();
+    let activity_clone = activity.clone();
     db_write(&ctx, "update_sprint_tx", || async {
         let repo = SprintRepository::new(ctx.pool.clone());
         repo.update(&sprint_clone).await?;
-
-        let activity = ActivityLog::updated("sprint", sprint_clone.id, ctx.user_id, &changes_clone);
-        ActivityLogRepository::create(&ctx.pool, &activity).await?;
-
+        ActivityLogRepository::create(&ctx.pool, &activity_clone).await?;
         Ok::<_, WsError>(())
     })
     .await?;
+
+    // 9. Broadcast ActivityLogCreated
+    let event = build_activity_log_created_event(&activity);
+    let bytes = event.encode_to_vec();
+    let message = Message::Binary(bytes.into());
+    let project_id_str = sprint.project_id.to_string();
+    let sprint_id_str = sprint.id.to_string();
+    ctx.registry
+        .broadcast_activity_log_created(&project_id_str, None, Some(&sprint_id_str), message)
+        .await?;
 
     info!(
         "{} Updated sprint {} (version {})",
@@ -382,16 +399,25 @@ pub async fn handle_delete_sprint(
     }
 
     // Soft delete
+    let activity = ActivityLog::deleted("sprint", sprint_id, ctx.user_id);
+    let activity_clone = activity.clone();
     db_write(&ctx, "delete_sprint_tx", || async {
         let repo = SprintRepository::new(ctx.pool.clone());
         repo.delete(sprint_id, Utc::now().timestamp()).await?;
-
-        let activity = ActivityLog::deleted("sprint", sprint_id, ctx.user_id);
-        ActivityLogRepository::create(&ctx.pool, &activity).await?;
-
+        ActivityLogRepository::create(&ctx.pool, &activity_clone).await?;
         Ok::<_, WsError>(())
     })
     .await?;
+
+    // Broadcast ActivityLogCreated
+    let event = build_activity_log_created_event(&activity);
+    let bytes = event.encode_to_vec();
+    let message = Message::Binary(bytes.into());
+    let project_id_str = sprint.project_id.to_string();
+    let sprint_id_str = sprint_id.to_string();
+    ctx.registry
+        .broadcast_activity_log_created(&project_id_str, None, Some(&sprint_id_str), message)
+        .await?;
 
     info!("{} Deleted sprint {}", ctx.log_prefix(), sprint_id);
 

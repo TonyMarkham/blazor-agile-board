@@ -55,12 +55,12 @@ pub use handlers::{
     },
     query::handle_get_work_items,
     response_builder::{
-        build_activity_log_list_response, build_comment_created_response,
-        build_comment_deleted_response, build_comment_updated_response,
-        build_comments_list_response, build_dependencies_list_response,
-        build_dependency_created_response, build_dependency_deleted_response, build_error_response,
-        build_llm_context_list_response, build_running_timer_response,
-        build_sprint_created_response, build_sprint_deleted_response,
+        build_activity_log_created_event, build_activity_log_list_response,
+        build_comment_created_response, build_comment_deleted_response,
+        build_comment_updated_response, build_comments_list_response,
+        build_dependencies_list_response, build_dependency_created_response,
+        build_dependency_deleted_response, build_error_response, build_llm_context_list_response,
+        build_running_timer_response, build_sprint_created_response, build_sprint_deleted_response,
         build_sprint_updated_response, build_sprints_list_response,
         build_time_entries_list_response, build_time_entry_created_response,
         build_time_entry_deleted_response, build_time_entry_updated_response,
@@ -71,6 +71,7 @@ pub use handlers::{
     sprint::{
         handle_create_sprint, handle_delete_sprint, handle_get_sprints, handle_update_sprint,
     },
+    subscription::{handle_subscribe, handle_unsubscribe},
     time_entry::{
         handle_create_time_entry, handle_delete_time_entry, handle_get_running_timer,
         handle_get_time_entries, handle_start_timer, handle_stop_timer, handle_update_time_entry,

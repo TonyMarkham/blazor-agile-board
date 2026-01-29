@@ -1,5 +1,8 @@
 use pm_proto::{GetLlmContextRequest, WebSocketMessage, web_socket_message::Payload};
-use pm_ws::{CircuitBreaker, CircuitBreakerConfig, HandlerContext, dispatch};
+use pm_ws::{
+    CircuitBreaker, CircuitBreakerConfig, ConnectionLimits, ConnectionRegistry, HandlerContext,
+    dispatch,
+};
 
 use std::sync::Arc;
 
@@ -32,12 +35,14 @@ impl TestFixture {
     }
 
     fn ctx(&self, msg_id: &str) -> HandlerContext {
+        let registry = ConnectionRegistry::new(ConnectionLimits::default());
         HandlerContext::new(
             msg_id.to_string(),
             self.user_id,
             self.pool.clone(),
             self.circuit_breaker.clone(),
             "test-connection".to_string(),
+            registry,
         )
     }
 }

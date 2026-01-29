@@ -23,6 +23,7 @@ This plan has been split into sub-sessions to fit within token budgets:
 | Session | Scope | Est. Tokens | Status |
 |---------|-------|-------------|--------|
 | **[70.1](70.1-Session-Plan.md)** | Backend Foundation (Activity Log + LLM Context) | ~40-45k | ✅ Complete |
+| **[70.11](70.11-Session-Plan.md)** | Subscription/Broadcast Closure (Backend) | ~20-30k | ✅ Complete |
 | **[70.2](70.2-Session-Plan.md)** | Frontend Polish (Toast + Activity UI) | ~40-45k | ⏳ Pending |
 | **[70.3](70.3-Session-Plan.md)** | Integration & Documentation | ~35-40k | ⏳ Pending |
 

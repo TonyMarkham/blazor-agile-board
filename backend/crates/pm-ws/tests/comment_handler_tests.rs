@@ -5,14 +5,19 @@
 //! - Author-only edit/delete permissions
 //! - Comment attachment to work items
 
-use chrono::Utc;
 use pm_proto::{
     CreateCommentRequest, DeleteCommentRequest, GetCommentsRequest, UpdateCommentRequest,
     WebSocketMessage, web_socket_message::Payload,
 };
-use pm_ws::{CircuitBreaker, CircuitBreakerConfig, HandlerContext, dispatch};
-use sqlx::SqlitePool;
+use pm_ws::{
+    CircuitBreaker, CircuitBreakerConfig, ConnectionLimits, ConnectionRegistry, HandlerContext,
+    dispatch,
+};
+
 use std::sync::Arc;
+
+use chrono::Utc;
+use sqlx::SqlitePool;
 use uuid::Uuid;
 
 // =========================================================================
@@ -129,22 +134,26 @@ impl TestFixture {
     }
 
     fn create_context(&self, message_id: &str) -> HandlerContext {
+        let registry = ConnectionRegistry::new(ConnectionLimits::default());
         HandlerContext::new(
             message_id.to_string(),
             self.user_id,
             self.pool.clone(),
             self.circuit_breaker.clone(),
             "test-connection".to_string(),
+            registry,
         )
     }
 
     fn create_context_as(&self, message_id: &str, user_id: Uuid) -> HandlerContext {
+        let registry = ConnectionRegistry::new(ConnectionLimits::default());
         HandlerContext::new(
             message_id.to_string(),
             user_id,
             self.pool.clone(),
             self.circuit_breaker.clone(),
             "test-connection".to_string(),
+            registry,
         )
     }
 }

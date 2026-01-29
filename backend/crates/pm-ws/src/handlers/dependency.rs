@@ -2,9 +2,9 @@
 
 use crate::{
     HandlerContext, MessageValidator, Result as WsErrorResult, WsError,
-    build_dependencies_list_response, build_dependency_created_response,
-    build_dependency_deleted_response, check_idempotency, check_permission, db_read, db_write,
-    decode_cached_response, store_idempotency_non_fatal,
+    build_activity_log_created_event, build_dependencies_list_response,
+    build_dependency_created_response, build_dependency_deleted_response, check_idempotency,
+    check_permission, db_read, db_write, decode_cached_response, store_idempotency_non_fatal,
 };
 
 use pm_config::{MAX_BLOCKED_DEPENDENCIES_PER_ITEM, MAX_BLOCKING_DEPENDENCIES_PER_ITEM};
@@ -17,9 +17,11 @@ use pm_proto::{
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::panic::Location;
 
+use axum::extract::ws::Message;
 use chrono::Utc;
 use error_location::ErrorLocation;
 use log::{debug, info};
+use prost::Message as ProstMessage;
 use uuid::Uuid;
 
 fn parse_uuid(s: &str, field: &str) -> WsErrorResult<Uuid> {
@@ -270,15 +272,23 @@ pub async fn handle_create_dependency(
         deleted_at: None,
     };
 
+    let activity = ActivityLog::created("dependency", dependency.id, ctx.user_id);
+    let activity_clone = activity.clone();
     db_write(&ctx, "create_dependency", || async {
         dep_repo.create(&dependency).await?;
-
-        let activity = ActivityLog::created("dependency", dependency.id, ctx.user_id);
-        ActivityLogRepository::create(&ctx.pool, &activity).await?;
-
+        ActivityLogRepository::create(&ctx.pool, &activity_clone).await?;
         Ok::<_, WsError>(())
     })
     .await?;
+
+    let event = build_activity_log_created_event(&activity);
+    let bytes = event.encode_to_vec();
+    let message = Message::Binary(bytes.into());
+    let project_id_str = blocking_item.project_id.to_string();
+    let work_item_id_str = blocking_item.id.to_string();
+    ctx.registry
+        .broadcast_activity_log_created(&project_id_str, Some(&work_item_id_str), None, message)
+        .await?;
 
     // 12. Build response
     let response = build_dependency_created_response(&ctx.message_id, &dependency, ctx.user_id);
@@ -344,15 +354,23 @@ pub async fn handle_delete_dependency(
 
     // Soft delete
     let now = Utc::now().timestamp();
+    let activity = ActivityLog::deleted("dependency", dependency_id, ctx.user_id);
+    let activity_clone = activity.clone();
     db_write(&ctx, "delete_dependency", || async {
         dep_repo.delete(dependency_id, now).await?;
-
-        let activity = ActivityLog::deleted("dependency", dependency_id, ctx.user_id);
-        ActivityLogRepository::create(&ctx.pool, &activity).await?;
-
+        ActivityLogRepository::create(&ctx.pool, &activity_clone).await?;
         Ok::<_, WsError>(())
     })
     .await?;
+
+    let event = build_activity_log_created_event(&activity);
+    let bytes = event.encode_to_vec();
+    let message = Message::Binary(bytes.into());
+    let project_id_str = work_item.project_id.to_string();
+    let work_item_id_str = work_item.id.to_string();
+    ctx.registry
+        .broadcast_activity_log_created(&project_id_str, Some(&work_item_id_str), None, message)
+        .await?;
 
     let response = build_dependency_deleted_response(
         &ctx.message_id,
