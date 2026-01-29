@@ -150,9 +150,16 @@ Before suggesting any changes to a file:
 - Line numbers and content drift as files are modified
 
 **When presenting edits, include landmarks:**
-- **Line numbers** - Reference specific line numbers for context
+- **Line numbers** - Use absolute file line numbers verified from a fresh read
 - **Existing code** - Show the code being replaced, not just the new code
 - **Surrounding context** - Include enough context to locate the edit uniquely
+
+**Line-number protocol (mandatory):**
+- **Always re-read the file immediately before quoting line numbers.**
+- **Only use absolute file line numbers from the read output.**
+- **Put line numbers in the summary above code blocks, never inside code blocks.**
+- **Provide before/after blocks for edits to existing files.**
+- **If line numbers drift after user edits, re-read and re-quote.**
 
 **Example of good edit presentation:**
 ```
