@@ -1,6 +1,6 @@
 use crate::{
     ConnectionConfig, ConnectionRegistry, Metrics, ShutdownCoordinator, WebSocketConnection,
-    circuit_breaker::CircuitBreaker,
+    WebSocketConnectionParams, circuit_breaker::CircuitBreaker,
 };
 
 use pm_auth::{JwtValidator, RateLimiterFactory};
@@ -96,18 +96,18 @@ async fn handle_socket(
         .await
         .unwrap();
 
-    let connection = WebSocketConnection::new(
+    let connection = WebSocketConnection::new(WebSocketConnectionParams {
         connection_id,
-        state.config,
-        state.metrics.clone(),
+        config: state.config,
+        metrics: state.metrics.clone(),
         rate_limiter,
-        state.pool.clone(),
-        state.circuit_breaker.clone(),
+        pool: state.pool.clone(),
+        circuit_breaker: state.circuit_breaker.clone(),
         user_id,
-        state.registry.clone(),
-        rx,
-        tx,
-    );
+        registry: state.registry.clone(),
+        outgoing_rx: rx,
+        outgoing_tx: tx,
+    });
 
     // Handle connection lifecycle
     let result = connection.handle(socket, shutdown_guard).await;

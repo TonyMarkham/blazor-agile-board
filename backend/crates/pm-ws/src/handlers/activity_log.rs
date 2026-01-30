@@ -58,7 +58,7 @@ pub async fn handle_get_activity_log(
     check_permission(&ctx, project_id, Permission::View).await?;
 
     // 3. Pagination defaults
-    let limit = req.limit.min(100).max(1) as i64;
+    let limit = req.limit.clamp(1, 100) as i64;
     let offset = req.offset.max(0) as i64;
 
     // 4. Query activity log

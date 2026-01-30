@@ -38,32 +38,34 @@ pub struct WebSocketConnection {
     outgoing_tx: mpsc::Sender<Message>,
 }
 
+pub struct WebSocketConnectionParams {
+    pub connection_id: ConnectionId,
+    pub config: ConnectionConfig,
+    pub metrics: Metrics,
+    pub rate_limiter: ConnectionRateLimiter,
+    pub pool: SqlitePool,
+    pub circuit_breaker: Arc<CircuitBreaker>,
+    pub user_id: Uuid,
+    pub registry: ConnectionRegistry,
+    pub outgoing_rx: mpsc::Receiver<Message>,
+    pub outgoing_tx: mpsc::Sender<Message>,
+}
+
 impl WebSocketConnection {
-    pub fn new(
-        connection_id: ConnectionId,
-        config: ConnectionConfig,
-        metrics: Metrics,
-        rate_limiter: ConnectionRateLimiter,
-        pool: SqlitePool,
-        circuit_breaker: Arc<CircuitBreaker>,
-        user_id: Uuid,
-        registry: ConnectionRegistry,
-        outgoing_rx: mpsc::Receiver<Message>,
-        outgoing_tx: mpsc::Sender<Message>,
-    ) -> Self {
+    pub fn new(params: WebSocketConnectionParams) -> Self {
         Self {
-            connection_id,
-            config,
-            metrics,
-            rate_limiter,
-            pool,
-            circuit_breaker,
-            user_id,
+            connection_id: params.connection_id,
+            config: params.config,
+            metrics: params.metrics,
+            rate_limiter: params.rate_limiter,
+            pool: params.pool,
+            circuit_breaker: params.circuit_breaker,
+            user_id: params.user_id,
             subscriptions: ClientSubscriptions::new(),
             rate_limit_violations: 0,
-            registry,
-            outgoing_rx,
-            outgoing_tx,
+            registry: params.registry,
+            outgoing_rx: params.outgoing_rx,
+            outgoing_tx: params.outgoing_tx,
         }
     }
 

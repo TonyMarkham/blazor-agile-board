@@ -90,7 +90,7 @@ pub use retry::{IsRetryable, RetryConfig, with_retry};
 pub use shutdown_coordinator::ShutdownCoordinator;
 pub use shutdown_guard::ShutdownGuard;
 pub use subscription_filter::SubscriptionFilter;
-pub use web_socket_connection::{MAX_VIOLATIONS, WebSocketConnection};
+pub use web_socket_connection::{MAX_VIOLATIONS, WebSocketConnection, WebSocketConnectionParams};
 
 #[cfg(test)]
 mod tests;
