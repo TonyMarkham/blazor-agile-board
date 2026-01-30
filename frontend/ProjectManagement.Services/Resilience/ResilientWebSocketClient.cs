@@ -72,6 +72,12 @@ public sealed class ResilientWebSocketClient : IWebSocketClient
         remove => _inner.OnProjectDeleted -= value;
     }
 
+    public event Action<ActivityLog>? OnActivityLogCreated
+    {
+        add => _inner.OnActivityLogCreated += value;
+        remove => _inner.OnActivityLogCreated -= value;
+    }
+
     public Task ConnectAsync(CancellationToken ct = default)
     {
         return _inner.ConnectAsync(ct);
@@ -452,6 +458,15 @@ public sealed class ResilientWebSocketClient : IWebSocketClient
     {
         return ExecuteWithResilienceAsync(
             token => _inner.GetDependenciesAsync(workItemId, token),
+            ct);
+    }
+
+    public Task<ActivityLogPage> GetActivityLogAsync(
+        GetActivityLogRequest request,
+        CancellationToken ct = default)
+    {
+        return ExecuteWithResilienceAsync(
+            token => _inner.GetActivityLogAsync(request, token),
             ct);
     }
 }

@@ -530,4 +530,45 @@ public static class ProtoConverter
     }
 
     #endregion
+
+    #region Activity Log Conversions
+
+    /// <summary>
+    /// Convert protobuf ActivityLogEntry to domain ActivityLog.
+    /// </summary>
+    public static ActivityLog ToDomain(Proto.ActivityLogEntry proto)
+    {
+        ArgumentNullException.ThrowIfNull(proto);
+
+        return new ActivityLog
+        {
+            Id = ParseGuid(proto.Id, "ActivityLogEntry.Id"),
+            EntityType = proto.EntityType ?? string.Empty,
+            EntityId = ParseGuid(proto.EntityId, "ActivityLogEntry.EntityId"),
+            Action = proto.Action ?? string.Empty,
+            FieldName = proto.HasFieldName ? proto.FieldName : null,
+            OldValue = proto.HasOldValue ? proto.OldValue : null,
+            NewValue = proto.HasNewValue ? proto.NewValue : null,
+            UserId = ParseGuid(proto.UserId, "ActivityLogEntry.UserId"),
+            Timestamp = FromUnixTimestamp(proto.Timestamp),
+            Comment = proto.HasComment ? proto.Comment : null
+        };
+    }
+
+    /// <summary>
+    /// Convert protobuf ActivityLogList to domain ActivityLogPage.
+    /// </summary>
+    public static ActivityLogPage ToDomain(Proto.ActivityLogList proto)
+    {
+        ArgumentNullException.ThrowIfNull(proto);
+
+        return new ActivityLogPage
+        {
+            Entries = proto.Entries.Select(ToDomain).ToList(),
+            TotalCount = proto.TotalCount,
+            HasMore = proto.HasMore
+        };
+    }
+
+    #endregion
 }

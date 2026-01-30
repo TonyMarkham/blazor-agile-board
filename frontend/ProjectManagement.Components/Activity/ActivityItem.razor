@@ -1,0 +1,81 @@
+@using System.Globalization
+
+<article class="activity-item" role="listitem" aria-label="@AriaLabel" tabindex="0">
+    <div class="activity-icon" aria-hidden="true">
+        @switch (Entry.Action)
+        {
+            case "created":
+                <RadzenIcon Icon="add_circle" Style="color: var(--rz-success, #4caf50)" />
+                break;
+            case "updated":
+                <RadzenIcon Icon="edit" Style="color: var(--rz-info, #2196f3)" />
+                break;
+            case "deleted":
+                <RadzenIcon Icon="delete" Style="color: var(--rz-danger, #f44336)" />
+                break;
+            default:
+                <RadzenIcon Icon="history" />
+                break;
+        }
+    </div>
+
+    <div class="activity-content">
+        <span class="activity-action">@FormatAction()</span>
+
+        @if (!string.IsNullOrEmpty(Entry.FieldName))
+        {
+            <div class="activity-change" aria-label="@ChangeAriaLabel">
+                <span class="field-name">@Entry.FieldName:</span>
+                <span class="old-value">@(Entry.OldValue ?? "(empty)")</span>
+                <RadzenIcon Icon="arrow_forward" aria-hidden="true" Style="font-size: 14px;" />
+                <span class="new-value">@(Entry.NewValue ?? "(empty)")</span>
+            </div>
+        }
+
+        <time class="activity-timestamp"
+              datetime="@TimestampIso"
+              title="@TimestampTitle">
+            @FormatRelativeTime(Entry.Timestamp)
+        </time>
+    </div>
+</article>
+
+@code {
+    [Parameter] public ActivityLog Entry { get; set; } = default!;
+
+    private string AriaLabel =>
+        $"{Entry.Action} {Entry.FieldName ?? "item"} {FormatRelativeTime(Entry.Timestamp)}";
+
+    private string ChangeAriaLabel =>
+        $"Changed {Entry.FieldName} from {Entry.OldValue ?? "empty"} to {Entry.NewValue ?? "empty"}";
+
+    private string TimestampIso => Entry.Timestamp.ToString("O");
+    private string TimestampTitle => Entry.Timestamp.ToLocalTime().ToString("f");
+
+    private string FormatAction() => Entry.Action switch
+    {
+        "created" => "Created",
+        "updated" => $"Updated {Entry.FieldName}",
+        "deleted" => "Deleted",
+        _ => Entry.Action
+    };
+
+    private string FormatRelativeTime(DateTime timestamp)
+    {
+        var span = DateTime.UtcNow - timestamp;
+
+        if (span.TotalSeconds < 60)
+            return "just now";
+
+        if (span.TotalSeconds < 3600)
+            return $"{(int)span.TotalMinutes}m ago";
+
+        if (span.TotalSeconds < 86400)
+            return $"{(int)span.TotalHours}h ago";
+
+        if (span.TotalSeconds < 604800)
+            return $"{(int)span.TotalDays}d ago";
+
+        return timestamp.ToLocalTime().ToString("MMM d", CultureInfo.CurrentCulture);
+    }
+}

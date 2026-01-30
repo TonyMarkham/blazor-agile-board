@@ -1,0 +1,28 @@
+<div class="operation-spinner @(IsVisible ? "visible" : "")"
+     role="progressbar"
+     aria-busy="@(IsVisible ? "true" : "false")"
+     aria-valuetext="@(Message ?? "Loading")"
+     aria-label="@(Message ?? "Loading")">
+    <div class="spinner-content">
+        <RadzenProgressBarCircular ShowValue="false"
+                                   Mode="ProgressBarMode.Indeterminate"
+                                   Size="ProgressBarCircularSize.Large" />
+        @if (!string.IsNullOrEmpty(Message))
+        {
+            <span class="spinner-message" aria-live="polite">@Message</span>
+        }
+        @if (OnCancel.HasDelegate)
+        {
+            <RadzenButton Text="Cancel"
+                          Size="ButtonSize.Small"
+                          ButtonStyle="ButtonStyle.Light"
+                          Click="@OnCancel" />
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public string? Message { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+}

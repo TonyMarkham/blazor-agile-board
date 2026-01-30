@@ -1,0 +1,44 @@
+@using ProjectManagement.Services.Notifications
+@implements IDisposable
+@inject ProjectManagement.Services.Notifications.IToastService Toasts
+
+<div class="action-toast-host" aria-live="polite" aria-atomic="true">
+    @foreach (var toast in Toasts.ActionToasts)
+    {
+        <div class="action-toast" role="status">
+            <span>@toast.Message</span>
+            <div class="action-toast-buttons">
+                <RadzenButton Text="@toast.ActionText"
+                              Size="ButtonSize.Small"
+                              Click="@(() => HandleAction(toast))" />
+                <RadzenButton Icon="close"
+                              Size="ButtonSize.Small"
+                              ButtonStyle="ButtonStyle.Light"
+                              Click="@(() => Toasts.DismissActionToast(toast.Id))" />
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Toasts.OnActionToastsChanged += HandleActionToastsChanged;
+    }
+
+    private async Task HandleAction(ActionToastRequest toast)
+    {
+        await toast.OnAction();
+        Toasts.DismissActionToast(toast.Id);
+    }
+
+    private void HandleActionToastsChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Toasts.OnActionToastsChanged -= HandleActionToastsChanged;
+    }
+}

@@ -174,3 +174,161 @@
         color: currentColor;
     }
 }
+
+/* Activity Feed */
+.activity-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px 0;
+}
+
+.activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.activity-item {
+    display: grid;
+    grid-template-columns: 32px 1fr;
+    gap: 12px;
+    padding: 12px;
+    background: var(--rz-base-background-color, #fff);
+    border: 1px solid var(--rz-border-color, #e6e6e6);
+    border-radius: 10px;
+}
+
+.activity-item:focus-visible {
+    outline: 2px solid var(--rz-primary, #2563eb);
+    outline-offset: 2px;
+}
+
+.activity-action {
+    font-weight: 600;
+}
+
+.activity-change {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9rem;
+    color: var(--rz-text-secondary, #6b7280);
+}
+
+.activity-timestamp {
+    display: block;
+    margin-top: 6px;
+    font-size: 0.8rem;
+    color: var(--rz-text-secondary, #6b7280);
+}
+
+.activity-error {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--rz-danger, #f44336);
+    border-radius: 8px;
+    background: rgba(244, 67, 54, 0.06);
+}
+
+.load-more-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 8px;
+}
+
+/* Activity Skeleton */
+.activity-skeleton {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.skeleton-item {
+    display: grid;
+    grid-template-columns: 32px 1fr;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid var(--rz-border-color, #e6e6e6);
+    border-radius: 10px;
+    background: var(--rz-base-background-color, #fff);
+}
+
+.skeleton-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #e5e7eb;
+}
+
+.skeleton-text {
+    height: 10px;
+    background: #e5e7eb;
+    border-radius: 6px;
+    margin-bottom: 8px;
+}
+
+.skeleton-text-title { width: 55%; }
+.skeleton-text-subtitle { width: 35%; }
+
+/* Action Toast Host */
+.action-toast-host {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 1000;
+}
+
+.action-toast {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    min-width: 260px;
+    background: var(--rz-base-background-color, #fff);
+    border: 1px solid var(--rz-border-color, #e6e6e6);
+    border-radius: 10px;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+}
+
+.action-toast-buttons {
+    display: inline-flex;
+    gap: 6px;
+}
+
+/* Operation Spinner */
+.operation-spinner {
+    position: fixed;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+}
+
+.operation-spinner.visible {
+    display: flex;
+}
+
+.spinner-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    background: var(--rz-base-background-color, #fff);
+    border: 1px solid var(--rz-border-color, #e6e6e6);
+    padding: 18px 20px;
+    border-radius: 12px;
+}
+
+.spinner-message {
+    font-size: 0.95rem;
+    color: var(--rz-text-secondary, #6b7280);
+}

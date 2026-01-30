@@ -1,0 +1,16 @@
+<div class="activity-skeleton" aria-busy="true" aria-label="Loading activity">
+    @for (int i = 0; i < Rows; i++)
+    {
+        <div class="skeleton-item" @key="i">
+            <div class="skeleton-icon"></div>
+            <div class="skeleton-content">
+                <div class="skeleton-text skeleton-text-title"></div>
+                <div class="skeleton-text skeleton-text-subtitle"></div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public int Rows { get; set; } = 5;
+}

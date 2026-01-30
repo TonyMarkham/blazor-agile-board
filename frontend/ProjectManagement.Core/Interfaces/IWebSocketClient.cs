@@ -171,141 +171,159 @@ public interface IWebSocketClient : IAsyncDisposable
     /// Get all comments for a work item.
     /// </summary>
     Task<IReadOnlyList<Comment>> GetCommentsAsync(Guid workItemId, CancellationToken ct = default);
-    
+
     // ==========================================================================
-      // Time Entry Events
-      // ==========================================================================
+    // Time Entry Events
+    // ==========================================================================
 
-      /// <summary>
-      /// Fired when a timer is started.
-      /// Parameters: (started entry, optionally the entry that was auto-stopped)
-      /// </summary>
-      event Action<TimeEntry, TimeEntry?>? OnTimerStarted;
+    /// <summary>
+    /// Fired when a timer is started.
+    /// Parameters: (started entry, optionally the entry that was auto-stopped)
+    /// </summary>
+    event Action<TimeEntry, TimeEntry?>? OnTimerStarted;
 
-      /// <summary>Fired when a timer is stopped.</summary>
-      event Action<TimeEntry>? OnTimerStopped;
+    /// <summary>Fired when a timer is stopped.</summary>
+    event Action<TimeEntry>? OnTimerStopped;
 
-      /// <summary>Fired when a manual time entry is created.</summary>
-      event Action<TimeEntry>? OnTimeEntryCreated;
+    /// <summary>Fired when a manual time entry is created.</summary>
+    event Action<TimeEntry>? OnTimeEntryCreated;
 
-      /// <summary>Fired when a time entry is updated.</summary>
-      event Action<TimeEntry>? OnTimeEntryUpdated;
+    /// <summary>Fired when a time entry is updated.</summary>
+    event Action<TimeEntry>? OnTimeEntryUpdated;
 
-      /// <summary>
-      /// Fired when a time entry is deleted.
-      /// Parameters: (timeEntryId, workItemId)
-      /// </summary>
-      event Action<Guid, Guid>? OnTimeEntryDeleted;
+    /// <summary>
+    /// Fired when a time entry is deleted.
+    /// Parameters: (timeEntryId, workItemId)
+    /// </summary>
+    event Action<Guid, Guid>? OnTimeEntryDeleted;
 
-      // ==========================================================================
-      // Time Entry Operations
-      // ==========================================================================
+    // ==========================================================================
+    // Time Entry Operations
+    // ==========================================================================
 
-      /// <summary>
-      /// Start a timer on a work item.
-      /// If the user already has a running timer, it will be automatically stopped.
-      /// </summary>
-      /// <returns>
-      /// Tuple of (started entry, stopped entry if any was auto-stopped)
-      /// </returns>
-      Task<(TimeEntry Started, TimeEntry? Stopped)> StartTimerAsync(
-          StartTimerRequest request,
-          CancellationToken ct = default);
+    /// <summary>
+    /// Start a timer on a work item.
+    /// If the user already has a running timer, it will be automatically stopped.
+    /// </summary>
+    /// <returns>
+    /// Tuple of (started entry, stopped entry if any was auto-stopped)
+    /// </returns>
+    Task<(TimeEntry Started, TimeEntry? Stopped)> StartTimerAsync(
+        StartTimerRequest request,
+        CancellationToken ct = default);
 
-      /// <summary>
-      /// Stop a running timer.
-      /// Only the owner can stop their timer.
-      /// </summary>
-      /// <returns>The stopped entry with duration calculated.</returns>
-      Task<TimeEntry> StopTimerAsync(
-          Guid timeEntryId,
-          CancellationToken ct = default);
+    /// <summary>
+    /// Stop a running timer.
+    /// Only the owner can stop their timer.
+    /// </summary>
+    /// <returns>The stopped entry with duration calculated.</returns>
+    Task<TimeEntry> StopTimerAsync(
+        Guid timeEntryId,
+        CancellationToken ct = default);
 
-      /// <summary>
-      /// Create a manual (already completed) time entry.
-      /// Use this for logging time after the fact.
-      /// </summary>
-      Task<TimeEntry> CreateTimeEntryAsync(
-          CreateTimeEntryRequest request,
-          CancellationToken ct = default);
+    /// <summary>
+    /// Create a manual (already completed) time entry.
+    /// Use this for logging time after the fact.
+    /// </summary>
+    Task<TimeEntry> CreateTimeEntryAsync(
+        CreateTimeEntryRequest request,
+        CancellationToken ct = default);
 
-      /// <summary>
-      /// Update an existing time entry.
-      /// Only the owner can update their entries.
-      /// </summary>
-      Task<TimeEntry> UpdateTimeEntryAsync(
-          UpdateTimeEntryRequest request,
-          CancellationToken ct = default);
+    /// <summary>
+    /// Update an existing time entry.
+    /// Only the owner can update their entries.
+    /// </summary>
+    Task<TimeEntry> UpdateTimeEntryAsync(
+        UpdateTimeEntryRequest request,
+        CancellationToken ct = default);
 
-      /// <summary>
-      /// Delete a time entry (soft delete).
-      /// Only the owner can delete their entries.
-      /// </summary>
-      Task DeleteTimeEntryAsync(
-          Guid timeEntryId,
-          CancellationToken ct = default);
+    /// <summary>
+    /// Delete a time entry (soft delete).
+    /// Only the owner can delete their entries.
+    /// </summary>
+    Task DeleteTimeEntryAsync(
+        Guid timeEntryId,
+        CancellationToken ct = default);
 
-      /// <summary>
-      /// Get time entries for a work item with pagination.
-      /// </summary>
-      /// <param name="workItemId">The work item to get entries for.</param>
-      /// <param name="limit">Max entries to return (default 100, max 500).</param>
-      /// <param name="offset">Number of entries to skip for pagination.</param>
-      /// <returns>Tuple of (entries, total count for pagination).</returns>
-      Task<(IReadOnlyList<TimeEntry> Entries, int TotalCount)> GetTimeEntriesAsync(
-          Guid workItemId,
-          int? limit = null,
-          int? offset = null,
-          CancellationToken ct = default);
+    /// <summary>
+    /// Get time entries for a work item with pagination.
+    /// </summary>
+    /// <param name="workItemId">The work item to get entries for.</param>
+    /// <param name="limit">Max entries to return (default 100, max 500).</param>
+    /// <param name="offset">Number of entries to skip for pagination.</param>
+    /// <returns>Tuple of (entries, total count for pagination).</returns>
+    Task<(IReadOnlyList<TimeEntry> Entries, int TotalCount)> GetTimeEntriesAsync(
+        Guid workItemId,
+        int? limit = null,
+        int? offset = null,
+        CancellationToken ct = default);
 
-      /// <summary>
-      /// Get the current user's running timer, if any.
-      /// </summary>
-      /// <returns>The running timer, or null if none.</returns>
-      Task<TimeEntry?> GetRunningTimerAsync(CancellationToken ct = default);
+    /// <summary>
+    /// Get the current user's running timer, if any.
+    /// </summary>
+    /// <returns>The running timer, or null if none.</returns>
+    Task<TimeEntry?> GetRunningTimerAsync(CancellationToken ct = default);
 
-      // ==========================================================================
-      // Dependency Events
-      // ==========================================================================
+    // ==========================================================================
+    // Dependency Events
+    // ==========================================================================
 
-      /// <summary>Fired when a dependency is created.</summary>
-      event Action<Dependency>? OnDependencyCreated;
+    /// <summary>Fired when a dependency is created.</summary>
+    event Action<Dependency>? OnDependencyCreated;
 
-      /// <summary>
-      /// Fired when a dependency is deleted.
-      /// Parameters: (dependencyId, blockingItemId, blockedItemId)
-      /// </summary>
-      event Action<Guid, Guid, Guid>? OnDependencyDeleted;
+    /// <summary>
+    /// Fired when a dependency is deleted.
+    /// Parameters: (dependencyId, blockingItemId, blockedItemId)
+    /// </summary>
+    event Action<Guid, Guid, Guid>? OnDependencyDeleted;
 
-      // ==========================================================================
-      // Dependency Operations
-      // ==========================================================================
+    // ==========================================================================
+    // Dependency Operations
+    // ==========================================================================
 
-      /// <summary>
-      /// Create a dependency between two work items.
-      /// Both items must be in the same project.
-      /// Circular dependencies are rejected for Blocks type.
-      /// </summary>
-      Task<Dependency> CreateDependencyAsync(
-          CreateDependencyRequest request,
-          CancellationToken ct = default);
+    /// <summary>
+    /// Create a dependency between two work items.
+    /// Both items must be in the same project.
+    /// Circular dependencies are rejected for Blocks type.
+    /// </summary>
+    Task<Dependency> CreateDependencyAsync(
+        CreateDependencyRequest request,
+        CancellationToken ct = default);
 
-      /// <summary>
-      /// Delete a dependency.
-      /// Requires Edit permission on the project.
-      /// </summary>
-      Task DeleteDependencyAsync(
-          Guid dependencyId,
-          CancellationToken ct = default);
+    /// <summary>
+    /// Delete a dependency.
+    /// Requires Edit permission on the project.
+    /// </summary>
+    Task DeleteDependencyAsync(
+        Guid dependencyId,
+        CancellationToken ct = default);
 
-      /// <summary>
-      /// Get dependencies for a work item.
-      /// Returns both items blocking this one and items blocked by this one.
-      /// </summary>
-      /// <returns>
-      /// Tuple of (items blocking this work item, items blocked by this work item)
-      /// </returns>
-      Task<(IReadOnlyList<Dependency> Blocking, IReadOnlyList<Dependency> Blocked)> GetDependenciesAsync(
-          Guid workItemId,
-          CancellationToken ct = default);
+    /// <summary>
+    /// Get dependencies for a work item.
+    /// Returns both items blocking this one and items blocked by this one.
+    /// </summary>
+    /// <returns>
+    /// Tuple of (items blocking this work item, items blocked by this work item)
+    /// </returns>
+    Task<(IReadOnlyList<Dependency> Blocking, IReadOnlyList<Dependency> Blocked)> GetDependenciesAsync(
+        Guid workItemId,
+        CancellationToken ct = default);
+
+    // ============================================================
+    // Activity Log Events
+    // ============================================================
+
+    /// <summary>Fired when an activity log entry is created.</summary>
+    event Action<ActivityLog>? OnActivityLogCreated;
+
+    // ============================================================
+    // Activity Log Operations
+    // ============================================================
+
+    /// <summary>
+    /// Get activity log entries for an entity.
+    /// </summary>
+    Task<ActivityLogPage> GetActivityLogAsync(
+        GetActivityLogRequest request,
+        CancellationToken ct = default);
 }

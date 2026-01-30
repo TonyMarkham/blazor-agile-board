@@ -1,0 +1,200 @@
+@using Microsoft.AspNetCore.Components.Web
+@implements IAsyncDisposable
+@inject IWebSocketClient Client
+@inject ILogger<ActivityFeed> Logger
+
+<div class="activity-feed"
+     role="feed"
+     aria-label="Activity history"
+     aria-busy="@_loading"
+     tabindex="0"
+     @onkeydown="HandleKeyDown">
+
+    @if (_error != null)
+    {
+        <div class="activity-error" role="alert">
+            <RadzenIcon Icon="error" />
+            <span>@_error</span>
+            <RadzenButton Text="Retry" Click="@LoadInitial" Size="ButtonSize.Small" Variant="Variant.Text" />
+        </div>
+    }
+    else if (_loading && _entries.Count == 0)
+    {
+        <ActivityFeedSkeleton Rows="@PageSize" />
+    }
+    else if (_entries.Count == 0)
+    {
+        <div class="empty-state" role="status">
+            <RadzenIcon Icon="history" Style="font-size: 48px; opacity: 0.3;" />
+            <p>No activity yet</p>
+            <small>Changes will appear here</small>
+        </div>
+    }
+    else
+    {
+        <div class="activity-list" role="list">
+            @foreach (var entry in _entries)
+            {
+                <ActivityItem Entry="@entry" @key="entry.Id" />
+            }
+        </div>
+
+        @if (_hasMore)
+        {
+            <div class="load-more-container">
+                <LoadingButton Text="Load more"
+                               LoadingText="Loading..."
+                               OnClick="@LoadMore"
+                               IsBusy="@_loadingMore"
+                               Disabled="@_loadingMore" />
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string EntityType { get; set; } = default!;
+
+    [Parameter, EditorRequired] public Guid EntityId { get; set; }
+
+    [Parameter] public int PageSize { get; set; } = 20;
+
+    private readonly List<ActivityLog> _entries = new();
+    private bool _loading, _loadingMore, _hasMore;
+    private string? _error;
+    private int _offset;
+    private Guid _currentEntityId;
+    private string? _currentEntityType;
+    private bool _disposed;
+    private CancellationTokenSource? _loadCts;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_currentEntityId != EntityId || _currentEntityType != EntityType)
+        {
+            _currentEntityId = EntityId;
+            _currentEntityType = EntityType;
+            _entries.Clear();
+            _offset = 0;
+            _error = null;
+            await LoadInitial();
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        Client.OnActivityLogCreated += HandleActivityCreated;
+    }
+
+    private async Task LoadInitial()
+    {
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        _loadCts = new CancellationTokenSource();
+
+        await LoadInitialCore(_loadCts.Token);
+    }
+
+    private async Task LoadInitialCore(CancellationToken ct)
+    {
+        _loading = true;
+        _error = null;
+        StateHasChanged();
+
+        try
+        {
+            var page = await Client.GetActivityLogAsync(new GetActivityLogRequest
+            {
+                EntityType = EntityType,
+                EntityId = EntityId,
+                Limit = PageSize,
+                Offset = 0
+            }, ct);
+
+            _entries.Clear();
+            _entries.AddRange(page.Entries);
+            _hasMore = page.HasMore;
+            _offset = PageSize;
+        }
+        catch (OperationCanceledException)
+        {
+            // Cancelled by user or component disposal
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load activity for {EntityType} {EntityId}", EntityType, EntityId);
+            _error = "Failed to load activity. Click to retry.";
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadMore()
+    {
+        if (_loadingMore) return;
+
+        _loadingMore = true;
+        StateHasChanged();
+
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        _loadCts = new CancellationTokenSource();
+
+        try
+        {
+            var page = await Client.GetActivityLogAsync(new GetActivityLogRequest
+            {
+                EntityType = EntityType,
+                EntityId = EntityId,
+                Limit = PageSize,
+                Offset = _offset
+            }, _loadCts.Token);
+
+            _entries.AddRange(page.Entries);
+            _hasMore = page.HasMore;
+            _offset += PageSize;
+        }
+        catch (OperationCanceledException)
+        {
+            // Cancelled by user or component disposal
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load more activity");
+        }
+        finally
+        {
+            _loadingMore = false;
+            StateHasChanged();
+        }
+    }
+
+    private void HandleActivityCreated(ActivityLog activity)
+    {
+        if (activity.EntityType == EntityType && activity.EntityId == EntityId)
+        {
+            _entries.Insert(0, activity);
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key is "r" or "R")
+            _ = LoadInitial();
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        if (_disposed) return ValueTask.CompletedTask;
+        _disposed = true;
+        Client.OnActivityLogCreated -= HandleActivityCreated;
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        return ValueTask.CompletedTask;
+    }
+
+}

@@ -227,4 +227,59 @@
           proto.SprintId.Should().BeNullOrEmpty();
           proto.StoryPoints.Should().Be(0);
       }
+
+      [Fact]
+      public void ToDomain_ActivityLogEntry_ConvertsAllFields()
+      {
+          var entry = new Pm.ActivityLogEntry
+          {
+              Id = Guid.NewGuid().ToString(),
+              EntityType = "work_item",
+              EntityId = Guid.NewGuid().ToString(),
+              Action = "updated",
+              FieldName = "title",
+              OldValue = "Old",
+              NewValue = "New",
+              UserId = Guid.NewGuid().ToString(),
+              Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+              Comment = "Renamed"
+          };
+
+          var domain = ProtoConverter.ToDomain(entry);
+
+          domain.Id.Should().Be(Guid.Parse(entry.Id));
+          domain.EntityType.Should().Be("work_item");
+          domain.EntityId.Should().Be(Guid.Parse(entry.EntityId));
+          domain.Action.Should().Be("updated");
+          domain.FieldName.Should().Be("title");
+          domain.OldValue.Should().Be("Old");
+          domain.NewValue.Should().Be("New");
+          domain.UserId.Should().Be(Guid.Parse(entry.UserId));
+          domain.Comment.Should().Be("Renamed");
+      }
+
+      [Fact]
+      public void ToDomain_ActivityLogList_ConvertsPagination()
+      {
+          var list = new Pm.ActivityLogList
+          {
+              TotalCount = 10,
+              HasMore = true
+          };
+          list.Entries.Add(new Pm.ActivityLogEntry
+          {
+              Id = Guid.NewGuid().ToString(),
+              EntityType = "project",
+              EntityId = Guid.NewGuid().ToString(),
+              Action = "created",
+              UserId = Guid.NewGuid().ToString(),
+              Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+          });
+
+          var page = ProtoConverter.ToDomain(list);
+
+          page.TotalCount.Should().Be(10);
+          page.HasMore.Should().BeTrue();
+          page.Entries.Should().HaveCount(1);
+      }
   }

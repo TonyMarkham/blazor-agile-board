@@ -6,6 +6,7 @@ using ProjectManagement.Core.Validation;
 using ProjectManagement.Core.ViewModels;
 using ProjectManagement.Services.Desktop;
 using ProjectManagement.Services.Logging;
+using ProjectManagement.Services.Notifications;
 using ProjectManagement.Services.Resilience;
 using ProjectManagement.Services.State;
 using ProjectManagement.Services.WebSocket;
@@ -82,6 +83,11 @@ builder.Services.AddScoped<ViewModelFactory>();
 
 // === Radzen ===
 builder.Services.AddRadzenComponents();
+
+// === Toasts ===
+builder.Services.AddScoped<INotificationService, RadzenNotificationServiceAdapter>();
+builder.Services.AddScoped<IToastService, ToastService>();
+builder.Services.AddScoped<IToastScheduler, ToastScheduler>();
 
 // === Run ===
 var app = builder.Build();
