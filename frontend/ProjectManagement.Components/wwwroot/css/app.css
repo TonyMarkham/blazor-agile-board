@@ -332,3 +332,40 @@
     font-size: 0.95rem;
     color: var(--rz-text-secondary, #6b7280);
 }
+
+/* === Connection Status === */
+.connection-status {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--rz-border-color, #e6e6e6);
+    background: var(--rz-base-background-color, #fff);
+    font-size: 0.9rem;
+}
+
+.connection-status-main {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+}
+
+.connection-status-metrics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-size: 0.8rem;
+    color: var(--rz-text-secondary-color);
+}
+
+.connection-status .metric strong {
+    color: var(--rz-text-color);
+}
+
+.connection-status.connected { border-color: var(--rz-success, #4caf50); }
+.connection-status.connecting { border-color: var(--rz-info, #2196f3); }
+.connection-status.reconnecting { border-color: var(--rz-warning, #ff9800); }
+.connection-status.disconnected,
+.connection-status.closed { border-color: var(--rz-danger, #f44336); }

@@ -1,6 +1,7 @@
 @page "/workitem/{WorkItemId:guid}"
 @using ProjectManagement.Core.Models
 @using ProjectManagement.Core.ViewModels
+@using ProjectManagement.Components.Activity
 @using ProjectManagement.Components.Comments
 @inject AppState AppState
 @inject ViewModelFactory ViewModelFactory
@@ -119,6 +120,7 @@ else
         </RadzenColumn>
 
         @* Sidebar *@
+        @* Sidebar *@
         <RadzenColumn Size="12" SizeMD="4">
             <div class="content-card">
                 <h3 class="content-card-title">Details</h3>
@@ -163,6 +165,11 @@ else
                         <RadzenText>@_workItem.Version</RadzenText>
                     </div>
                 </RadzenStack>
+            </div>
+
+            <div class="content-card mt-4">
+                <h3 class="content-card-title">Activity</h3>
+                <ActivityFeed EntityType="work_item" EntityId="@WorkItemId" PageSize="10" />
             </div>
         </RadzenColumn>
     </RadzenRow>

@@ -1,7 +1,9 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
+using ProjectManagement.Core.Exceptions;
 using ProjectManagement.Core.Interfaces;
 using ProjectManagement.Core.Models;
+using ProjectManagement.Services.Notifications;
 
 namespace ProjectManagement.Services.State;
 
@@ -12,6 +14,7 @@ namespace ProjectManagement.Services.State;
 public sealed class DependencyStore : IDependencyStore
 {
     private readonly IWebSocketClient _client;
+    private readonly IToastService _toast;
     private readonly ILogger<DependencyStore> _logger;
     private readonly Guid _currentUserId;
 
@@ -26,11 +29,13 @@ public sealed class DependencyStore : IDependencyStore
     public DependencyStore(
         IWebSocketClient client,
         AppState appState,
+        IToastService toast,
         ILogger<DependencyStore> logger)
     {
-        _client = client;
+        _client = client ?? throw new ArgumentNullException(nameof(client));
         _currentUserId = appState.CurrentUser?.Id ?? throw new InvalidOperationException("CurrentUser not set");
-        _logger = logger;
+        _toast = toast ?? throw new ArgumentNullException(nameof(toast));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         _client.OnDependencyCreated += HandleDependencyCreated;
         _client.OnDependencyDeleted += HandleDependencyDeleted;
@@ -99,9 +104,19 @@ public sealed class DependencyStore : IDependencyStore
             _dependencies[result.Id] = result;
 
             NotifyChanged();
+            _toast.ShowSuccess("Dependency added");
             _logger.LogInformation("Created dependency {DepId}: {Blocking} -> {Blocked}",
                 result.Id, request.BlockingItemId, request.BlockedItemId);
             return result;
+        }
+        catch (ValidationException ex)
+        {
+            _dependencies.TryRemove(tempId, out _);
+            _pendingUpdates.TryRemove(tempId, out _);
+            NotifyChanged();
+
+            _toast.ShowError(ex.UserMessage, "Validation Error");
+            throw;
         }
         catch (Exception ex)
         {
@@ -111,6 +126,7 @@ public sealed class DependencyStore : IDependencyStore
 
             _logger.LogWarning(ex, "Failed to create dependency {Blocking} -> {Blocked}",
                 request.BlockingItemId, request.BlockedItemId);
+            _toast.ShowError("Failed to create dependency. Please try again.");
             throw;
         }
     }
@@ -141,7 +157,21 @@ public sealed class DependencyStore : IDependencyStore
             _pendingUpdates.TryRemove(dependencyId, out _);
 
             NotifyChanged();
+            _toast.ShowSuccess("Dependency removed");
             _logger.LogInformation("Deleted dependency {DepId}", dependencyId);
+        }
+        catch (ValidationException ex)
+        {
+            if (_rollbackState.TryRemove(dependencyId, out var rollback))
+            {
+                _dependencies[dependencyId] = rollback;
+            }
+
+            _pendingUpdates.TryRemove(dependencyId, out _);
+            NotifyChanged();
+
+            _toast.ShowError(ex.UserMessage, "Validation Error");
+            throw;
         }
         catch (Exception ex)
         {
@@ -154,6 +184,7 @@ public sealed class DependencyStore : IDependencyStore
             NotifyChanged();
 
             _logger.LogWarning(ex, "Failed to delete dependency {DepId}", dependencyId);
+            _toast.ShowError("Failed to remove dependency. Please try again.");
             throw;
         }
     }

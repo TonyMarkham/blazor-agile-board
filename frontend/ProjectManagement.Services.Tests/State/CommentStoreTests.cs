@@ -3,8 +3,8 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using ProjectManagement.Core.Interfaces;
 using ProjectManagement.Core.Models;
+using ProjectManagement.Services.Notifications;
 using ProjectManagement.Services.State;
-using Xunit;
 
 namespace ProjectManagement.Services.Tests.State;
 
@@ -12,13 +12,15 @@ public class CommentStoreTests
 {
     private readonly Mock<IWebSocketClient> _mockClient;
     private readonly Mock<ILogger<CommentStore>> _mockLogger;
+    private readonly Mock<ProjectManagement.Services.Notifications.IToastService> _mockToast;
     private readonly CommentStore _store;
 
     public CommentStoreTests()
     {
         _mockClient = new Mock<IWebSocketClient>();
         _mockLogger = new Mock<ILogger<CommentStore>>();
-        _store = new CommentStore(_mockClient.Object, _mockLogger.Object);
+        _mockToast = new Mock<ProjectManagement.Services.Notifications.IToastService>();
+        _store = new CommentStore(_mockClient.Object, _mockToast.Object, _mockLogger.Object);
     }
 
     [Fact]

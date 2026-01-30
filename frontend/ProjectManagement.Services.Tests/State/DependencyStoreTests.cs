@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using ProjectManagement.Core.Interfaces;
 using ProjectManagement.Core.Models;
+using ProjectManagement.Services.Notifications;
 using ProjectManagement.Services.State;
 
 namespace ProjectManagement.Services.Tests.State;
@@ -11,6 +12,7 @@ public class DependencyStoreTests
 {
     private readonly Mock<IWebSocketClient> _mockClient;
     private readonly Mock<ILogger<DependencyStore>> _mockLogger;
+    private readonly Mock<ProjectManagement.Services.Notifications.IToastService> _mockToast;
     private readonly DependencyStore _store;
     private readonly Guid _currentUserId = Guid.NewGuid();
 
@@ -18,6 +20,7 @@ public class DependencyStoreTests
     {
         _mockClient = new Mock<IWebSocketClient>();
         _mockLogger = new Mock<ILogger<DependencyStore>>();
+        _mockToast = new Mock<ProjectManagement.Services.Notifications.IToastService>();
 
         // Create real AppState with mocked dependencies
         var mockWorkItems = new Mock<IWorkItemStore>();
@@ -45,7 +48,7 @@ public class DependencyStoreTests
         };
         appState.SetCurrentUser(currentUser);
 
-        _store = new DependencyStore(_mockClient.Object, appState, _mockLogger.Object);
+        _store = new DependencyStore(_mockClient.Object, appState, _mockToast.Object, _mockLogger.Object);
     }
 
     [Fact]

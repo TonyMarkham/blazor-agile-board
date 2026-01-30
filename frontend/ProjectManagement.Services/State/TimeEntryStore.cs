@@ -1,7 +1,9 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
+using ProjectManagement.Core.Exceptions;
 using ProjectManagement.Core.Interfaces;
 using ProjectManagement.Core.Models;
+using ProjectManagement.Services.Notifications;
 
 namespace ProjectManagement.Services.State;
 
@@ -11,6 +13,7 @@ namespace ProjectManagement.Services.State;
 public sealed class TimeEntryStore : ITimeEntryStore
 {
     private readonly IWebSocketClient _client;
+    private readonly IToastService _toast;
     private readonly ILogger<TimeEntryStore> _logger;
     private readonly Guid _currentUserId;
 
@@ -26,11 +29,13 @@ public sealed class TimeEntryStore : ITimeEntryStore
     public TimeEntryStore(
         IWebSocketClient client,
         AppState appState,
+        IToastService toast,
         ILogger<TimeEntryStore> logger)
     {
-        _client = client;
+        _client = client ?? throw new ArgumentNullException(nameof(client));
         _currentUserId = appState.CurrentUser?.Id ?? throw new InvalidOperationException("CurrentUser not set");
-        _logger = logger;
+        _toast = toast ?? throw new ArgumentNullException(nameof(toast));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         // Subscribe to WebSocket events for real-time updates
         _client.OnTimerStarted += HandleTimerStarted;
@@ -105,8 +110,19 @@ public sealed class TimeEntryStore : ITimeEntryStore
             }
 
             NotifyChanged();
+            _toast.ShowSuccess("Timer started");
             _logger.LogInformation("Started timer {TimerId} on {WorkItemId}", started.Id, request.WorkItemId);
             return started;
+        }
+        catch (ValidationException ex)
+        {
+            _entries.TryRemove(tempId, out _);
+            _pendingUpdates.TryRemove(tempId, out _);
+            _runningTimer = previousRunning;
+            NotifyChanged();
+
+            _toast.ShowError(ex.UserMessage, "Validation Error");
+            throw;
         }
         catch (Exception ex)
         {
@@ -117,6 +133,7 @@ public sealed class TimeEntryStore : ITimeEntryStore
             NotifyChanged();
 
             _logger.LogWarning(ex, "Failed to start timer on {WorkItemId}", request.WorkItemId);
+            _toast.ShowError("Failed to start timer. Please try again.");
             throw;
         }
     }
@@ -158,9 +175,28 @@ public sealed class TimeEntryStore : ITimeEntryStore
             _pendingUpdates.TryRemove(timeEntryId, out _);
 
             NotifyChanged();
+            var duration = TimeSpan.FromSeconds(result.DurationSeconds ?? 0);
+            _toast.ShowSuccess($"Timer stopped ({duration:g})");
             _logger.LogInformation("Stopped timer {TimerId}, duration: {Duration}s",
                 result.Id, result.DurationSeconds);
             return result;
+        }
+        catch (ValidationException ex)
+        {
+            if (_rollbackState.TryRemove(timeEntryId, out var rollback))
+            {
+                _entries[timeEntryId] = rollback;
+                if (rollback.IsRunning)
+                {
+                    _runningTimer = rollback;
+                }
+            }
+
+            _pendingUpdates.TryRemove(timeEntryId, out _);
+            NotifyChanged();
+
+            _toast.ShowError(ex.UserMessage, "Validation Error");
+            throw;
         }
         catch (Exception ex)
         {
@@ -178,6 +214,7 @@ public sealed class TimeEntryStore : ITimeEntryStore
             NotifyChanged();
 
             _logger.LogWarning(ex, "Failed to stop timer {TimerId}", timeEntryId);
+            _toast.ShowError("Failed to stop timer. Please try again.");
             throw;
         }
     }
@@ -214,9 +251,19 @@ public sealed class TimeEntryStore : ITimeEntryStore
             _entries[result.Id] = result;
 
             NotifyChanged();
+            _toast.ShowSuccess("Time entry added");
             _logger.LogInformation("Created time entry {EntryId} for {WorkItemId}",
                 result.Id, request.WorkItemId);
             return result;
+        }
+        catch (ValidationException ex)
+        {
+            _entries.TryRemove(tempId, out _);
+            _pendingUpdates.TryRemove(tempId, out _);
+            NotifyChanged();
+
+            _toast.ShowError(ex.UserMessage, "Validation Error");
+            throw;
         }
         catch (Exception ex)
         {
@@ -225,6 +272,7 @@ public sealed class TimeEntryStore : ITimeEntryStore
             NotifyChanged();
 
             _logger.LogWarning(ex, "Failed to create time entry for {WorkItemId}", request.WorkItemId);
+            _toast.ShowError("Failed to create time entry. Please try again.");
             throw;
         }
     }
@@ -270,7 +318,34 @@ public sealed class TimeEntryStore : ITimeEntryStore
             _pendingUpdates.TryRemove(request.TimeEntryId, out _);
 
             NotifyChanged();
+            _toast.ShowSuccess("Time entry updated");
             return result;
+        }
+        catch (ValidationException ex)
+        {
+            if (_rollbackState.TryRemove(request.TimeEntryId, out var rollback))
+            {
+                _entries[request.TimeEntryId] = rollback;
+            }
+
+            _pendingUpdates.TryRemove(request.TimeEntryId, out _);
+            NotifyChanged();
+
+            _toast.ShowError(ex.UserMessage, "Validation Error");
+            throw;
+        }
+        catch (VersionConflictException ex)
+        {
+            if (_rollbackState.TryRemove(request.TimeEntryId, out var rollback))
+            {
+                _entries[request.TimeEntryId] = rollback;
+            }
+
+            _pendingUpdates.TryRemove(request.TimeEntryId, out _);
+            NotifyChanged();
+
+            _toast.ShowError(ex.UserMessage, "Conflict");
+            throw;
         }
         catch (Exception ex)
         {
@@ -283,6 +358,7 @@ public sealed class TimeEntryStore : ITimeEntryStore
             NotifyChanged();
 
             _logger.LogWarning(ex, "Failed to update time entry {EntryId}", request.TimeEntryId);
+            _toast.ShowError("Failed to update time entry. Please try again.");
             throw;
         }
     }
@@ -319,7 +395,25 @@ public sealed class TimeEntryStore : ITimeEntryStore
             _pendingUpdates.TryRemove(timeEntryId, out _);
 
             NotifyChanged();
+            _toast.ShowSuccess("Time entry deleted");
             _logger.LogInformation("Deleted time entry {EntryId}", timeEntryId);
+        }
+        catch (ValidationException ex)
+        {
+            if (_rollbackState.TryRemove(timeEntryId, out var rollback))
+            {
+                _entries[timeEntryId] = rollback;
+                if (rollback.IsRunning)
+                {
+                    _runningTimer = rollback;
+                }
+            }
+
+            _pendingUpdates.TryRemove(timeEntryId, out _);
+            NotifyChanged();
+
+            _toast.ShowError(ex.UserMessage, "Validation Error");
+            throw;
         }
         catch (Exception ex)
         {
@@ -336,6 +430,7 @@ public sealed class TimeEntryStore : ITimeEntryStore
             NotifyChanged();
 
             _logger.LogWarning(ex, "Failed to delete time entry {EntryId}", timeEntryId);
+            _toast.ShowError("Failed to delete time entry. Please try again.");
             throw;
         }
     }

@@ -1,58 +1,95 @@
-  @inject AppState AppState
-  @implements IDisposable
-  
-  <div class="connection-status @GetStatusClass()">
-      <RadzenIcon Icon="@GetStatusIcon()" />
-      <span>@GetStatusText()</span>
-  </div>
-  
-  @code {
-      private ConnectionState _state;
-      
-      protected override void OnInitialized()
-      {
-          _state = AppState.ConnectionState;
-          AppState.OnConnectionStateChanged += HandleStateChanged;
-      }
-      
-      private void HandleStateChanged(ConnectionState state)
-      {
-          _state = state;
-          InvokeAsync(StateHasChanged);
-      }
-      
-      private string GetStatusClass() => _state switch
-      {
-          ConnectionState.Connected => "connected",
-          ConnectionState.Connecting => "connecting",
-          ConnectionState.Reconnecting => "reconnecting",
-          ConnectionState.Disconnected => "disconnected",
-          ConnectionState.Closed => "closed",
-          _ => "unknown"
-      };
-      
-      private string GetStatusIcon() => _state switch
-      {
-          ConnectionState.Connected => "wifi",
-          ConnectionState.Connecting => "sync",
-          ConnectionState.Reconnecting => "sync_problem",
-          ConnectionState.Disconnected => "wifi_off",
-          ConnectionState.Closed => "close",
-          _ => "help"
-      };
-      
-      private string GetStatusText() => _state switch
-      {
-          ConnectionState.Connected => "Connected",
-          ConnectionState.Connecting => "Connecting...",
-          ConnectionState.Reconnecting => "Reconnecting...",
-          ConnectionState.Disconnected => "Disconnected",
-          ConnectionState.Closed => "Closed",
-          _ => "Unknown"
-      };
-      
-      public void Dispose()
-      {
-          AppState.OnConnectionStateChanged -= HandleStateChanged;
-      }
-  }
+@inject AppState AppState
+@implements IDisposable
+
+<div class="connection-status @GetStatusClass()" role="status" aria-live="polite">
+    <div class="connection-status-main">
+        <RadzenIcon Icon="@GetStatusIcon()" />
+        <span>@GetStatusText()</span>
+    </div>
+
+    <div class="connection-status-metrics">
+        <span class="metric">
+            Quality: <strong>@GetQualityText()</strong>
+        </span>
+        <span class="metric">
+            Latency: <strong>@GetLatencyText()</strong>
+        </span>
+        <span class="metric">
+            Reconnects: <strong>@_health.ReconnectAttempts</strong>
+        </span>
+        <span class="metric">
+            Pending: <strong>@_health.PendingRequestCount</strong>
+        </span>
+    </div>
+</div>
+
+@code {
+    private ConnectionState _state;
+    private IConnectionHealth _health = default!;
+
+    protected override void OnInitialized()
+    {
+        _state = AppState.ConnectionState;
+        _health = AppState.ConnectionHealth;
+        AppState.OnConnectionStateChanged += HandleStateChanged;
+    }
+
+    private void HandleStateChanged(ConnectionState state)
+    {
+        _state = state;
+        _health = AppState.ConnectionHealth;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private string GetStatusClass() => _state switch
+    {
+        ConnectionState.Connected => "connected",
+        ConnectionState.Connecting => "connecting",
+        ConnectionState.Reconnecting => "reconnecting",
+        ConnectionState.Disconnected => "disconnected",
+        ConnectionState.Closed => "closed",
+        _ => "unknown"
+    };
+
+    private string GetStatusIcon() => _state switch
+    {
+        ConnectionState.Connected => "wifi",
+        ConnectionState.Connecting => "sync",
+        ConnectionState.Reconnecting => "sync_problem",
+        ConnectionState.Disconnected => "wifi_off",
+        ConnectionState.Closed => "close",
+        _ => "help"
+    };
+
+    private string GetStatusText() => _state switch
+    {
+        ConnectionState.Connected => "Connected",
+        ConnectionState.Connecting => "Connecting…",
+        ConnectionState.Reconnecting => "Reconnecting…",
+        ConnectionState.Disconnected => "Disconnected",
+        ConnectionState.Closed => "Closed",
+        _ => "Unknown"
+    };
+
+    private string GetQualityText() => _health.Quality switch
+    {
+        ConnectionQuality.Excellent => "Excellent",
+        ConnectionQuality.Good => "Good",
+        ConnectionQuality.Fair => "Fair",
+        ConnectionQuality.Poor => "Poor",
+        ConnectionQuality.Disconnected => "Disconnected",
+        _ => "Unknown"
+    };
+
+    private string GetLatencyText()
+    {
+        if (_health.Latency == null) return "—";
+        var ms = _health.Latency.Value.TotalMilliseconds;
+        return $"{ms:0} ms";
+    }
+
+    public void Dispose()
+    {
+        AppState.OnConnectionStateChanged -= HandleStateChanged;
+    }
+}

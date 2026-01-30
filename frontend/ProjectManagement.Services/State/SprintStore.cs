@@ -1,7 +1,9 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
+using ProjectManagement.Core.Exceptions;
 using ProjectManagement.Core.Interfaces;
 using ProjectManagement.Core.Models;
+using ProjectManagement.Services.Notifications;
 
 namespace ProjectManagement.Services.State;
 
@@ -13,6 +15,7 @@ namespace ProjectManagement.Services.State;
 public sealed class SprintStore : ISprintStore
 {
     private readonly IWebSocketClient _client;
+    private readonly IToastService _toast;
     private readonly ILogger<SprintStore> _logger;
     private readonly ConcurrentDictionary<Guid, Sprint> _sprints = new();
     private readonly ConcurrentDictionary<Guid, bool> _pendingUpdates = new();
@@ -21,10 +24,12 @@ public sealed class SprintStore : ISprintStore
 
     public SprintStore(
         IWebSocketClient client,
+        IToastService toast,
         ILogger<SprintStore> logger)
     {
-        _client = client;
-        _logger = logger;
+        _client = client ?? throw new ArgumentNullException(nameof(client));
+        _toast = toast ?? throw new ArgumentNullException(nameof(toast));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         // Wire up WebSocket events for real-time updates from other clients
         _client.OnSprintCreated += HandleSprintCreated;
@@ -113,15 +118,25 @@ public sealed class SprintStore : ISprintStore
             _pendingUpdates.TryRemove(tempId, out _);
             NotifyChanged();
 
+            _toast.ShowSuccess($"Created sprint \"{confirmed.Name}\"");
             _logger.LogDebug("Sprint created: {Id}", confirmed.Id);
             return confirmed;
         }
-        catch
+        catch (ValidationException ex)
         {
-            // Rollback optimistic update
             _sprints.TryRemove(tempId, out _);
             _pendingUpdates.TryRemove(tempId, out _);
             NotifyChanged();
+            _toast.ShowError(ex.UserMessage, "Validation Error");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _sprints.TryRemove(tempId, out _);
+            _pendingUpdates.TryRemove(tempId, out _);
+            NotifyChanged();
+            _logger.LogError(ex, "Failed to create sprint");
+            _toast.ShowError("Failed to create sprint. Please try again.");
             throw;
         }
     }
@@ -159,14 +174,33 @@ public sealed class SprintStore : ISprintStore
             _sprints[request.SprintId] = confirmed;
             _pendingUpdates.TryRemove(request.SprintId, out _);
             NotifyChanged();
+
+            _toast.ShowSuccess("Sprint updated");
             return confirmed;
         }
-        catch
+        catch (ValidationException ex)
         {
-            // Rollback to previous value
             _sprints[request.SprintId] = previousValue;
             _pendingUpdates.TryRemove(request.SprintId, out _);
             NotifyChanged();
+            _toast.ShowError(ex.UserMessage, "Validation Error");
+            throw;
+        }
+        catch (VersionConflictException ex)
+        {
+            _sprints[request.SprintId] = previousValue;
+            _pendingUpdates.TryRemove(request.SprintId, out _);
+            NotifyChanged();
+            _toast.ShowError(ex.UserMessage, "Conflict");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _sprints[request.SprintId] = previousValue;
+            _pendingUpdates.TryRemove(request.SprintId, out _);
+            NotifyChanged();
+            _logger.LogError(ex, "Failed to update sprint {Id}", request.SprintId);
+            _toast.ShowError("Failed to update sprint. Please try again.");
             throw;
         }
     }
@@ -199,7 +233,14 @@ public sealed class SprintStore : ISprintStore
             _sprints[sprintId] = started;
             NotifyChanged();
 
+            _toast.ShowSuccess($"Sprint started: \"{started.Name}\"");
             return Task.FromResult(started);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to start sprint {Id}", sprintId);
+            _toast.ShowError(ex.Message, "Cannot Start Sprint");
+            throw;
         }
         finally
         {
@@ -229,7 +270,14 @@ public sealed class SprintStore : ISprintStore
             _sprints[sprintId] = completed;
             NotifyChanged();
 
+            _toast.ShowSuccess($"Sprint completed: \"{completed.Name}\"");
             return Task.FromResult(completed);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to complete sprint {Id}", sprintId);
+            _toast.ShowError(ex.Message, "Cannot Complete Sprint");
+            throw;
         }
         finally
         {
@@ -251,7 +299,14 @@ public sealed class SprintStore : ISprintStore
             _sprints[id] = deleted;
             NotifyChanged();
 
+            _toast.ShowSuccess($"Sprint deleted: \"{current.Name}\"");
             return Task.CompletedTask;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to delete sprint {Id}", id);
+            _toast.ShowError("Failed to delete sprint. Please try again.");
+            throw;
         }
         finally
         {

@@ -1,7 +1,9 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
+using ProjectManagement.Core.Exceptions;
 using ProjectManagement.Core.Interfaces;
 using ProjectManagement.Core.Models;
+using ProjectManagement.Services.Notifications;
 
 namespace ProjectManagement.Services.State;
 
@@ -12,6 +14,7 @@ namespace ProjectManagement.Services.State;
 public sealed class WorkItemStore : IWorkItemStore
 {
     private readonly IWebSocketClient _client;
+    private readonly IToastService _toast;
     private readonly ILogger<WorkItemStore> _logger;
     private readonly ConcurrentDictionary<Guid, OptimisticUpdate<WorkItem>> _pendingUpdates = new();
     private readonly ConcurrentDictionary<Guid, WorkItem> _workItems = new();
@@ -20,10 +23,12 @@ public sealed class WorkItemStore : IWorkItemStore
 
     public WorkItemStore(
         IWebSocketClient client,
+        IToastService toast,
         ILogger<WorkItemStore> logger)
     {
-        _client = client;
-        _logger = logger;
+        _client = client ?? throw new ArgumentNullException(nameof(client));
+        _toast = toast ?? throw new ArgumentNullException(nameof(toast));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         _client.OnWorkItemCreated += HandleWorkItemCreated;
         _client.OnWorkItemUpdated += HandleWorkItemUpdated;
@@ -115,22 +120,32 @@ public sealed class WorkItemStore : IWorkItemStore
         {
             var confirmed = await _client.CreateWorkItemAsync(request, ct);
 
-            // Replace temp with confirmed                                                                            
+            // Replace temp with confirmed
             _workItems.TryRemove(tempId, out _);
             _workItems[confirmed.Id] = confirmed;
             _pendingUpdates.TryRemove(tempId, out _);
 
             NotifyChanged();
 
+            _toast.ShowSuccess($"Created \"{confirmed.Title}\"");
             _logger.LogDebug("Work item created: {Id}", confirmed.Id);
             return confirmed;
         }
-        catch
+        catch (ValidationException ex)
         {
-            // Rollback                                                                                               
             _workItems.TryRemove(tempId, out _);
             _pendingUpdates.TryRemove(tempId, out _);
             NotifyChanged();
+            _toast.ShowError(ex.UserMessage, "Validation Error");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _workItems.TryRemove(tempId, out _);
+            _pendingUpdates.TryRemove(tempId, out _);
+            NotifyChanged();
+            _logger.LogError(ex, "Failed to create work item");
+            _toast.ShowError("Failed to create work item. Please try again.");
             throw;
         }
     }
@@ -159,20 +174,38 @@ public sealed class WorkItemStore : IWorkItemStore
         {
             var confirmed = await _client.UpdateWorkItemAsync(request, ct);
 
-            // Apply confirmed version                                                                                
+            // Apply confirmed version
             _workItems[id] = confirmed;
             _pendingUpdates.TryRemove(id, out _);
             NotifyChanged();
 
+            _toast.ShowSuccess("Saved changes");
             _logger.LogDebug("Work item updated: {Id}", id);
             return confirmed;
         }
-        catch
+        catch (ValidationException ex)
         {
-            // Rollback                                                                                               
             _workItems[id] = previousValue;
             _pendingUpdates.TryRemove(id, out _);
             NotifyChanged();
+            _toast.ShowError(ex.UserMessage, "Validation Error");
+            throw;
+        }
+        catch (VersionConflictException ex)
+        {
+            _workItems[id] = previousValue;
+            _pendingUpdates.TryRemove(id, out _);
+            NotifyChanged();
+            _toast.ShowError(ex.UserMessage, "Conflict");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _workItems[id] = previousValue;
+            _pendingUpdates.TryRemove(id, out _);
+            NotifyChanged();
+            _logger.LogError(ex, "Failed to update work item {Id}", id);
+            _toast.ShowError("Failed to save changes. Please try again.");
             throw;
         }
     }
@@ -198,14 +231,24 @@ public sealed class WorkItemStore : IWorkItemStore
             await _client.DeleteWorkItemAsync(id, ct);
             _pendingUpdates.TryRemove(id, out _);
 
+            _toast.ShowSuccess($"Deleted \"{current.Title}\"");
             _logger.LogDebug("Work item deleted: {Id}", id);
         }
-        catch
+        catch (ValidationException ex)
         {
-            // Rollback                                                                                               
             _workItems[id] = previousValue;
             _pendingUpdates.TryRemove(id, out _);
             NotifyChanged();
+            _toast.ShowError(ex.UserMessage, "Validation Error");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _workItems[id] = previousValue;
+            _pendingUpdates.TryRemove(id, out _);
+            NotifyChanged();
+            _logger.LogError(ex, "Failed to delete work item {Id}", id);
+            _toast.ShowError("Failed to delete work item. Please try again.");
             throw;
         }
     }
@@ -316,6 +359,6 @@ public sealed class WorkItemStore : IWorkItemStore
     }
 
     #endregion
-    
+
     public bool IsPending(Guid id) => _pendingUpdates.ContainsKey(id);
 }

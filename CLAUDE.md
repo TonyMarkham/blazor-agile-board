@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Blazor Agile Board is a production-grade agile project management system built with **Blazor WebAssembly** (frontend) and **Rust + Axum** (backend). It's designed as a plugin for multi-tenant SaaS platforms with per-tenant SQLite databases and real-time collaboration via WebSocket + Protocol Buffers.
 
-**Current Status**: Planning phase complete. Implementation begins with Session 10 (backend foundation).
+**Current Status**: Implementation in progress. See `docs/session-plans/` for active scope.
 
 ## Architecture
 

@@ -1,7 +1,9 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
+using ProjectManagement.Core.Exceptions;
 using ProjectManagement.Core.Interfaces;
 using ProjectManagement.Core.Models;
+using ProjectManagement.Services.Notifications;
 
 namespace ProjectManagement.Services.State;
 
@@ -12,16 +14,19 @@ namespace ProjectManagement.Services.State;
 public sealed class CommentStore : ICommentStore
 {
     private readonly IWebSocketClient _client;
+    private readonly IToastService _toast;
     private readonly ILogger<CommentStore> _logger;
     private readonly ConcurrentDictionary<Guid, Comment> _comments = new();
     private readonly ConcurrentDictionary<Guid, bool> _pendingUpdates = new();
+
     private bool _disposed;
 
     public event Action? OnChanged;
 
-    public CommentStore(IWebSocketClient client, ILogger<CommentStore> logger)
+    public CommentStore(IWebSocketClient client, IToastService toast, ILogger<CommentStore> logger)
     {
         _client = client ?? throw new ArgumentNullException(nameof(client));
+        _toast = toast ?? throw new ArgumentNullException(nameof(toast));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         // Subscribe to WebSocket events
@@ -87,15 +92,25 @@ public sealed class CommentStore : ICommentStore
             _pendingUpdates.TryRemove(tempId, out _);
             NotifyChanged();
 
+            _toast.ShowSuccess("Comment added");
             _logger.LogDebug("Comment created: {Id}", confirmed.Id);
             return confirmed;
         }
-        catch
+        catch (ValidationException ex)
         {
-            // Rollback
             _comments.TryRemove(tempId, out _);
             _pendingUpdates.TryRemove(tempId, out _);
             NotifyChanged();
+            _toast.ShowError(ex.UserMessage, "Validation Error");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _comments.TryRemove(tempId, out _);
+            _pendingUpdates.TryRemove(tempId, out _);
+            NotifyChanged();
+            _logger.LogError(ex, "Failed to create comment");
+            _toast.ShowError("Failed to add comment. Please try again.");
             throw;
         }
     }
@@ -127,14 +142,33 @@ public sealed class CommentStore : ICommentStore
             _comments[request.CommentId] = confirmed;
             _pendingUpdates.TryRemove(request.CommentId, out _);
             NotifyChanged();
+
+            _toast.ShowSuccess("Comment updated");
             return confirmed;
         }
-        catch
+        catch (ValidationException ex)
         {
-            // Rollback
             _comments[request.CommentId] = previousValue;
             _pendingUpdates.TryRemove(request.CommentId, out _);
             NotifyChanged();
+            _toast.ShowError(ex.UserMessage, "Validation Error");
+            throw;
+        }
+        catch (VersionConflictException ex)
+        {
+            _comments[request.CommentId] = previousValue;
+            _pendingUpdates.TryRemove(request.CommentId, out _);
+            NotifyChanged();
+            _toast.ShowError(ex.UserMessage, "Conflict");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _comments[request.CommentId] = previousValue;
+            _pendingUpdates.TryRemove(request.CommentId, out _);
+            NotifyChanged();
+            _logger.LogError(ex, "Failed to update comment {Id}", request.CommentId);
+            _toast.ShowError("Failed to update comment. Please try again.");
             throw;
         }
     }
@@ -157,14 +191,25 @@ public sealed class CommentStore : ICommentStore
             await _client.DeleteCommentAsync(commentId, ct);
             _pendingUpdates.TryRemove(commentId, out _);
             NotifyChanged();
+
+            _toast.ShowSuccess("Comment deleted");
             _logger.LogDebug("Comment deleted: {Id}", commentId);
         }
-        catch
+        catch (ValidationException ex)
         {
-            // Rollback
             _comments[commentId] = current;
             _pendingUpdates.TryRemove(commentId, out _);
             NotifyChanged();
+            _toast.ShowError(ex.UserMessage, "Validation Error");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _comments[commentId] = current;
+            _pendingUpdates.TryRemove(commentId, out _);
+            NotifyChanged();
+            _logger.LogError(ex, "Failed to delete comment {Id}", commentId);
+            _toast.ShowError("Failed to delete comment. Please try again.");
             throw;
         }
     }

@@ -25,6 +25,7 @@ public class PageIntegrationTests : BunitContext
 
     public PageIntegrationTests()
     {
+        Services.AddLogging();
         Services.AddScoped<DialogService>();
         Services.AddScoped<NotificationService>();
         Services.AddScoped<TooltipService>();
@@ -41,6 +42,14 @@ public class PageIntegrationTests : BunitContext
         var mockClient = new Mock<IWebSocketClient>();
         mockClient.Setup(c => c.State).Returns(ConnectionState.Connected);
         mockClient.Setup(c => c.Health).Returns(Mock.Of<IConnectionHealth>());
+        mockClient.Setup(c => c.GetActivityLogAsync(It.IsAny<GetActivityLogRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ActivityLogPage
+            {
+                Entries = Array.Empty<ActivityLog>(),
+                HasMore = false
+            });
+
+        Services.AddSingleton<IWebSocketClient>(mockClient.Object);
 
         _appState = new AppState(
             mockClient.Object,

@@ -1,10 +1,11 @@
-  using FluentAssertions;
-  using Microsoft.Extensions.Logging;
-  using Moq;
-  using ProjectManagement.Core.Interfaces;
-  using ProjectManagement.Core.Models;
-  using ProjectManagement.Services.State;
-  using Xunit;
+using FluentAssertions;
+using Microsoft.Extensions.Logging;
+using Moq;
+using ProjectManagement.Core.Interfaces;
+using ProjectManagement.Core.Models;
+using ProjectManagement.Services.Notifications;
+using ProjectManagement.Services.State;
+using Xunit;
 
   namespace ProjectManagement.Services.Tests.State;
 
@@ -13,12 +14,14 @@
       private readonly SprintStore _sut;
       private readonly Mock<IWebSocketClient> _client;
       private readonly Mock<ILogger<SprintStore>> _logger;
+      private readonly Mock<ProjectManagement.Services.Notifications.IToastService> _toast;
 
       public SprintStoreTests()
       {
           _client = new Mock<IWebSocketClient>();
           _logger = new Mock<ILogger<SprintStore>>();
-          _sut = new SprintStore(_client.Object, _logger.Object);
+          _toast = new Mock<ProjectManagement.Services.Notifications.IToastService>();
+          _sut = new SprintStore(_client.Object, _toast.Object, _logger.Object);
           
           // Mock Sprint WebSocket operations
           _client.Setup(c => c.CreateSprintAsync(It.IsAny<CreateSprintRequest>(), It.IsAny<CancellationToken>()))

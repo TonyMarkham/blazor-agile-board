@@ -1,29 +1,28 @@
 # Blazor Agile Board
 
-Blazor + Rust agile board with real-time collaboration, sprints, and LLM-friendly multi-tenant database.
+Blazor + Rust agile board with real-time collaboration, sprints, and LLM-friendly database design.
 
 ## Overview
 
-A production-grade agile project management system built with Blazor WebAssembly and Rust. Designed as a plugin for multi-tenant SaaS platforms with per-tenant data isolation, real-time collaboration via WebSocket, and an LLM-friendly database structure.
+A production-grade agile project management system built with Blazor WebAssembly and Rust. Designed as a plugin for SaaS platforms with real-time collaboration via WebSocket and an LLM-friendly database structure.
 
 ## Features
 
-### v1.0 Core Features
+### Core Features (in active development)
 - **Work Item Hierarchy**: Project → Epic → Story → Task
-- **Sprint Management**: Plan, start, and complete sprints with velocity tracking
-- **Real-time Collaboration**: WebSocket + Protobuf for instant updates across all connected clients
+- **Sprint Management**: Plan, start, and complete sprints
+- **Real-time Collaboration**: WebSocket + Protobuf updates
 - **Time Tracking**: Running timers and manual time entry
-- **Dependency Management**: 2-way dependency tracking with cycle detection
-- **Comments & Activity**: Full audit trail with comment threads
-- **Swim Lanes**: Customizable Kanban board (backlog, in-progress, in-review, done)
-- **LLM Integration**: Self-documenting database for AI-assisted project management
+- **Dependency Management**: Task dependency tracking
+- **Comments & Activity**: Comment threads and activity log feed
+- **LLM Integration**: Self-documenting database context
 
 ## Architecture
 
 ### Tech Stack
 - **Frontend**: Blazor WebAssembly with Radzen UI components
 - **Backend**: Rust + Axum web framework
-- **Database**: Per-tenant SQLite with `pm_*` table prefix
+- **Database**: SQLite with `pm_*` table prefix
 - **Communication**: WebSocket with Protocol Buffers
 - **Authentication**: JWT tokens
 
@@ -38,32 +37,38 @@ A production-grade agile project management system built with Blazor WebAssembly
 
 ```
 blazor-agile-board/
-├── docs/                    # Architecture documentation
-│   ├── adr/                # Architecture Decision Records
+├── docs/                         # Architecture and guides
+│   ├── adr/                      # Architecture Decision Records
 │   ├── database-schema.md
 │   ├── websocket-protocol.md
 │   ├── backend-architecture.md
 │   ├── frontend-architecture.md
 │   ├── llm-integration-guide.md
-│   └── implementation-plan-revised.md
-├── backend/                # Rust workspace (to be created in Session 10)
+│   ├── implementation-plan-v2.md
+│   ├── GETTING_STARTED.md
+│   ├── USER_GUIDE.md
+│   ├── DEPLOYMENT_GUIDE.md
+│   ├── API_DOCUMENTATION.md
+│   └── TROUBLESHOOTING.md
+├── backend/                      # Rust workspace
 │   ├── crates/
-│   │   ├── pm-core/       # Domain models and business logic
-│   │   ├── pm-db/         # Database layer with SQLx
-│   │   ├── pm-api/        # REST API (optional, LLM queries only)
-│   │   ├── pm-ws/         # WebSocket server
-│   │   ├── pm-auth/       # JWT authentication
-│   │   └── pm-proto/      # Protobuf message definitions
-│   └── pm-server/         # Main binary
-└── frontend/               # Blazor WebAssembly (to be created in Session 30)
-    ├── Bab.Core/          # Shared models and interfaces
-    ├── Bab.Components/    # Razor Class Library
-    └── Bab.Wasm/          # Standalone WASM host
+│   │   ├── pm-core/              # Domain models and business logic
+│   │   ├── pm-db/                # Database layer with SQLx
+│   │   ├── pm-api/               # REST API (planned)
+│   │   ├── pm-ws/                # WebSocket server
+│   │   ├── pm-auth/              # JWT authentication
+│   │   └── pm-proto/             # Protobuf message definitions
+│   └── pm-server/                # Main binary
+└── frontend/                     # Blazor WebAssembly
+    ├── ProjectManagement.Core/        # Models, DTOs, interfaces
+    ├── ProjectManagement.Services/    # Business logic, WebSocket client
+    ├── ProjectManagement.Components/  # Razor Class Library (RCL)
+    └── ProjectManagement.Wasm/        # Standalone WASM host
 ```
 
 ## Implementation Plan
 
-The project is being built in focused sessions:
+The project is being built in focused sessions (see implementation plan):
 
 | Session | Focus | Estimated Tokens |
 |---------|-------|------------------|
@@ -105,9 +110,9 @@ See [docs/llm-integration-guide.md](docs/llm-integration-guide.md) for details.
 
 ## Development Status
 
-**Current Phase**: Planning Complete ✅
+**Current Phase**: Implementation in progress
 
-All architectural decisions have been documented. Implementation begins with Session 10.
+Refer to the session plans in `docs/session-plans/` for current scope.
 
 ## Documentation
 
@@ -117,12 +122,12 @@ All architectural decisions have been documented. Implementation begins with Ses
 - [Backend Architecture](docs/backend-architecture.md)
 - [Frontend Architecture](docs/frontend-architecture.md)
 - [LLM Integration Guide](docs/llm-integration-guide.md)
-- [Implementation Plan](docs/implementation-plan-revised.md)
+- [Implementation Plan](docs/implementation-plan-v2.md)
 - [Features Roadmap](docs/features-roadmap.md)
 
 ## License
 
-MIT License (to be added)
+MIT License (see [LICENSE](LICENSE))
 
 ## Contributing
 

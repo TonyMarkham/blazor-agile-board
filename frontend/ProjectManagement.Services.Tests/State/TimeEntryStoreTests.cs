@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using ProjectManagement.Core.Interfaces;
 using ProjectManagement.Core.Models;
+using ProjectManagement.Services.Notifications;
 using ProjectManagement.Services.State;
 
 namespace ProjectManagement.Services.Tests.State;
@@ -11,6 +12,7 @@ public class TimeEntryStoreTests
 {
     private readonly Mock<IWebSocketClient> _mockClient;
     private readonly Mock<ILogger<TimeEntryStore>> _mockLogger;
+    private readonly Mock<ProjectManagement.Services.Notifications.IToastService> _mockToast;
     private readonly TimeEntryStore _store;
     private readonly Guid _currentUserId = Guid.NewGuid();
 
@@ -18,6 +20,7 @@ public class TimeEntryStoreTests
     {
         _mockClient = new Mock<IWebSocketClient>();
         _mockLogger = new Mock<ILogger<TimeEntryStore>>();
+        _mockToast = new Mock<ProjectManagement.Services.Notifications.IToastService>();
 
         // Create real AppState with mocked dependencies
         var mockWorkItems = new Mock<IWorkItemStore>();
@@ -45,7 +48,7 @@ public class TimeEntryStoreTests
         };
         appState.SetCurrentUser(currentUser);
 
-        _store = new TimeEntryStore(_mockClient.Object, appState, _mockLogger.Object);
+        _store = new TimeEntryStore(_mockClient.Object, appState, _mockToast.Object, _mockLogger.Object);
     }
 
     [Fact]
