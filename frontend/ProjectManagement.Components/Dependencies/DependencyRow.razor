@@ -1,0 +1,68 @@
+@using ProjectManagement.Core.Interfaces
+@using ProjectManagement.Core.Models
+@using ProjectManagement.Core.ViewModels
+@inject IDependencyStore DependencyStore
+@implements IDisposable
+
+<div class="dependency-item @(IsPending ? "pending" : "")" aria-busy="@(IsPending ? "true" : "false")">
+    <span class="item-title">@DisplayTitle</span>
+    <span class="dep-type @TypeCss">@TypeLabel</span>
+    <button
+        type="button"
+        class="delete-btn"
+        disabled="@IsPending"
+        aria-label="Delete dependency for @DisplayTitle"
+        @onclick="OnDeleteClicked">
+        <RadzenIcon Icon="close" />
+    </button>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Dependency Dependency { get; set; }
+    [Parameter, EditorRequired] public Guid CurrentWorkItemId { get; set; }
+    [Parameter, EditorRequired] public Func<Guid, WorkItemViewModel?> WorkItemLookup { get; set; }
+    [Parameter, EditorRequired] public EventCallback<Guid> OnRemove { get; set; }
+
+    private Guid OtherItemId => Dependency.BlockingItemId == CurrentWorkItemId
+        ? Dependency.BlockedItemId
+        : Dependency.BlockingItemId;
+
+    private string DisplayTitle =>
+        WorkItemLookup(OtherItemId)?.Title ?? OtherItemId.ToString()[..8];
+
+    private bool IsPending => DependencyStore.IsPending(Dependency.Id);
+
+    private string TypeLabel => Dependency.Type switch
+    {
+        DependencyType.Blocks => "Blocks",
+        DependencyType.RelatesTo => "Relates",
+        _ => "Relates"
+    };
+
+    private string TypeCss => Dependency.Type switch
+    {
+        DependencyType.Blocks => "blocks",
+        DependencyType.RelatesTo => "relates",
+        _ => "relates"
+    };
+
+    protected override void OnInitialized()
+    {
+        DependencyStore.OnChanged += HandleChanged;
+    }
+
+    private void HandleChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnDeleteClicked()
+    {
+        await OnRemove.InvokeAsync(Dependency.Id);
+    }
+
+    public void Dispose()
+    {
+        DependencyStore.OnChanged -= HandleChanged;
+    }
+}
