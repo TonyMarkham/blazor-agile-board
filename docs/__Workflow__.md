@@ -64,7 +64,7 @@ Follow the structure in docs/session-plans/42.1-Session-Plan.md as a template.
 
 ### Other
 ```text
-Read `CRITICAL_OPERATING_CONSTRAINTS.md`, `docs/session-plans/80.1-Session-Plan.md`, `docs/session-plans/80-Session-Plan-Teaching.md` and `docs/implementation-plan-v2.md`.
+Read `CRITICAL_OPERATING_CONSTRAINTS.md`, `docs/session-plans/80.1-Session-Plan.md` and `docs/session-plans/80-Session-Plan-Teaching.md`.
 
 Please audit `docs/session-plans/80.1-Session-Plan.md` and cross reference it's contents against the current state of the project to avoid making poor assumptions.
 
@@ -87,21 +87,3 @@ I have staged all files, please commit without a byline.
 ```
 
 ---
-
-### Init
-```txt
-Read `CRITICAL_OPERATING_CONSTRAINTS.md`, `docs/session-plans/44-Session-Plan.md` and `docs/implementation-plan-v2.md`.
-
-Please audit `docs/session-plans/44-Session-Plan.md` and cross reference it's contents against the current state of the project to avoid making poor assumptions.
-
-I want you to teach me by presenting me with bite-sized chunks for me to write/edit keeping the commentary separate from the code snippets to make the code snippets easier for me to follow
-```
-
-```text
-Verify that the `41-Session-Plan.md` has proper dependency ordering so that when implementing sequentially, nothing references code that hasn't been written yet.
-```
-
-```text
-read `docs/session-plans/41-Session-Plan.md` and break it down into multiple sub-sessions targeting <50k tokens each that can be presented to a future user as       
-  teaching material. Take inspiration from the plan/sub-plans in `docs/session-plans/template`
-```
