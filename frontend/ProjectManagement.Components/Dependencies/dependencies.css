@@ -112,3 +112,11 @@
 .add-dependency-dialog .search-result:last-child {
     border-bottom: none;
 }
+
+/* Active state for keyboard navigation */
+.add-dependency-dialog .search-result.active,
+.add-dependency-dialog .search-result[aria-selected="true"] {
+    background: var(--rz-base-100, #f9fafb);
+    outline: 2px solid var(--rz-primary);
+    outline-offset: -2px;
+}

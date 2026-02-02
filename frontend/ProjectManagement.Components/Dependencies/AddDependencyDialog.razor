@@ -1,0 +1,509 @@
+@using ProjectManagement.Core.Models
+@using ProjectManagement.Core.ViewModels
+@using ProjectManagement.Core.Exceptions
+@using ProjectManagement.Services.State
+@inject IDependencyStore DependencyStore
+@inject AppState AppState
+@inject ViewModelFactory ViewModelFactory
+@inject DialogService DialogService
+@inject ILogger<AddDependencyDialog> Logger
+@implements IDisposable
+
+<RadzenStack Gap="0.75rem" class="add-dependency-dialog">
+    <RadzenFormField Text="Search" Style="width: 100%;">
+        <RadzenTextBox Value="@_searchText"
+                       Placeholder="Search work items..."
+                       Style="width: 100%;"
+                       role="combobox"
+                       aria-haspopup="listbox"
+                       aria-autocomplete="list"
+                       aria-expanded="@IsExpanded"
+                       aria-controls="@ListboxId"
+                       aria-activedescendant="@ActiveDescendantId"
+                       aria-describedby="@GetDescribedBy()"
+                       aria-label="Search work items"
+                       Disabled="@_isSubmitting"
+                       @oninput="HandleSearchInput"
+                       @onkeydown="HandleInputKeyDown" />
+    </RadzenFormField>
+
+  <RadzenFormField Text="Type" Style="width: 100%;">
+      <RadzenDropDown TValue="DependencyType"
+                      Data="@DependencyTypes"
+                      TextProperty="Label"
+                      ValueProperty="Value"
+                      @bind-Value="_selectedType"
+                      Change="HandleTypeChanged"
+                      Style="width: 100%;"
+                      Disabled="@_isSubmitting"
+                      aria-label="Dependency type" />
+  </RadzenFormField>
+
+  @if (!string.IsNullOrWhiteSpace(_error))
+  {
+      <RadzenText TextStyle="TextStyle.Caption"
+                  Style="color: var(--rz-danger);"
+                  role="alert"
+                  id="@ErrorId">
+          @_error
+      </RadzenText>
+  }
+
+  @if (!_isConnected)
+  {
+      <RadzenText TextStyle="TextStyle.Caption"
+                  Style="color: var(--rz-warning);"
+                  role="status"
+                  aria-live="polite"
+                  id="@OfflineId">
+          You are offline. Dependencies cannot be added right now.
+      </RadzenText>
+  }
+
+  @if (_filteredResults.Count == 0 && !_isFiltering)
+  {
+      <div class="dependency-empty" role="status" aria-live="polite" id="@EmptyStateId">
+          No matching items.
+      </div>
+  }
+
+  <div id="@ListboxId"
+       class="search-results"
+       role="listbox"
+       aria-label="Search results"
+       aria-busy="@(_isFiltering ? "true" : "false")"
+       hidden="@(!IsExpanded)">
+      @for (var i = 0; i < _visibleResults.Count; i++)
+      {
+          var item = _visibleResults[i];
+          var absoluteIndex = _windowStart + i;
+          <div id="@OptionId(item.Id)"
+               class="search-result @(IsActive(item) ? "active" : "")"
+               role="option"
+               aria-selected="@(IsActive(item) ? "true" : "false")"
+               aria-posinset="@(absoluteIndex + 1)"
+               aria-setsize="@_filteredResults.Count"
+               @onclick="(() => SelectItem(item))">
+              <strong>@item.Title</strong>
+              <div class="text-muted">@item.ItemTypeDisplayName</div>
+          </div>
+      }
+  </div>
+
+  <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+      <RadzenButton Text="Add dependency"
+                    ButtonStyle="ButtonStyle.Primary"
+                    Disabled="@(!_hasUserSelection || _isFiltering || !_isConnected || _isSubmitting)"
+                    Click="@(() => SubmitActive())" />
+      <RadzenButton Text="Cancel"
+                    ButtonStyle="ButtonStyle.Light"
+                    Click="@(() => DialogService.Close(false))" />
+  </RadzenStack>
+</RadzenStack>
+
+@code {
+    [Parameter, EditorRequired] public Guid WorkItemId { get; set; }
+    [Parameter, EditorRequired] public Guid ProjectId { get; set; }
+    [Parameter] public int DebounceMs { get; set; } = 200;
+
+    private const int MaxResults = 50;
+    private const int VisibleWindowSize = 10;
+
+    private string _searchText = "";
+    private DependencyType _selectedType = DependencyType.Blocks;
+    private string? _error;
+    private bool _isSubmitting;
+    private bool _isFiltering;
+    private bool _isConnected;
+    private bool IsExpanded => _filteredResults.Count > 0 && !_isFiltering;
+    private bool _disposed;
+    private bool _hasUserSelection;
+    private int _windowStart;
+    private readonly string _idPrefix = $"dep-{Guid.NewGuid():N}";
+
+    private List<WorkItemViewModel> _allItems = new();
+    private List<WorkItemViewModel> _filteredResults = new();
+    private List<WorkItemViewModel> _visibleResults = new();
+    private Guid? _activeId;
+    private CancellationTokenSource? _debounceCts;
+    private int _filterSequence;
+    private CancellationTokenSource? _submitCts;
+
+    private readonly List<DependencyTypeOption> DependencyTypes = new()
+    {
+        new("Blocks", DependencyType.Blocks),
+        new("Relates", DependencyType.RelatesTo)
+    };
+
+    private string SearchQuery => _searchText.Trim();
+
+    protected override void OnInitialized()
+    {
+        var items = AppState.WorkItems.GetByProject(ProjectId)
+            .Where(w => w.DeletedAt == null)
+            .ToList();
+
+        _allItems = ViewModelFactory.CreateMany(items).ToList();
+        ApplyFilter();
+        _isConnected = AppState.ConnectionState == ConnectionState.Connected;
+        AppState.OnConnectionStateChanged += HandleConnectionChanged;
+        AppState.WorkItems.OnChanged += HandleWorkItemsChanged;
+        DependencyStore.OnChanged += HandleDependenciesChanged;
+    }
+
+    private void ApplyFilter()
+    {
+        if (_disposed) return;
+        _hasUserSelection = false;
+        var existingLinks = GetExistingLinks();
+
+        _filteredResults = _allItems
+            .Where(w => w.Id != WorkItemId)
+            .Where(w => !existingLinks.Contains(w.Id))
+            .Where(w => string.IsNullOrWhiteSpace(SearchQuery)
+                        || (w.Title ?? string.Empty).Contains(SearchQuery,
+                            StringComparison.OrdinalIgnoreCase))
+            .OrderBy(w => w.Title ?? string.Empty)
+            .ThenBy(w => w.Id)
+            .Take(MaxResults)
+            .ToList();
+
+        EnsureActive();
+        UpdateVisibleWindow();
+        EnsureActiveVisible();
+    }
+
+    private HashSet<Guid> GetExistingLinks()
+    {
+        var blocking = DependencyStore.GetBlocking(WorkItemId)
+            .Select(d => d.BlockingItemId);
+
+        var blocked = DependencyStore.GetBlocked(WorkItemId)
+            .Select(d => d.BlockedItemId);
+
+        return blocking.Concat(blocked).ToHashSet();
+    }
+
+    private void EnsureActive()
+    {
+        if (_filteredResults.Count == 0)
+        {
+            _activeId = null;
+            _hasUserSelection = false;
+            return;
+        }
+
+        if (_activeId is null || _filteredResults.All(w => w.Id != _activeId))
+        {
+            _activeId = _filteredResults[0].Id;
+            _hasUserSelection = false;
+        }
+    }
+
+    private string OptionId(Guid id) => $"{_idPrefix}-option-{id}";
+    private string ListboxId => $"{_idPrefix}-results";
+    private string ErrorId => $"{_idPrefix}-error";
+    private string OfflineId => $"{_idPrefix}-offline";
+    private string EmptyStateId => $"{_idPrefix}-empty";
+
+    private string? ActiveDescendantId => _activeId is null || !IsExpanded
+        ? null
+        : OptionId(_activeId.Value);
+
+    private bool IsActive(WorkItemViewModel item) => _activeId == item.Id;
+
+    private async Task HandleSearchInput(ChangeEventArgs e)
+    {
+        if (_disposed) return;
+        _searchText = e.Value?.ToString() ?? "";
+        _error = null;
+        _hasUserSelection = false;
+        _debounceCts?.Cancel();
+        _debounceCts?.Dispose();
+
+        _debounceCts = new CancellationTokenSource();
+        var token = _debounceCts.Token;
+        var sequence = System.Threading.Interlocked.Increment(ref _filterSequence);
+
+        _isFiltering = true;
+        try
+        {
+            await Task.Delay(DebounceMs, token);
+            if (!token.IsCancellationRequested)
+            {
+                ApplyFilter();
+                await SafeStateHasChangedAsync();
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            // No-op: new keystroke superseded this debounce.
+        }
+        finally
+        {
+            if (sequence == _filterSequence)
+            {
+                _isFiltering = false;
+                _hasUserSelection = false;
+                await SafeStateHasChangedAsync();
+            }
+        }
+    }
+
+    private async Task HandleInputKeyDown(KeyboardEventArgs e)
+    {
+        if (_disposed) return;
+        if (e.Key == "Escape")
+        {
+            if (!string.IsNullOrWhiteSpace(_searchText))
+            {
+                _searchText = "";
+                ApplyFilter();
+                await SafeStateHasChangedAsync();
+            }
+            else
+            {
+                DialogService.Close(false);
+            }
+
+            return;
+        }
+
+        if (e.Key == "ArrowDown")
+        {
+            if (_filteredResults.Count > 0 && !_isFiltering)
+            {
+                MoveActive(1);
+                _hasUserSelection = true;
+            }
+
+            return;
+        }
+
+        if (e.Key == "ArrowUp")
+        {
+            if (_filteredResults.Count > 0 && !_isFiltering)
+            {
+                MoveActive(-1);
+                _hasUserSelection = true;
+            }
+
+            return;
+        }
+
+        if (e.Key == "Enter")
+        {
+            await SubmitActive();
+        }
+    }
+
+    private void HandleTypeChanged(object? value)
+    {
+        if (_disposed) return;
+        _error = null;
+        _hasUserSelection = false;
+        ApplyFilter();
+        StateHasChanged();
+    }
+
+    private void MoveActive(int delta)
+    {
+        if (_filteredResults.Count == 0) return;
+
+        var index = _activeId is null
+            ? 0
+            : _filteredResults.FindIndex(w => w.Id == _activeId);
+
+        var next = Math.Clamp(index + delta, 0, _filteredResults.Count - 1);
+        _activeId = _filteredResults[next].Id;
+        UpdateVisibleWindow();
+        EnsureActiveVisible();
+        StateHasChanged();
+    }
+
+    private void EnsureActiveVisible()
+    {
+        if (_activeId is null) return;
+        if (_visibleResults.Any(w => w.Id == _activeId)) return;
+
+        var activeIndex = _filteredResults.FindIndex(w => w.Id == _activeId);
+        if (activeIndex < 0) return;
+
+        _windowStart = Math.Clamp(activeIndex, 0, Math.Max(0, _filteredResults.Count -
+                                                              VisibleWindowSize));
+        _visibleResults = _filteredResults.Skip(_windowStart).Take(VisibleWindowSize).ToList();
+    }
+
+    private void UpdateVisibleWindow()
+    {
+        if (_filteredResults.Count == 0)
+        {
+            _visibleResults = new List<WorkItemViewModel>();
+            _windowStart = 0;
+            return;
+        }
+
+        var activeIndex = _activeId is null
+            ? 0
+            : _filteredResults.FindIndex(w => w.Id == _activeId);
+
+        if (activeIndex < _windowStart)
+        {
+            _windowStart = activeIndex;
+        }
+        else if (activeIndex >= _windowStart + VisibleWindowSize)
+        {
+            _windowStart = activeIndex - VisibleWindowSize + 1;
+        }
+
+        _windowStart = Math.Clamp(_windowStart, 0, Math.Max(0, _filteredResults.Count -
+                                                               VisibleWindowSize));
+        _visibleResults = _filteredResults.Skip(_windowStart).Take(VisibleWindowSize).ToList();
+    }
+
+    private Task SelectItem(WorkItemViewModel item)
+    {
+        if (!_isConnected)
+        {
+            _error = "You are offline. Please reconnect and try again.";
+            _ = SafeStateHasChangedAsync();
+            return Task.CompletedTask;
+        }
+
+        if (_isSubmitting) return Task.CompletedTask;
+        if (_isFiltering) return Task.CompletedTask;
+
+        _hasUserSelection = true;
+        _activeId = item.Id;
+        UpdateVisibleWindow();
+        _ = SafeStateHasChangedAsync();
+        return Task.CompletedTask;
+    }
+
+    private async Task SubmitActive()
+    {
+        if (!_isConnected)
+        {
+            _error = "You are offline. Please reconnect and try again.";
+            await SafeStateHasChangedAsync();
+            return;
+        }
+
+        if (_isSubmitting || _isFiltering) return;
+        if (!_hasUserSelection) return;
+
+        var item = _filteredResults.FirstOrDefault(w => w.Id == _activeId);
+        if (item is null) return;
+
+        _error = null;
+        _isSubmitting = true;
+        _submitCts?.Cancel();
+        _submitCts?.Dispose();
+        _submitCts = new CancellationTokenSource();
+
+        try
+        {
+            var request = BuildRequest(item);
+            await DependencyStore.CreateAsync(request, _submitCts.Token);
+            DialogService.Close(true);
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected when dialog closes during submit.
+        }
+        catch (ValidationException ex)
+        {
+            _error = string.IsNullOrWhiteSpace(ex.UserMessage)
+                ? "Invalid input."
+                : ex.UserMessage;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to create dependency");
+            _error = "Something went wrong while adding the dependency. Please try again.";
+        }
+        finally
+        {
+            _isSubmitting = false;
+            await SafeStateHasChangedAsync();
+        }
+    }
+
+    private CreateDependencyRequest BuildRequest(WorkItemViewModel item)
+    {
+        return _selectedType switch
+        {
+            DependencyType.Blocks => new CreateDependencyRequest
+            {
+                BlockingItemId = item.Id,
+                BlockedItemId = WorkItemId,
+                Type = DependencyType.Blocks
+            },
+            _ => new CreateDependencyRequest
+            {
+                BlockingItemId = WorkItemId,
+                BlockedItemId = item.Id,
+                Type = DependencyType.RelatesTo
+            }
+        };
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        _debounceCts?.Cancel();
+        _debounceCts?.Dispose();
+        _submitCts?.Cancel();
+        _submitCts?.Dispose();
+        AppState.OnConnectionStateChanged -= HandleConnectionChanged;
+        AppState.WorkItems.OnChanged -= HandleWorkItemsChanged;
+        DependencyStore.OnChanged -= HandleDependenciesChanged;
+    }
+
+    private void HandleConnectionChanged(ConnectionState state)
+    {
+        if (_disposed) return;
+        _isConnected = state == ConnectionState.Connected;
+        _ = SafeStateHasChangedAsync();
+    }
+
+    private void HandleWorkItemsChanged()
+    {
+        if (_disposed) return;
+        _hasUserSelection = false;
+        _activeId = null;
+        var items = AppState.WorkItems.GetByProject(ProjectId)
+            .Where(w => w.DeletedAt == null)
+            .ToList();
+        _allItems = ViewModelFactory.CreateMany(items).ToList();
+        ApplyFilter();
+        _ = SafeStateHasChangedAsync();
+    }
+
+    private void HandleDependenciesChanged()
+    {
+        if (_disposed) return;
+        _hasUserSelection = false;
+        _activeId = null;
+        ApplyFilter();
+        _ = SafeStateHasChangedAsync();
+    }
+
+    private async Task SafeStateHasChangedAsync()
+    {
+        if (_disposed) return;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private string? GetDescribedBy()
+    {
+        var ids = new List<string>();
+        if (!string.IsNullOrWhiteSpace(_error)) ids.Add(ErrorId);
+        if (!_isConnected) ids.Add(OfflineId);
+        if (_filteredResults.Count == 0) ids.Add(EmptyStateId);
+        return ids.Count == 0 ? null : string.Join(" ", ids);
+    }
+
+    private sealed record DependencyTypeOption(string Label, DependencyType Value);
+
+}

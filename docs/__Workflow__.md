@@ -64,21 +64,23 @@ Follow the structure in docs/session-plans/42.1-Session-Plan.md as a template.
 
 ### Other
 ```text
-Read `CRITICAL_OPERATING_CONSTRAINTS.md`, `docs/session-plans/80.3-Session-Plan.md` and `docs/session-plans/80-Session-Plan-Teaching.md`.
+Read `CRITICAL_OPERATING_CONSTRAINTS.md`, `docs/session-plans/80.4-Session-Plan.md` and `docs/session-plans/80-Session-Plan-Teaching.md`.
 
-Please audit `docs/session-plans/80.3-Session-Plan.md` and cross reference it's contents against the current state of the project to avoid making poor assumptions.
+Please audit `docs/session-plans/80.4-Session-Plan.md` and cross reference it's contents against the current state of the project to avoid making poor assumptions.
+
+This audit should identify gaps in the **PLAN** not in the repo itself. If the repo is missing something that the plan needs, but the plan never addresses that requirement, THAT sould be highlighted as a gap.
 
 I want you to teach me by presenting me with bite-sized chunks for me to write/edit keeping the commentary separate from the code snippets to make the code snippets easier for me to follow
 ```
 
 ### End of Session Sanity Check
 ```text
-Builds clean and all tests pass. Please sanity check that everything in `docs/session-plans/80.3-Session-Plan.md` was implemented as expected.
+Builds clean and all tests pass. Please sanity check that everything in `docs/session-plans/80.4-Session-Plan.md` was implemented as expected.
 ```
 
 ### Update Docs
 ```text
-Please update `docs/session-plans/80.3-Session-Plan.md` and `docs/session-plans/80-Session-Plan-Teaching.md`
+Please update `docs/session-plans/80.4-Session-Plan.md` and `docs/session-plans/80-Session-Plan-Teaching.md`
 ```
 
 ### Commit
