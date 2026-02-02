@@ -62,6 +62,17 @@ Restructure this session plan as teaching material:
 Follow the structure in docs/session-plans/42.1-Session-Plan.md as a template.
 ```
 
+### Gordon Ramsay
+```text
+Read:
+- `CRITICAL_OPERATING_CONSTRAINTS.md`
+- `docs/session-plans/80.4-Session-Plan.md`
+- `docs/session-plans/80-Session-Plan-Teaching.md`.
+
+Review the intended implementation quality of ONLY:
+- `docs/session-plans/80.4-Session-Plan.md`
+```
+
 ### Other
 ```text
 Read `CRITICAL_OPERATING_CONSTRAINTS.md`, `docs/session-plans/80.4-Session-Plan.md` and `docs/session-plans/80-Session-Plan-Teaching.md`.

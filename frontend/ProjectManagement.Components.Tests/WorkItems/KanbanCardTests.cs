@@ -8,6 +8,8 @@ using ProjectManagement.Core.Models;
 using ProjectManagement.Core.ViewModels;
 using Radzen;
 using Radzen.Blazor;
+using Moq;
+using ProjectManagement.Core.Interfaces;
 
 namespace ProjectManagement.Components.Tests.WorkItems;
 
@@ -20,6 +22,14 @@ public class KanbanCardTests : BunitContext
         Services.AddScoped<NotificationService>();
         Services.AddScoped<TooltipService>();
         Services.AddScoped<ContextMenuService>();
+
+        // Mock IDependencyStore
+        var mockDependencyStore = new Mock<IDependencyStore>();
+        mockDependencyStore.Setup(d => d.GetBlocking(It.IsAny<Guid>()))
+            .Returns(Array.Empty<Dependency>());
+        mockDependencyStore.Setup(d => d.GetBlocked(It.IsAny<Guid>()))
+            .Returns(Array.Empty<Dependency>());
+        Services.AddSingleton<IDependencyStore>(mockDependencyStore.Object);
 
         // Set JSInterop to loose mode
         JSInterop.Mode = JSRuntimeMode.Loose;

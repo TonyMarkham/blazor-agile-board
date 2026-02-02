@@ -46,6 +46,15 @@ public class KanbanBoardTests : BunitContext
         Services.AddSingleton(_workItemStoreMock.Object);
         Services.AddSingleton(_sprintStoreMock.Object);
         Services.AddSingleton<IProjectStore>(projectStoreMock.Object);
+
+        // Mock IDependencyStore (required by KanbanCard -> BlockedIndicator)
+        var mockDependencyStore = new Mock<IDependencyStore>();
+        mockDependencyStore.Setup(d => d.GetBlocking(It.IsAny<Guid>()))
+            .Returns(Array.Empty<Dependency>());
+        mockDependencyStore.Setup(d => d.GetBlocked(It.IsAny<Guid>()))
+            .Returns(Array.Empty<Dependency>());
+        Services.AddSingleton<IDependencyStore>(mockDependencyStore.Object);
+
         Services.AddScoped<ViewModelFactory>();
 
         JSInterop.Mode = JSRuntimeMode.Loose;

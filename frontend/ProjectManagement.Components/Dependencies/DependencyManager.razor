@@ -1,0 +1,270 @@
+@using ProjectManagement.Core.Interfaces
+@using ProjectManagement.Core.Models
+@using ProjectManagement.Core.ViewModels
+@using ProjectManagement.Services.State
+@inject IDependencyStore DependencyStore
+@inject AppState AppState
+@inject ViewModelFactory ViewModelFactory
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject ILogger<DependencyManager> Logger
+@implements IDisposable
+
+<div class="dependency-manager">
+  @if (_loading)
+  {
+      <div class="dependency-empty">Loading dependencies...</div>
+  }
+  else if (!string.IsNullOrWhiteSpace(_error))
+  {
+      <RadzenAlert Severity="AlertSeverity.Error">
+          <div>@_error</div>
+          <RadzenButton Text="Retry" Size="ButtonSize.Small" Click="@RetryLoad" />
+      </RadzenAlert>
+  }
+  else
+  {
+      @if (!_isConnected)
+      {
+          <RadzenAlert Severity="AlertSeverity.Warning">
+              You are offline. Dependencies cannot be modified right now.
+          </RadzenAlert>
+      }
+
+      <div class="section">
+          <div class="section-header">
+              <span>Blocking this item</span>
+              <RadzenButton Text="Add"
+                            Icon="add"
+                            Size="ButtonSize.Small"
+                            ButtonStyle="ButtonStyle.Secondary"
+                            Disabled="@(!_isConnected)"
+                            aria-label="Add dependency"
+                            Click="@OpenAddDialog" />
+          </div>
+          @if (Blocking.Count == 0)
+          {
+              <div class="dependency-empty">No items are blocking this work item.</div>
+          }
+          else
+          {
+              @foreach (var dep in Blocking)
+              {
+                  <DependencyRow Dependency="dep"
+                                 CurrentWorkItemId="WorkItemId"
+                                 WorkItemLookup="ResolveWorkItem"
+                                 OnRemove="HandleRemove" />
+              }
+          }
+      </div>
+
+      <div class="section">
+          <div class="section-header">
+              <span>Blocked by this item</span>
+          </div>
+          @if (Blocked.Count == 0)
+          {
+              <div class="dependency-empty">This work item is not blocking anything.</div>
+          }
+          else
+          {
+              @foreach (var dep in Blocked)
+              {
+                  <DependencyRow Dependency="dep"
+                                 CurrentWorkItemId="WorkItemId"
+                                 WorkItemLookup="ResolveWorkItem"
+                                 OnRemove="HandleRemove" />
+              }
+          }
+      </div>
+  }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Guid WorkItemId { get; set; }
+    [Parameter, EditorRequired] public Guid ProjectId { get; set; }
+
+    private IReadOnlyList<Dependency> Blocking => DependencyStore.GetBlocking(WorkItemId);
+    private IReadOnlyList<Dependency> Blocked => DependencyStore.GetBlocked(WorkItemId);
+    private bool _loading;
+    private string? _error;
+    private bool _isConnected;
+    private bool _disposed;
+    private CancellationTokenSource? _loadCts;
+
+    protected override void OnInitialized()
+    {
+        DependencyStore.OnChanged += HandleChanged;
+        AppState.OnConnectionStateChanged += HandleConnectionChanged;
+        UpdateConnectionState();
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Input validation
+        if (WorkItemId == Guid.Empty)
+        {
+            Logger.LogError("DependencyManager initialized with empty WorkItemId");
+            throw new ArgumentException("WorkItemId cannot be empty", nameof(WorkItemId));
+        }
+
+        if (ProjectId == Guid.Empty)
+        {
+            Logger.LogError("DependencyManager initialized with empty ProjectId");
+            throw new ArgumentException("ProjectId cannot be empty", nameof(ProjectId));
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Cancel any pending load operation
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        _loadCts = new CancellationTokenSource();
+
+        await LoadDependencies();
+    }
+
+    private async Task LoadDependencies()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            Logger.LogInformation("Loading dependencies for work item {WorkItemId}", WorkItemId);
+            await DependencyStore.RefreshAsync(WorkItemId, _loadCts!.Token);
+            Logger.LogInformation("Successfully loaded dependencies for work item {WorkItemId}",
+                WorkItemId);
+        }
+        catch (OperationCanceledException)
+        {
+            Logger.LogDebug("Load cancelled for work item {WorkItemId}", WorkItemId);
+            // Expected when parameters change - don't show error
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load dependencies for work item {WorkItemId}", WorkItemId);
+            _error = $"Failed to load dependencies: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+            await SafeStateHasChangedAsync();
+        }
+    }
+
+    private async Task RetryLoad()
+    {
+        Logger.LogInformation("Retrying dependency load for work item {WorkItemId}", WorkItemId);
+
+        // Cancel any pending load and create new token
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        _loadCts = new CancellationTokenSource();
+
+        await LoadDependencies();
+    }
+
+    private void HandleChanged()
+    {
+        _ = SafeStateHasChangedAsync();
+    }
+
+    private void HandleConnectionChanged(ConnectionState state)
+    {
+        UpdateConnectionState();
+        _ = SafeStateHasChangedAsync();
+    }
+
+    private void UpdateConnectionState()
+    {
+        _isConnected = AppState.ConnectionState == ConnectionState.Connected;
+    }
+
+    private WorkItemViewModel? ResolveWorkItem(Guid id)
+    {
+        try
+        {
+            var item = AppState.WorkItems.GetById(id);
+            return item is null ? null : ViewModelFactory.Create(item);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to create view model for work item {WorkItemId}", id);
+            return null;
+        }
+    }
+
+    private async Task OpenAddDialog()
+    {
+        if (!_isConnected)
+        {
+            Logger.LogWarning("Attempted to open add dependency dialog while offline for work item {WorkItemId}", WorkItemId);
+            return;
+        }
+
+        try
+        {
+            Logger.LogInformation("Opening add dependency dialog for work item {WorkItemId}",
+                WorkItemId);
+            await DialogService.OpenAsync<AddDependencyDialog>(
+                "Add Dependency",
+                new Dictionary<string, object>
+                {
+                    { "WorkItemId", WorkItemId },
+                    { "ProjectId", ProjectId }
+                },
+                new DialogOptions { Width = "600px" });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to open add dependency dialog for work item {WorkItemId}",
+                WorkItemId);
+            NotificationService.Notify(
+                NotificationSeverity.Error,
+                "Error",
+                "Failed to open add dependency dialog. Please try again.");
+        }
+    }
+
+    private async Task HandleRemove(Guid dependencyId)
+    {
+        if (!_isConnected)
+        {
+            Logger.LogWarning("Attempted to remove dependency {DependencyId} while offline", dependencyId);
+            return;
+        }
+
+        try
+        {
+            Logger.LogInformation("Removing dependency {DependencyId} from work item {WorkItemId}",
+                dependencyId, WorkItemId);
+            await DependencyStore.DeleteAsync(dependencyId, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to remove dependency {DependencyId} from work item {WorkItemId}",
+                dependencyId, WorkItemId);
+            NotificationService.Notify(
+                NotificationSeverity.Error,
+                "Error",
+                $"Failed to remove dependency: {ex.Message}");
+        }
+    }
+
+    private async Task SafeStateHasChangedAsync()
+    {
+        if (_disposed) return;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        DependencyStore.OnChanged -= HandleChanged;
+        AppState.OnConnectionStateChanged -= HandleConnectionChanged;
+    }
+
+}

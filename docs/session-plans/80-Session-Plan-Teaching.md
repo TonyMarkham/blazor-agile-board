@@ -12,7 +12,7 @@ Deliver a production-grade dependency management UI in small, teachable sessions
 | **[80.1](80.1-Session-Plan.md)** | Contracts + CSS Integration | ~20-30k | ✅ Complete |
 | **[80.2](80.2-Session-Plan.md)** | DependencyRow Component + Tests | ~35-45k | ✅ Complete |
 | **[80.3](80.3-Session-Plan.md)** | AddDependencyDialog + A11y + Tests | ~40-50k | ✅ Complete |
-| **[80.4](80.4-Session-Plan.md)** | DependencyManager + Page Wiring + Indicator + Tests | ~40-50k | ⏳ Pending |
+| **[80.4](80.4-Session-Plan.md)** | DependencyManager + Page Wiring + Indicator + Tests | ~40-50k | ✅ Complete |
 
 ---
 

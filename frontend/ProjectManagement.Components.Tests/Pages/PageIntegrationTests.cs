@@ -22,6 +22,7 @@ public class PageIntegrationTests : BunitContext
     private readonly AppState _appState;
     private readonly Mock<IProjectStore> _projectStoreMock;
     private readonly Mock<ICommentStore> _commentStoreMock;
+    private readonly Mock<IDependencyStore> _dependencyStoreMock;
 
     public PageIntegrationTests()
     {
@@ -38,6 +39,11 @@ public class PageIntegrationTests : BunitContext
         _commentStoreMock = new Mock<ICommentStore>();
         _commentStoreMock.Setup(c => c.GetComments(It.IsAny<Guid>()))
             .Returns(new List<Comment>());
+        _dependencyStoreMock = new Mock<IDependencyStore>();
+        _dependencyStoreMock.Setup(d => d.GetBlocking(It.IsAny<Guid>()))
+            .Returns(Array.Empty<Dependency>());
+        _dependencyStoreMock.Setup(d => d.GetBlocked(It.IsAny<Guid>()))
+            .Returns(Array.Empty<Dependency>());
 
         var mockClient = new Mock<IWebSocketClient>();
         mockClient.Setup(c => c.State).Returns(ConnectionState.Connected);
@@ -68,6 +74,7 @@ public class PageIntegrationTests : BunitContext
         Services.AddSingleton(_sprintStoreMock.Object);
         Services.AddSingleton<IProjectStore>(_projectStoreMock.Object);
         Services.AddSingleton<ICommentStore>(_commentStoreMock.Object);
+        Services.AddSingleton<IDependencyStore>(_dependencyStoreMock.Object);
         Services.AddScoped<ViewModelFactory>();
 
         JSInterop.Mode = JSRuntimeMode.Loose;

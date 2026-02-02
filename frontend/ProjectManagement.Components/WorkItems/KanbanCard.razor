@@ -1,5 +1,7 @@
+@using ProjectManagement.Components.Dependencies
 @using ProjectManagement.Core.ViewModels
 @using ProjectManagement.Core.Models
+@inject IDependencyStore DependencyStore
 
 <div class="kanban-card @CardCssClass"
      role="listitem"
@@ -33,6 +35,7 @@
                                  Text="@Item.StoryPoints.Value.ToString()"
                                  title="Story Points" />
                 }
+                <BlockedIndicator WorkItemId="@Item.Id" />
             </RadzenStack>
 
             @if (Item.IsPendingSync)

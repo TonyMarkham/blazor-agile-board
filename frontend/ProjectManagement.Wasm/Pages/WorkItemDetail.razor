@@ -3,11 +3,13 @@
 @using ProjectManagement.Core.ViewModels
 @using ProjectManagement.Components.Activity
 @using ProjectManagement.Components.Comments
+@using ProjectManagement.Components.Dependencies
 @inject AppState AppState
 @inject ViewModelFactory ViewModelFactory
 @inject DialogService DialogService
 @inject NotificationService NotificationService
 @inject NavigationManager NavigationManager
+@inject IDependencyStore DependencyStore
 @implements IDisposable
 
 <PageTitle>@(_workItem?.Title ?? "Work Item") - Agile Board</PageTitle>
@@ -165,6 +167,11 @@ else
                         <RadzenText>@_workItem.Version</RadzenText>
                     </div>
                 </RadzenStack>
+            </div>
+            
+            <div class="content-card mt-4">
+                <h3 class="content-card-title">Dependencies</h3>
+                <DependencyManager WorkItemId="@WorkItemId" ProjectId="@_workItem.ProjectId" />
             </div>
 
             <div class="content-card mt-4">
