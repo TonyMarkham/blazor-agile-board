@@ -12,12 +12,18 @@
      @onkeydown="HandleKeyDown">
 
     <RadzenStack Gap="0.5rem">
-        @* Header: Type + Title *@
+        @* Header: Type + Title with ID *@
         <RadzenStack Orientation="Orientation.Horizontal"
                      AlignItems="AlignItems.Start"
                      Gap="0.5rem">
             <WorkItemTypeIcon Type="@Item.ItemType" Size="1rem" />
-            <span class="kanban-card-title">@Item.Title</span>
+            <RadzenStack Gap="0">
+                @if (!string.IsNullOrEmpty(ProjectKey))
+                {
+                    <span class="kanban-card-id">@Item.GetDisplayKey(ProjectKey)</span>
+                }
+                <span class="kanban-card-title">@Item.Title</span>
+            </RadzenStack>
         </RadzenStack>
 
         @* Footer: Priority, Points, Edit *@
@@ -96,6 +102,9 @@
 
     [Parameter]
     public EventCallback<WorkItemViewModel> OnEdit { get; set; }
+    
+    [Parameter]
+    public string? ProjectKey { get; set; }
 
     private string CardCssClass => Item.IsPendingSync ? "pending-sync" : "";
 
@@ -103,7 +112,8 @@
     {
         get
         {
-            var label = $"{Item.ItemTypeDisplayName}: {Item.Title}, Priority: {Item.PriorityDisplayName}";
+            var id = !string.IsNullOrEmpty(ProjectKey) ? $"{Item.GetDisplayKey(ProjectKey)}: " : "";
+            var label = $"{id}{Item.ItemTypeDisplayName}: {Item.Title}, Priority: {Item.PriorityDisplayName}";
 
             if (Item.StoryPoints.HasValue)
             {

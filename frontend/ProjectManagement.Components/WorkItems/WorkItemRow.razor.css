@@ -1,0 +1,10 @@
+.work-item-id {
+    font-family: var(--rz-font-family-monospace, 'Courier New', Courier, monospace);
+    font-size: 0.85rem;
+    color: var(--rz-text-secondary-color, #555);
+}
+
+.id-cell {
+    width: 80px;
+    flex-shrink: 0;
+}

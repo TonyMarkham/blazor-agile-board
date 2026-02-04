@@ -36,8 +36,12 @@ else
         {
             <a href="@($"/project/{_project.Id}")">@_project.Title</a>
             <span class="separator">/</span>
+            <span class="current">@_workItem.GetDisplayKey(_project.Key)</span>
         }
-        <span class="current">@_workItem.Title</span>
+        else
+        {
+            <span class="current">@_workItem.Title</span>
+        }
     </nav>
 
     @* Header *@
@@ -47,6 +51,16 @@ else
                      Gap="0.75rem">
             <WorkItemTypeIcon Type="@_workItem.ItemType" Size="1.75rem" />
             <div>
+                @if (_project is not null)
+                {
+                    <span class="work-item-key">@_workItem.GetDisplayKey(_project.Key)</span>
+                }
+                else
+                {
+                    <RadzenProgressBar Mode="ProgressBarMode.Indeterminate"
+                                       Style="width: 100px; height: 4px;"
+                                       ShowValue="false" />
+                }
                 <h1 class="page-title">@_workItem.Title</h1>
                 <RadzenStack Orientation="Orientation.Horizontal"
                              Gap="0.5rem"
@@ -102,6 +116,7 @@ else
                     @foreach (var child in _children)
                     {
                         <WorkItemRow Item="@child"
+                                     ProjectKey="@_project?.Key"
                                      IsConnected="@_isConnected"
                                      OnSelect="@(item => NavigationManager.NavigateTo($"/workitem/{item.Id}"))"
                                      OnEdit="@HandleEditChild"
@@ -127,6 +142,15 @@ else
             <div class="content-card">
                 <h3 class="content-card-title">Details</h3>
                 <RadzenStack Gap="1rem">
+                    @if (_project is not null)
+                    {
+                        <div>
+                            <RadzenText TextStyle="TextStyle.Caption" class="text-muted">ID</RadzenText>
+                            <RadzenText Style="font-family: var(--rz-font-family-monospace, 'Courier New', Courier, monospace);">
+                                @_workItem.GetDisplayKey(_project.Key)
+                            </RadzenText>
+                        </div>
+                    }
                     <div>
                         <RadzenText TextStyle="TextStyle.Caption" class="text-muted">Type</RadzenText>
                         <RadzenText>@_workItem.ItemTypeDisplayName</RadzenText>

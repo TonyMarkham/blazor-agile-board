@@ -70,6 +70,7 @@
         </ChildContent>
         <Template Context="item">
             <KanbanCard Item="@item"
+                        ProjectKey="@_projectKey"
                         IsConnected="@_isConnected"
                         OnClick="@HandleCardClick"
                         OnEdit="@HandleCardEdit" />
@@ -89,6 +90,7 @@
     private List<WorkItemViewModel> _filteredItems = new();
     private bool _isConnected = true;
     private string _announcement = "";
+    private string? _projectKey;
 
     // Filters
     private WorkItemType? _typeFilter;
@@ -126,6 +128,9 @@
 
     private void RefreshData()
     {
+        var project = AppState.Projects.GetById(ProjectId);
+        _projectKey = project?.Key;
+
         var items = AppState.WorkItems.GetByProject(ProjectId)
             .Where(w => w.DeletedAt is null);
 

@@ -20,25 +20,34 @@
                         Change="@(_ => HandleTypeChanged())" />
     </RadzenFormField>
     
-    @* Parent Selection (for Story/Task) *@
-    @if (!_isEdit && (_itemType == WorkItemType.Story || _itemType == WorkItemType.Task))
+    @* Parent Selection (for Story/Task) - Show in both create AND edit mode *@
+    @if (_itemType == WorkItemType.Story || _itemType == WorkItemType.Task)
     {
         <RadzenFormField Text="@GetParentFieldLabel()" Style="width: 100%;">
-            <RadzenDropDown @bind-Value="_selectedParentId"
-                            TValue="Guid?"
-                            Data="@_availableParents"
-                            TextProperty="Title"
-                            ValueProperty="Id"
-                            Placeholder="@GetParentPlaceholder()"
-                            Style="width: 100%;" />
+            @if (_loadingParents)
+            {
+                <RadzenStack Orientation="Orientation.Horizontal"
+                             AlignItems="AlignItems.Center"
+                             Gap="0.5rem">
+                    <RadzenProgressBar Mode="ProgressBarMode.Indeterminate"
+                                       Style="width: 100%; height: 40px;"
+                                       ShowValue="false" />
+                    <RadzenText TextStyle="TextStyle.Caption">Loading parents...</RadzenText>
+                </RadzenStack>
+            }
+            else
+            {
+                <RadzenDropDown @bind-Value="_selectedParentId"
+                                TValue="Guid?"
+                                Data="@_availableParents"
+                                TextProperty="Title"
+                                ValueProperty="Id"
+                                AllowClear="true"
+                                Placeholder="@GetParentPlaceholder()"
+                                Style="width: 100%;"
+                                Change="@HandleParentChange" />
+            }
         </RadzenFormField>
-        @if (_errors.TryGetValue("Parent", out var parentError))
-        {
-            <RadzenText TextStyle="TextStyle.Caption"
-                        Style="color: var(--rz-danger);">
-                @parentError
-            </RadzenText>
-        }
     }
 
     @* Title *@
@@ -177,6 +186,9 @@
     private bool _isDirty;
     private ConnectionState _connectionState = ConnectionState.Connected;
     private Dictionary<string, string> _errors = new();
+    private Guid? _originalParentId;
+    private bool _loadingParents = false;
+    private Dictionary<Guid, List<Guid>>? _parentChildMap;
 
     // Form fields
     private WorkItemType _itemType;
@@ -238,6 +250,10 @@
             _storyPoints = _originalStoryPoints = WorkItem.StoryPoints;
             _sprintId = _originalSprintId = WorkItem.SprintId;
             ProjectId = WorkItem.ProjectId;
+
+            // Load parent for edit mode
+            _selectedParentId = _originalParentId = WorkItem.ParentId;
+            LoadAvailableParents();
         }
         else
         {
@@ -275,7 +291,8 @@
                    _status != _originalStatus ||
                    _priority != _originalPriority ||
                    _storyPoints != _originalStoryPoints ||
-                   _sprintId != _originalSprintId;
+                   _sprintId != _originalSprintId ||
+                   _selectedParentId != _originalParentId;
     }
 
     private bool Validate()
@@ -290,14 +307,6 @@
         else if (trimmed.Length > 200)
         {
             _errors["Title"] = "Title must be 200 characters or less";
-        }
-        
-        // Validate parent selection
-        if (!_isEdit && (_itemType == WorkItemType.Story || _itemType == WorkItemType.Task) && !_selectedParentId.HasValue)
-        {
-            _errors["Parent"] = _itemType == WorkItemType.Story
-                ? "Please select an Epic parent"
-                : "Please select a Story parent";
         }
 
         return _errors.Count == 0;
@@ -374,6 +383,8 @@
 
     private async Task UpdateWorkItemAsync()
     {
+        var parentChanged = _selectedParentId != _originalParentId;
+
         var request = new UpdateWorkItemRequest
         {
             WorkItemId = WorkItem!.Id,
@@ -383,7 +394,9 @@
             Status = _status,
             Priority = _priority,
             StoryPoints = _storyPoints,
-            SprintId = _sprintId
+            SprintId = _sprintId,
+            ParentId = parentChanged ? (_selectedParentId ?? Guid.Empty) : null,
+            UpdateParent = parentChanged
         };
 
         await AppState.WorkItems.UpdateAsync(request);
@@ -521,9 +534,9 @@
     {
         return _itemType switch
         {
-            WorkItemType.Story => "Epic",
-            WorkItemType.Task => "Story",
-            _ => "Parent"
+            WorkItemType.Story => "Parent Epic (optional)",
+            WorkItemType.Task => "Parent Story (optional)",
+            _ => "Parent (optional)"
         };
     }
 
@@ -531,30 +544,135 @@
     {
         return _itemType switch
         {
-            WorkItemType.Story => "Select an Epic",
-            WorkItemType.Task => "Select a Story",
-            _ => "Select a parent"
+            WorkItemType.Story => "Select an Epic (optional)",
+            WorkItemType.Task => "Select a Story (optional)",
+            _ => "Select a parent (optional)"
         };
     }
 
     private void LoadAvailableParents()
     {
-        if (_itemType == WorkItemType.Story)
+        _loadingParents = true;
+        StateHasChanged();  // Show loading spinner
+
+        try
         {
-            _availableParents = AppState.WorkItems.GetByProject(ProjectId)
-                .Where(w => w.ItemType == WorkItemType.Epic && w.DeletedAt == null)
-                .ToList();
+            var validParentType = _itemType switch
+            {
+                WorkItemType.Story => WorkItemType.Epic,
+                WorkItemType.Task => WorkItemType.Story,
+                _ => (WorkItemType?)null
+            };
+
+            if (validParentType is null)
+            {
+                _availableParents.Clear();
+                return;
+            }
+
+            var candidates = AppState.WorkItems.GetByProject(ProjectId)
+                .Where(w => w.ItemType == validParentType && w.DeletedAt == null);
+
+            // In edit mode, exclude self and descendants to prevent circular refs
+            if (_isEdit && WorkItem is not null)
+            {
+                // Build parent-child map ONCE
+                BuildParentChildMap();
+
+                var descendants = GetDescendantIds(WorkItem.Id);
+                candidates = candidates.Where(w => w.Id != WorkItem.Id && !descendants.Contains(w.Id));
+            }
+
+            _availableParents = candidates.ToList();
         }
-        else if (_itemType == WorkItemType.Task)
+        finally
         {
-            _availableParents = AppState.WorkItems.GetByProject(ProjectId)
-                .Where(w => w.ItemType == WorkItemType.Story && w.DeletedAt == null)
-                .ToList();
+            _loadingParents = false;
+            StateHasChanged();  // Hide loading spinner
         }
-        else
+    }
+    
+    /// <summary>
+    /// Build parent-to-children mapping for efficient descendant traversal.
+    /// Called ONCE per LoadAvailableParents invocation.
+    /// Complexity: O(N) where N = work items in project.
+    /// </summary>
+    private void BuildParentChildMap()
+    {
+        _parentChildMap = AppState.WorkItems.GetByProject(ProjectId)
+            .Where(w => w.DeletedAt == null && w.ParentId != null)
+            .GroupBy(w => w.ParentId!.Value)
+            .ToDictionary(g => g.Key, g => g.Select(w => w.Id).ToList());
+    }
+    
+    /// <summary>
+    /// Get all descendant IDs of a work item (children, grandchildren, etc.)
+    /// Used to prevent circular parent references.
+    ///
+    /// PERFORMANCE FIX: Uses cached parent-child map.
+    /// - OLD: O(N × D) - queried all work items for each level
+    /// - NEW: O(D) - uses pre-built dictionary lookup
+    /// Where N = total work items, D = depth of hierarchy
+    /// </summary>
+    private HashSet<Guid> GetDescendantIds(Guid parentId)
+    {
+        if (_parentChildMap == null)
         {
-            _availableParents.Clear();
+            BuildParentChildMap();
         }
+
+        var descendants = new HashSet<Guid>();
+        var queue = new Queue<Guid>();
+        queue.Enqueue(parentId);
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+
+            // Use cached map instead of querying AppState each iteration
+            if (_parentChildMap!.TryGetValue(current, out var children))
+            {
+                foreach (var childId in children)
+                {
+                    if (descendants.Add(childId))
+                    {
+                        queue.Enqueue(childId);
+                    }
+                }
+            }
+        }
+
+        return descendants;
+    }
+    
+    private async Task HandleParentChange(object? value)
+    {
+        var newParentId = value as Guid?;
+
+        // If clearing parent (and had a parent before), confirm
+        if (newParentId == null && _originalParentId != null)
+        {
+            var confirmed = await DialogService.Confirm(
+                "Are you sure you want to remove the parent? This will make the work item an orphan.",
+                "Confirm Remove Parent",
+                new ConfirmOptions
+                {
+                    OkButtonText = "Remove Parent",
+                    CancelButtonText = "Cancel"
+                }
+            );
+
+            if (confirmed != true)
+            {
+                // User cancelled - revert to original
+                _selectedParentId = _originalParentId;
+                StateHasChanged();
+                return;
+            }
+        }
+
+        // Change accepted
+        MarkDirty();
     }
 
     private void HandleTypeChanged()

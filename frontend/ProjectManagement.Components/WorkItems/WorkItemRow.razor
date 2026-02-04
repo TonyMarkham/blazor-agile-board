@@ -9,6 +9,14 @@
      aria-label="@AriaLabel"
      aria-busy="@Item.IsPendingSync.ToString().ToLowerInvariant()">
 
+    @* ID Cell *@
+    <div class="work-item-cell id-cell" role="cell">
+        @if (!string.IsNullOrEmpty(ProjectKey))
+        {
+            <span class="work-item-id">@Item.GetDisplayKey(ProjectKey)</span>
+        }
+    </div>
+
     @* Type Cell *@
     <div class="work-item-cell type-cell" role="cell">
         <WorkItemTypeIcon Type="@Item.ItemType" />
@@ -100,6 +108,9 @@
 
     [Parameter]
     public EventCallback<WorkItemViewModel> OnSelect { get; set; }
+    
+    [Parameter]
+    public string? ProjectKey { get; set; }
 
     private bool IsActionDisabled => !IsConnected || Item.IsPendingSync;
 
@@ -118,13 +129,17 @@
     {
         get
         {
-            var parts = new List<string>
+            var parts = new List<string>();
+
+            if (!string.IsNullOrEmpty(ProjectKey))
             {
-                Item.ItemTypeDisplayName,
-                Item.Title,
-                $"Status: {Item.StatusDisplayName}",
-                $"Priority: {Item.PriorityDisplayName}"
-            };
+                parts.Add(Item.GetDisplayKey(ProjectKey));
+            }
+
+            parts.Add(Item.ItemTypeDisplayName);
+            parts.Add(Item.Title);
+            parts.Add($"Status: {Item.StatusDisplayName}");
+            parts.Add($"Priority: {Item.PriorityDisplayName}");
 
             if (Item.StoryPoints.HasValue)
             {

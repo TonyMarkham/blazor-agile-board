@@ -1,0 +1,7 @@
+.work-item-key {
+    font-family: var(--rz-font-family-monospace, 'Courier New', Courier, monospace);
+    font-size: 0.875rem;
+    color: var(--rz-text-secondary-color, #555);
+    display: block;
+    margin-bottom: 0.25rem;
+}

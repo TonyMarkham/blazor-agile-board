@@ -1,0 +1,5 @@
+.kanban-card-id {
+    font-size: 0.75rem;
+    color: var(--rz-text-tertiary-color, #666);
+    font-family: var(--rz-font-family-monospace, 'Courier New', Courier, monospace);
+}
