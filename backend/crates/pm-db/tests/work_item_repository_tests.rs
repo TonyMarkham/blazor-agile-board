@@ -25,7 +25,7 @@ async fn given_valid_work_item_when_created_then_can_be_found_by_id() {
         .await
         .unwrap();
 
-    let work_item = create_test_work_item(project.id, user_id);
+    let work_item = create_test_work_item(project.id, user_id, 1);
 
     // When: Creating the work item
     WorkItemRepository::create(&pool, &work_item).await.unwrap();
@@ -71,7 +71,7 @@ async fn given_existing_work_item_when_updated_then_changes_are_persisted() {
         .await
         .unwrap();
 
-    let mut work_item = create_test_work_item(project.id, user_id);
+    let mut work_item = create_test_work_item(project.id, user_id, 1);
     WorkItemRepository::create(&pool, &work_item).await.unwrap();
 
     // When: Updating the work item's title and status
@@ -103,7 +103,7 @@ async fn given_existing_work_item_when_soft_deleted_then_not_found_by_id() {
         .await
         .unwrap();
 
-    let work_item = create_test_work_item(project.id, user_id);
+    let work_item = create_test_work_item(project.id, user_id, 1);
     WorkItemRepository::create(&pool, &work_item).await.unwrap();
 
     // When: Soft deleting the work item
@@ -132,9 +132,9 @@ async fn given_multiple_work_items_in_project_when_finding_by_project_then_retur
         .await
         .unwrap();
 
-    let item1 = create_test_work_item(project.id, user_id);
-    let item2 = create_test_work_item(project.id, user_id);
-    let item3 = create_test_work_item(project.id, user_id);
+    let item1 = create_test_work_item(project.id, user_id, 1);
+    let item2 = create_test_work_item(project.id, user_id, 2);
+    let item3 = create_test_work_item(project.id, user_id, 3);
 
     // When: Creating all items
     WorkItemRepository::create(&pool, &item1).await.unwrap();
@@ -168,8 +168,8 @@ async fn given_work_items_with_one_deleted_when_finding_by_project_then_excludes
         .await
         .unwrap();
 
-    let item1 = create_test_work_item(project.id, user_id);
-    let item2 = create_test_work_item(project.id, user_id);
+    let item1 = create_test_work_item(project.id, user_id, 1);
+    let item2 = create_test_work_item(project.id, user_id, 2);
 
     WorkItemRepository::create(&pool, &item1).await.unwrap();
     WorkItemRepository::create(&pool, &item2).await.unwrap();
@@ -233,7 +233,7 @@ async fn given_work_item_with_sprint_when_sprint_deleted_then_sprint_id_set_to_n
         .await
         .unwrap();
 
-    let mut work_item = create_test_work_item(project.id, user_id);
+    let mut work_item = create_test_work_item(project.id, user_id, 1);
     work_item.sprint_id = Some(sprint.id);
     WorkItemRepository::create(&pool, &work_item).await.unwrap();
 
@@ -265,7 +265,7 @@ async fn given_work_item_with_assignee_when_user_deleted_then_assignee_id_set_to
         .await
         .unwrap();
 
-    let mut work_item = create_test_work_item(project.id, user_id);
+    let mut work_item = create_test_work_item(project.id, user_id, 1);
     work_item.assignee_id = Some(user_id);
     WorkItemRepository::create(&pool, &work_item).await.unwrap();
 
@@ -297,11 +297,11 @@ async fn given_parent_work_item_when_deleted_then_children_cascade_deleted() {
         .await
         .unwrap();
 
-    let mut parent = create_test_work_item(project.id, user_id);
+    let mut parent = create_test_work_item(project.id, user_id, 1);
     parent.item_type = pm_core::WorkItemType::Epic;
     WorkItemRepository::create(&pool, &parent).await.unwrap();
 
-    let mut child = create_test_work_item(project.id, user_id);
+    let mut child = create_test_work_item(project.id, user_id, 2);
     child.parent_id = Some(parent.id);
     WorkItemRepository::create(&pool, &child).await.unwrap();
 
@@ -334,8 +334,8 @@ async fn given_project_with_work_items_when_deleted_then_all_work_items_cascade_
         .await
         .unwrap();
 
-    let item1 = create_test_work_item(project.id, user_id);
-    let item2 = create_test_work_item(project.id, user_id);
+    let item1 = create_test_work_item(project.id, user_id, 1);
+    let item2 = create_test_work_item(project.id, user_id, 2);
     WorkItemRepository::create(&pool, &item1).await.unwrap();
     WorkItemRepository::create(&pool, &item2).await.unwrap();
 

@@ -13,10 +13,13 @@ mod validation_config;
 mod websocket_config;
 
 mod activity_log_config;
+mod api_config;
+
 #[cfg(test)]
 mod tests;
 
 pub use activity_log_config::ActivityLogConfig;
+pub use api_config::{ApiConfig, DEFAULT_LLM_USER_ID, DEFAULT_LLM_USER_NAME};
 pub use auth_config::AuthConfig;
 pub use circuit_breaker_config::CircuitBreakerConfig;
 pub use config::Config;

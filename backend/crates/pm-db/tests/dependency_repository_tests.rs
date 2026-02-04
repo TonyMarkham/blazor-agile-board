@@ -25,8 +25,8 @@ async fn given_valid_dependency_when_created_then_can_be_found_by_id() {
         .await
         .unwrap();
 
-    let item1 = create_test_work_item(project.id, user_id);
-    let item2 = create_test_work_item(project.id, user_id);
+    let item1 = create_test_work_item(project.id, user_id, 1);
+    let item2 = create_test_work_item(project.id, user_id, 2);
     WorkItemRepository::create(&pool, &item1).await.unwrap();
     WorkItemRepository::create(&pool, &item2).await.unwrap();
 
@@ -74,8 +74,8 @@ async fn given_existing_dependency_when_soft_deleted_then_not_found_by_id() {
         .await
         .unwrap();
 
-    let item1 = create_test_work_item(project.id, user_id);
-    let item2 = create_test_work_item(project.id, user_id);
+    let item1 = create_test_work_item(project.id, user_id, 1);
+    let item2 = create_test_work_item(project.id, user_id, 2);
     WorkItemRepository::create(&pool, &item1).await.unwrap();
     WorkItemRepository::create(&pool, &item2).await.unwrap();
 
@@ -106,9 +106,9 @@ async fn given_item_with_blockers_when_finding_blocking_then_returns_blockers() 
         .await
         .unwrap();
 
-    let item_a = create_test_work_item(project.id, user_id);
-    let item_b = create_test_work_item(project.id, user_id);
-    let item_c = create_test_work_item(project.id, user_id);
+    let item_a = create_test_work_item(project.id, user_id, 1);
+    let item_b = create_test_work_item(project.id, user_id, 2);
+    let item_c = create_test_work_item(project.id, user_id, 3);
     WorkItemRepository::create(&pool, &item_a).await.unwrap();
     WorkItemRepository::create(&pool, &item_b).await.unwrap();
     WorkItemRepository::create(&pool, &item_c).await.unwrap();
@@ -148,9 +148,9 @@ async fn given_item_blocking_others_when_finding_blocked_then_returns_blocked_it
         .await
         .unwrap();
 
-    let item_a = create_test_work_item(project.id, user_id);
-    let item_b = create_test_work_item(project.id, user_id);
-    let item_c = create_test_work_item(project.id, user_id);
+    let item_a = create_test_work_item(project.id, user_id, 1);
+    let item_b = create_test_work_item(project.id, user_id, 2);
+    let item_c = create_test_work_item(project.id, user_id, 3);
     WorkItemRepository::create(&pool, &item_a).await.unwrap();
     WorkItemRepository::create(&pool, &item_b).await.unwrap();
     WorkItemRepository::create(&pool, &item_c).await.unwrap();
@@ -190,7 +190,7 @@ async fn given_item_with_no_blockers_when_finding_blocking_then_returns_empty_ve
         .await
         .unwrap();
 
-    let item = create_test_work_item(project.id, user_id);
+    let item = create_test_work_item(project.id, user_id, 1);
     WorkItemRepository::create(&pool, &item).await.unwrap();
 
     let repo = DependencyRepository::new(pool);
@@ -216,7 +216,7 @@ async fn given_item_blocking_none_when_finding_blocked_then_returns_empty_vec() 
         .await
         .unwrap();
 
-    let item = create_test_work_item(project.id, user_id);
+    let item = create_test_work_item(project.id, user_id, 1);
     WorkItemRepository::create(&pool, &item).await.unwrap();
 
     let repo = DependencyRepository::new(pool);
@@ -242,9 +242,9 @@ async fn given_dependencies_with_one_deleted_when_finding_blocking_then_excludes
         .await
         .unwrap();
 
-    let item_a = create_test_work_item(project.id, user_id);
-    let item_b = create_test_work_item(project.id, user_id);
-    let item_c = create_test_work_item(project.id, user_id);
+    let item_a = create_test_work_item(project.id, user_id, 1);
+    let item_b = create_test_work_item(project.id, user_id, 2);
+    let item_c = create_test_work_item(project.id, user_id, 3);
     WorkItemRepository::create(&pool, &item_a).await.unwrap();
     WorkItemRepository::create(&pool, &item_b).await.unwrap();
     WorkItemRepository::create(&pool, &item_c).await.unwrap();

@@ -1,5 +1,5 @@
 use crate::{
-    ActivityLogConfig, AuthConfig, CircuitBreakerConfig, ConfigError, ConfigErrorResult,
+    ActivityLogConfig, ApiConfig, AuthConfig, CircuitBreakerConfig, ConfigError, ConfigErrorResult,
     DatabaseConfig, HandlerConfig, LoggingConfig, RateLimitConfig, RetryConfig, ServerConfig,
     ValidationConfig, WebSocketConfig,
 };
@@ -24,6 +24,9 @@ pub struct Config {
     pub retry: RetryConfig,
     pub handler: HandlerConfig,
     pub validation: ValidationConfig,
+    /// REST API configuration
+    #[serde(default)]
+    pub api: ApiConfig,
 }
 
 impl Config {

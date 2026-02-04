@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use pm_auth::{JwtValidator, RateLimitConfig, RateLimiterFactory};
+use pm_config::ApiConfig;
 use pm_ws::{
     AppState, CircuitBreaker, CircuitBreakerConfig, ConnectionConfig, ConnectionLimits,
     ConnectionRegistry, Metrics, ShutdownCoordinator,
@@ -149,6 +150,7 @@ async fn create_app(config: TestServerConfig) -> (Router, AppState) {
         metrics,
         shutdown,
         config: connection_config,
+        api_config: ApiConfig::default(),
     };
 
     let router = Router::new()

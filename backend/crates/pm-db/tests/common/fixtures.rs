@@ -28,7 +28,7 @@ pub fn create_test_project(user_id: Uuid) -> Project {
 }
 
 /// Creates a test WorkItem with sensible defaults
-pub fn create_test_work_item(project_id: Uuid, user_id: Uuid) -> WorkItem {
+pub fn create_test_work_item(project_id: Uuid, user_id: Uuid, item_number: i32) -> WorkItem {
     WorkItem {
         id: Uuid::new_v4(),
         item_type: WorkItemType::Story,
@@ -42,7 +42,7 @@ pub fn create_test_work_item(project_id: Uuid, user_id: Uuid) -> WorkItem {
         assignee_id: None,
         story_points: None,
         sprint_id: None,
-        item_number: 1,
+        item_number,
         version: 0,
         created_at: Utc::now(),
         updated_at: Utc::now(),

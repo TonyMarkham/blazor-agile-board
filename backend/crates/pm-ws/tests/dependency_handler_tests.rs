@@ -101,20 +101,24 @@ impl TestFixture {
         .expect("Failed to add project member");
 
         // Create three test work items (tasks A, B, C)
-        for (task_id, title) in [
+        for (idx, (task_id, title)) in [
             (task_a_id, "Task A"),
             (task_b_id, "Task B"),
             (task_c_id, "Task C"),
-        ] {
+        ]
+            .iter()
+            .enumerate()
+        {
             sqlx::query(
                 r#"
-                    INSERT INTO pm_work_items (id, item_type, parent_id, project_id, position, title, status, priority, version, created_at, updated_at, created_by, updated_by)
-                    VALUES (?, 'task', NULL, ?, 1, ?, 'todo', 'medium', 1, ?, ?, ?, ?)
+                        INSERT INTO pm_work_items (id, item_type, parent_id, project_id, position, title, status, priority, item_number, version, created_at, updated_at, created_by, updated_by)
+                        VALUES (?, 'task', NULL, ?, 1, ?, 'todo', 'medium', ?, 1, ?, ?, ?, ?)
                     "#
             )
                 .bind(task_id.to_string())
                 .bind(project_id.to_string())
                 .bind(title)
+                .bind((idx + 1) as i32)
                 .bind(Utc::now().timestamp())
                 .bind(Utc::now().timestamp())
                 .bind(user_id.to_string())
@@ -423,8 +427,8 @@ async fn given_cross_project_when_create_dependency_then_validation_error() {
 
     sqlx::query(
         r#"
-            INSERT INTO pm_work_items (id, item_type, parent_id, project_id, position, title, status, priority, version, created_at, updated_at, created_by, updated_by)
-            VALUES (?, 'task', NULL, ?, 1, 'Task in Other Project', 'todo', 'medium', 1, ?, ?, ?, ?)
+                INSERT INTO pm_work_items (id, item_type, parent_id, project_id, position, title, status, priority, item_number, version, created_at, updated_at, created_by, updated_by)
+                VALUES (?, 'task', NULL, ?, 1, 'Task in Other Project', 'todo', 'medium', 1, 1, ?, ?, ?, ?)
             "#
     )
         .bind(task_other_id.to_string())
@@ -470,13 +474,14 @@ async fn given_50_dependencies_when_create_51st_then_limit_error() {
         // Create work item
         sqlx::query(
             r#"
-                INSERT INTO pm_work_items (id, item_type, parent_id, project_id, position, title, status, priority, version, created_at, updated_at, created_by, updated_by)
-                VALUES (?, 'task', NULL, ?, 1, ?, 'todo', 'medium', 1, ?, ?, ?, ?)
+                    INSERT INTO pm_work_items (id, item_type, parent_id, project_id, position, title, status, priority, item_number, version, created_at, updated_at, created_by, updated_by)
+                    VALUES (?, 'task', NULL, ?, 1, ?, 'todo', 'medium', ?, 1, ?, ?, ?, ?)
                 "#
         )
             .bind(blocker_id.to_string())
             .bind(fixture.project_id.to_string())
             .bind(format!("Blocker {}", i))
+            .bind(i as i32 + 10)
             .bind(Utc::now().timestamp())
             .bind(Utc::now().timestamp())
             .bind(fixture.user_id.to_string())
@@ -504,8 +509,8 @@ async fn given_50_dependencies_when_create_51st_then_limit_error() {
 
     sqlx::query(
         r#"
-            INSERT INTO pm_work_items (id, item_type, parent_id, project_id, position, title, status, priority, version, created_at, updated_at, created_by, updated_by)
-            VALUES (?, 'task', NULL, ?, 1, 'Extra Blocker', 'todo', 'medium', 1, ?, ?, ?, ?)
+                INSERT INTO pm_work_items (id, item_type, parent_id, project_id, position, title, status, priority, item_number, version, created_at, updated_at, created_by, updated_by)
+                VALUES (?, 'task', NULL, ?, 1, 'Extra Blocker', 'todo', 'medium', 60, 1, ?, ?, ?, ?)
             "#
     )
         .bind(extra_blocker_id.to_string())

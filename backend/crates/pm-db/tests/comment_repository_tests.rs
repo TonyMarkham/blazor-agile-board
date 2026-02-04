@@ -25,7 +25,7 @@ async fn given_valid_comment_when_created_then_can_be_found_by_id() {
         .await
         .unwrap();
 
-    let work_item = create_test_work_item(project.id, user_id);
+    let work_item = create_test_work_item(project.id, user_id, 1);
     WorkItemRepository::create(&pool, &work_item).await.unwrap();
 
     let repo = CommentRepository::new(pool.clone());
@@ -72,7 +72,7 @@ async fn given_existing_comment_when_updated_then_changes_are_persisted() {
         .await
         .unwrap();
 
-    let work_item = create_test_work_item(project.id, user_id);
+    let work_item = create_test_work_item(project.id, user_id, 1);
     WorkItemRepository::create(&pool, &work_item).await.unwrap();
 
     let repo = CommentRepository::new(pool.clone());
@@ -104,7 +104,7 @@ async fn given_existing_comment_when_soft_deleted_then_not_found_by_id() {
         .await
         .unwrap();
 
-    let work_item = create_test_work_item(project.id, user_id);
+    let work_item = create_test_work_item(project.id, user_id, 1);
     WorkItemRepository::create(&pool, &work_item).await.unwrap();
 
     let repo = CommentRepository::new(pool.clone());
@@ -134,7 +134,7 @@ async fn given_multiple_comments_on_work_item_when_finding_by_work_item_then_ret
         .await
         .unwrap();
 
-    let work_item = create_test_work_item(project.id, user_id);
+    let work_item = create_test_work_item(project.id, user_id, 1);
     WorkItemRepository::create(&pool, &work_item).await.unwrap();
 
     let repo = CommentRepository::new(pool.clone());
@@ -172,7 +172,7 @@ async fn given_comments_with_one_deleted_when_finding_by_work_item_then_excludes
         .await
         .unwrap();
 
-    let work_item = create_test_work_item(project.id, user_id);
+    let work_item = create_test_work_item(project.id, user_id, 1);
     WorkItemRepository::create(&pool, &work_item).await.unwrap();
 
     let repo = CommentRepository::new(pool.clone());
@@ -207,7 +207,7 @@ async fn given_work_item_with_no_comments_when_finding_by_work_item_then_returns
         .await
         .unwrap();
 
-    let work_item = create_test_work_item(project.id, user_id);
+    let work_item = create_test_work_item(project.id, user_id, 1);
     WorkItemRepository::create(&pool, &work_item).await.unwrap();
 
     let repo = CommentRepository::new(pool);

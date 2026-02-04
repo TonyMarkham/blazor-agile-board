@@ -1,8 +1,15 @@
 pub(crate) mod admin;
+mod api;
 mod error;
 mod health;
 mod logger;
 mod routes;
+
+#[cfg(test)]
+mod tests;
+
+pub use api::error::ApiError;
+pub use api::extractors::user_id::UserId;
 
 use pm_auth::{JwtValidator, RateLimiterFactory};
 use pm_ws::{
@@ -136,6 +143,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         metrics,
         shutdown: shutdown.clone(),
         config: connection_config,
+        api_config: config.api.clone(),
     };
 
     // Build router

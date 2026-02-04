@@ -4,6 +4,7 @@ use crate::{
 };
 
 use pm_auth::{JwtValidator, RateLimiterFactory};
+use pm_config::ApiConfig;
 
 use std::sync::Arc;
 
@@ -22,8 +23,8 @@ use tokio::sync::mpsc;
 /// Shared application state for WebSocket handlers
 #[derive(Clone)]
 pub struct AppState {
-    pub pool: SqlitePool,                     // NEW
-    pub circuit_breaker: Arc<CircuitBreaker>, // NEW
+    pub pool: SqlitePool,
+    pub circuit_breaker: Arc<CircuitBreaker>,
     pub jwt_validator: Option<Arc<JwtValidator>>,
     pub desktop_user_id: String,
     pub rate_limiter_factory: RateLimiterFactory,
@@ -31,6 +32,7 @@ pub struct AppState {
     pub metrics: Metrics,
     pub shutdown: ShutdownCoordinator,
     pub config: ConnectionConfig,
+    pub api_config: ApiConfig,
 }
 
 /// WebSocket upgrade handler

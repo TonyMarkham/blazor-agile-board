@@ -109,9 +109,9 @@ impl TestFixture {
         // Create test work item (task)
         sqlx::query(
             r#"
-              INSERT INTO pm_work_items (id, item_type, parent_id, project_id, position, title, status, priority, version, created_at, updated_at, created_by, updated_by)
-              VALUES (?, 'task', NULL, ?, 1, 'Test Task', 'todo', 'medium', 1, ?, ?, ?, ?)
-              "#
+                    INSERT INTO pm_work_items (id, item_type, parent_id, project_id, position, title, status, priority, item_number, version, created_at, updated_at, created_by, updated_by)
+                    VALUES (?, 'task', NULL, ?, 1, 'Test Task', 'todo', 'medium', 1, 1, ?, ?, ?, ?)
+                "#
         )
             .bind(work_item_id.to_string())
             .bind(project_id.to_string())

@@ -1,3 +1,4 @@
+mod api_config;
 mod auth;
 mod circuit_breaker;
 mod config;

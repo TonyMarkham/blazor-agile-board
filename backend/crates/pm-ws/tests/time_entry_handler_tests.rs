@@ -110,8 +110,8 @@ impl TestFixture {
         // Create test work item (task)
         sqlx::query(
             r#"
-                INSERT INTO pm_work_items (id, item_type, parent_id, project_id, position, title, status, priority, version, created_at, updated_at, created_by, updated_by)
-                VALUES (?, 'task', NULL, ?, 1, 'Test Task', 'todo', 'medium', 1, ?, ?, ?, ?)
+                    INSERT INTO pm_work_items (id, item_type, parent_id, project_id, position, title, status, priority, item_number, version, created_at, updated_at, created_by, updated_by)
+                    VALUES (?, 'task', NULL, ?, 1, 'Test Task', 'todo', 'medium', 1, 1, ?, ?, ?, ?)
                 "#
         )
             .bind(work_item_id.to_string())
@@ -230,8 +230,8 @@ async fn given_running_timer_when_start_new_timer_then_auto_stops_previous() {
     let other_work_item_id = Uuid::new_v4();
     sqlx::query(
         r#"
-            INSERT INTO pm_work_items (id, item_type, parent_id, project_id, position, title, status, priority, version, created_at, updated_at, created_by, updated_by)
-            VALUES (?, 'task', NULL, ?, 2, 'Other Task', 'todo', 'medium', 1, ?, ?, ?, ?)
+                INSERT INTO pm_work_items (id, item_type, parent_id, project_id, position, title, status, priority, item_number, version, created_at, updated_at, created_by, updated_by)
+                VALUES (?, 'task', NULL, ?, 2, 'Other Task', 'todo', 'medium', 2, 1, ?, ?, ?, ?)
             "#
     )
         .bind(other_work_item_id.to_string())
