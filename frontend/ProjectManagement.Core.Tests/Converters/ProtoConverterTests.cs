@@ -282,4 +282,65 @@
           page.HasMore.Should().BeTrue();
           page.Entries.Should().HaveCount(1);
       }
+      
+      [Fact]
+      public void ToProto_UpdateWorkItemRequest_WithUpdateParentTrue_SetsProtoField()
+      {
+          // Arrange
+          var parentId = Guid.NewGuid();
+          var request = new UpdateWorkItemRequest
+          {
+              WorkItemId = Guid.NewGuid(),
+              ExpectedVersion = 1,
+              UpdateParent = true,
+              ParentId = parentId
+          };
+
+          // Act
+          var proto = ProtoConverter.ToProto(request);
+
+          // Assert
+          proto.UpdateParent.Should().BeTrue();
+          proto.ParentId.Should().Be(parentId.ToString());
+      }
+
+      [Fact]
+      public void ToProto_UpdateWorkItemRequest_WithUpdateParentFalse_DoesNotSetParentId()
+      {
+          // Arrange
+          var request = new UpdateWorkItemRequest
+          {
+              WorkItemId = Guid.NewGuid(),
+              ExpectedVersion = 1,
+              UpdateParent = false,
+              ParentId = Guid.NewGuid()  // Should be ignored
+          };
+
+          // Act
+          var proto = ProtoConverter.ToProto(request);
+
+          // Assert
+          proto.UpdateParent.Should().BeFalse();
+          proto.HasParentId.Should().BeFalse();  // Proto field should not be set
+      }
+
+      [Fact]
+      public void ToProto_UpdateWorkItemRequest_WithUpdateParentTrueAndNullParentId_SetsEmptyString()
+      {
+          // Arrange
+          var request = new UpdateWorkItemRequest
+          {
+              WorkItemId = Guid.NewGuid(),
+              ExpectedVersion = 1,
+              UpdateParent = true,
+              ParentId = null  // Clear parent
+          };
+
+          // Act
+          var proto = ProtoConverter.ToProto(request);
+
+          // Assert
+          proto.UpdateParent.Should().BeTrue();
+          proto.ParentId.Should().Be("");  // Empty string means "clear parent"
+      }
   }

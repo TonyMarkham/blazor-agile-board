@@ -22,6 +22,16 @@ public sealed class WorkItemViewModel : IViewModel<WorkItem>, IEquatable<WorkIte
     public Guid Id => Model.Id;
     public int Version => Model.Version;
 
+    /// <summary>
+    /// Project-scoped sequential number (1, 2, 3...).
+    /// </summary>
+    public int ItemNumber => Model.ItemNumber;
+
+    /// <summary>
+    /// Generate the JIRA-style display key (e.g., "PROJ-123").
+    /// </summary>
+    public string GetDisplayKey(string projectKey) => Model.GetDisplayKey(projectKey);
+
     // === Core Properties ===
     public WorkItemType ItemType => Model.ItemType;
     public string Title => Model.Title;

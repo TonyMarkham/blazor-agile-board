@@ -39,7 +39,8 @@
       "Bash(just test:*)",
       "Bash(just check-rs-db:*)",
       "Bash(just build-backend:*)",
-      "Bash(just test-backend:*)"
+      "Bash(just test-backend:*)",
+      "Bash(just build-cs-core:*)"
     ]
   }
 }

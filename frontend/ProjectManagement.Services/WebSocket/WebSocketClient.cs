@@ -366,30 +366,8 @@ public sealed class WebSocketClient : IWebSocketClient
         {
             MessageId = Guid.NewGuid().ToString(),
             Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-            UpdateWorkItemRequest = new Pm.UpdateWorkItemRequest
-            {
-                WorkItemId = request.WorkItemId.ToString(),
-                ExpectedVersion = request.ExpectedVersion
-            }
+            UpdateWorkItemRequest = ProtoConverter.ToProto(request)
         };
-
-        // Only set fields that are being updated
-        if (!string.IsNullOrEmpty(request.Title))
-            message.UpdateWorkItemRequest.Title = request.Title;
-        if (!string.IsNullOrEmpty(request.Description))
-            message.UpdateWorkItemRequest.Description = request.Description;
-        if (!string.IsNullOrEmpty(request.Status))
-            message.UpdateWorkItemRequest.Status = request.Status;
-        if (!string.IsNullOrEmpty(request.Priority))
-            message.UpdateWorkItemRequest.Priority = request.Priority;
-        if (request.AssigneeId != null)
-            message.UpdateWorkItemRequest.AssigneeId = request.AssigneeId.ToString() ?? string.Empty;
-        if (request.SprintId != null)
-            message.UpdateWorkItemRequest.SprintId = request.SprintId.ToString() ?? string.Empty;
-        if (request.Position.HasValue)
-            message.UpdateWorkItemRequest.Position = request.Position.Value;
-        if (request.StoryPoints.HasValue)
-            message.UpdateWorkItemRequest.StoryPoints = request.StoryPoints.Value;
 
         var response = await SendRequestAsync(message, ct);
 

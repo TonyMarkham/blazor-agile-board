@@ -34,4 +34,21 @@ public sealed record WorkItem :
     public string Status { get; init; } = "backlog";
     public Guid? AssigneeId { get; init; }
     public int Version { get; init; }
+    /// <summary>
+    /// Project-scoped sequential number (1, 2, 3...).
+    /// Combined with project key forms the display ID (e.g., "PROJ-123").
+    /// </summary>
+    public int ItemNumber { get; init; }
+
+    /// <summary>
+    /// Generate the JIRA-style display key (e.g., "PROJ-123").
+    /// </summary>
+    /// <param name="projectKey">The project key (must not be null or empty)</param>
+    /// <returns>Display key in format "KEY-123"</returns>
+    /// <exception cref="ArgumentException">Thrown if projectKey is null or empty</exception>
+    public string GetDisplayKey(string projectKey)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(projectKey, nameof(projectKey));
+        return $"{projectKey}-{ItemNumber}";
+    }
 }

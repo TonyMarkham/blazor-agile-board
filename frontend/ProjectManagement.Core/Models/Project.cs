@@ -61,6 +61,11 @@
       /// When the project was soft-deleted (null if not deleted).
       /// </summary>
       public DateTime? DeletedAt { get; init; }
+      /// <summary>
+      /// Next sequential number to assign to work items.
+      /// Atomically incremented when creating work items.
+      /// </summary>
+      public int NextWorkItemNumber { get; init; } = 1;
 
       /// <summary>
       /// Check if the project is deleted.

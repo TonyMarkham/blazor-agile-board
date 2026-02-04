@@ -28,7 +28,7 @@ This session adds three interconnected features to work items:
 |---------|-------|-------------|--------|
 | **[90.1](90.1-Session-Plan.md)** | Foundation: Database Migration + Protobuf | ~25k | ✅ **COMPLETE** |
 | **[90.2](90.2-Session-Plan.md)** | Rust Backend: Models, Repos, Handlers | ~40k | ✅ **COMPLETE** |
-| **[90.3](90.3-Session-Plan.md)** | C# Frontend: Models, Converter, ViewModel | ~25k | Ready |
+| **[90.3](90.3-Session-Plan.md)** | C# Frontend: Models, Converter, ViewModel | ~25k | ✅ **COMPLETE** |
 | **[90.4](90.4-Session-Plan.md)** | Blazor UI: All Components | ~35k | Ready |
 
 **Session 90.1 Implementation Notes**:
@@ -48,6 +48,15 @@ This session adds three interconnected features to work items:
 - Orphan items explicitly documented as intentional design
 - Test fixtures updated for new fields
 - Full backend workspace compiles cleanly, all tests passing
+
+**Session 90.3 Implementation Notes**:
+- Critical bug fixed: WebSocketClient was missing ParentId/UpdateParent field mapping
+- Created new ProtoConverter.ToProto(UpdateWorkItemRequest) method for consistency
+- Refactored WebSocketClient.UpdateWorkItemAsync from 29 lines manual mapping to 1 line converter call
+- Enhanced null safety: GetDisplayKey() uses ThrowIfNullOrWhiteSpace (catches whitespace edge case)
+- Added 7 new unit tests (4 for WorkItem, 3 for ProtoConverter)
+- All proto field mappings verified (ItemNumber, NextWorkItemNumber, UpdateParent)
+- Full frontend builds clean, all 473 tests passing
 
 ---
 

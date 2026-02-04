@@ -44,6 +44,7 @@ public static class ProtoConverter
             CreatedBy = ParseGuid(proto.CreatedBy, "Project.CreatedBy"),
             UpdatedBy = ParseGuid(proto.UpdatedBy, "Project.UpdatedBy"),
             DeletedAt = proto.DeletedAt == 0 ? null : FromUnixTimestamp(proto.DeletedAt),
+            NextWorkItemNumber = proto.NextWorkItemNumber,
         };
     }
 
@@ -128,6 +129,7 @@ public static class ProtoConverter
                 : ParseGuid(proto.AssigneeId, "WorkItem.AssigneeId"),
             StoryPoints = proto.StoryPoints == 0 ? null : proto.StoryPoints,
             SprintId = string.IsNullOrEmpty(proto.SprintId) ? null : ParseGuid(proto.SprintId, "WorkItem.SprintId"),
+            ItemNumber = proto.ItemNumber,
             Version = proto.Version,
             CreatedAt = FromUnixTimestamp(proto.CreatedAt),
             UpdatedAt = FromUnixTimestamp(proto.UpdatedAt),
@@ -150,6 +152,7 @@ public static class ProtoConverter
             Title = domain.Title,
             Status = domain.Status,
             Priority = domain.Priority,
+            ItemNumber = domain.ItemNumber,
             Version = domain.Version,
             CreatedAt = ToUnixTimestamp(domain.CreatedAt),
             UpdatedAt = ToUnixTimestamp(domain.UpdatedAt),
@@ -169,6 +172,61 @@ public static class ProtoConverter
             proto.SprintId = domain.SprintId.Value.ToString();
         if (domain.DeletedAt.HasValue)
             proto.DeletedAt = ToUnixTimestamp(domain.DeletedAt.Value);
+
+        return proto;
+    }
+    
+    /// <summary>
+    /// Convert UpdateWorkItemRequest to proto.
+    /// Only includes fields that are set (non-null).
+    /// </summary>
+    public static Proto.UpdateWorkItemRequest ToProto(UpdateWorkItemRequest req)
+    {
+        ArgumentNullException.ThrowIfNull(req);
+
+        var proto = new Proto.UpdateWorkItemRequest
+        {
+            WorkItemId = req.WorkItemId.ToString(),
+            ExpectedVersion = req.ExpectedVersion,
+            UpdateParent = req.UpdateParent,
+        };
+
+        // Only set optional fields if they have values
+        if (req.Title is not null)
+            proto.Title = req.Title;
+
+        if (req.Description is not null)
+            proto.Description = req.Description;
+
+        if (req.Status is not null)
+            proto.Status = req.Status;
+
+        if (req.Priority is not null)
+            proto.Priority = req.Priority;
+
+        if (req.AssigneeId.HasValue)
+            proto.AssigneeId = req.AssigneeId.Value.ToString();
+
+        if (req.SprintId.HasValue)
+            proto.SprintId = req.SprintId.Value.ToString();
+
+        if (req.Position.HasValue)
+            proto.Position = req.Position.Value;
+
+        if (req.StoryPoints.HasValue)
+            proto.StoryPoints = req.StoryPoints.Value;
+
+        // Handle parent assignment (Feature C)
+        if (req.UpdateParent)
+        {
+            // Set parent_id:
+            // - Empty string to clear parent (if ParentId is null or Guid.Empty)
+            // - UUID string to set parent
+            proto.ParentId = req.ParentId == Guid.Empty || req.ParentId == null
+                ? string.Empty
+                : req.ParentId.Value.ToString();
+        }
+        // If UpdateParent is false, don't set ParentId field at all
 
         return proto;
     }
