@@ -7,7 +7,7 @@ Read `docs/implementation-plan-v2.md.` We just finished impl'ing session 60
 
 ### Plan
 ```txt
-Create a step-by-step implementation plan complete with proposed code snippets for how to implement Session 90.
+Create a step-by-step implementation plan complete with proposed code snippets for how to implement Session 100.
 ```
 
 ### Challenge
@@ -44,7 +44,7 @@ Identify strengths/weaknesses/issues and re-grade x.x/10 for production-grade
 
 ### Sub-Process
 ```text
-Read `docs/session-plans/90-Session-Plan-Initial.md`
+Read `docs/session-plans/100-Session-Plan-Initial.md`
 Break it down into multiple sub-sessions targeting <50k tokens each that can be presented to a future user as teaching material. Take inspiration from the plan/sub-plans in `docs/session-plans/template/`
 ```
 
@@ -66,37 +66,35 @@ Follow the structure in docs/session-plans/42.1-Session-Plan.md as a template.
 ```text
 Read:
 - `CRITICAL_OPERATING_CONSTRAINTS.md`
-- `docs/session-plans/90-Session-Plan.md`
-- `docs/session-plans/90.1-Session-Plan.md`
-- `docs/session-plans/90.2-Session-Plan.md`
-- `docs/session-plans/90.3-Session-Plan.md`
-- `docs/session-plans/90.4-Session-Plan.md`
+- `docs/session-plans/100-Session-Plan.md`
+- `docs/session-plans/100.1-Session-Plan.md`
+- `docs/session-plans/100.2-Session-Plan.md`
+- `docs/session-plans/100.3-Session-Plan.md`
 
+Make sure there are no gaps and that the implementation order is considerate of dependencies.
 Review the intended implementation quality of ONLY:
-- `docs/session-plans/90.1-Session-Plan.md`
-- `docs/session-plans/90.2-Session-Plan.md`
-- `docs/session-plans/90.3-Session-Plan.md`
-- `docs/session-plans/90.4-Session-Plan.md`
+- `docs/session-plans/100.1-Session-Plan.md`
+- `docs/session-plans/100.2-Session-Plan.md`
+- `docs/session-plans/100.3-Session-Plan.md`
 ```
 
 ```text
 Read:
 - `CRITICAL_OPERATING_CONSTRAINTS.md`
-- `docs/session-plans/90-Session-Plan.md`
-- `docs/session-plans/90.1-Session-Plan.md`
-- `docs/session-plans/90.2-Session-Plan.md`
-- `docs/session-plans/90.3-Session-Plan.md`
-- `docs/session-plans/90.4-Session-Plan.md`
+- `docs/session-plans/100-Session-Plan.md`
+- `docs/session-plans/100.1-Session-Plan.md`
+- `docs/session-plans/100.2-Session-Plan.md`
+- `docs/session-plans/100.3-Session-Plan.md`
 
 Here is a review of the plan:
-- `.reviews/20260202-FINAL.md`
+- `.reviews/20260204-150018.md`
 ```
 
 ### Other
 ```text
-Read `CRITICAL_OPERATING_CONSTRAINTS.md`, `docs/session-plans/90.4-Session-Plan.md` and `docs/session-plans/90-Session-Plan.md`.
+Read `CRITICAL_OPERATING_CONSTRAINTS.md`, `docs/session-plans/100.1-Session-Plan.md` and `docs/session-plans/100-Session-Plan.md`.
 
-Please audit `docs/session-plans/90.4-Session-Plan.md` and cross reference it's contents against the current state of the project to avoid making poor assumptions.
+Please audit `docs/session-plans/100.1-Session-Plan.md` and cross reference it's contents against the current state of the project to avoid making poor assumptions.
 
 This audit should identify gaps in the **PLAN** not in the repo itself.
 If the repo is missing something that the plan needs, but the plan never addresses that requirement, **THAT** should be highlighted as a gap.
@@ -106,12 +104,12 @@ I want you to teach me by presenting me with bite-sized chunks for me to write/e
 
 ### End of Session Sanity Check
 ```text
-Builds clean and all tests pass. Please sanity check that everything in `docs/session-plans/90.4-Session-Plan.md` was implemented as expected.
+Builds clean and all tests pass. Please sanity check that everything in `docs/session-plans/100.1-Session-Plan.md` was implemented as expected.
 ```
 
 ### Update Docs
 ```text
-Please update `docs/session-plans/90.4-Session-Plan.md` and `docs/session-plans/90-Session-Plan.md`
+Please update `docs/session-plans/100.1-Session-Plan.md` and `docs/session-plans/100-Session-Plan.md`
 ```
 
 ### Commit
