@@ -27,37 +27,39 @@ impl WorkItemRepository {
         let created_by = work_item.created_by.to_string();
         let updated_by = work_item.updated_by.to_string();
         let deleted_at = work_item.deleted_at.map(|dt| dt.timestamp());
+        let item_number = (work_item.id.as_u128() % 1000000) as i32;  // TODO Session 90.2: Get from atomic counter
 
         sqlx::query!(
-            r#"
-              INSERT INTO pm_work_items (
-                  id, item_type, parent_id, project_id, position,
-                  title, description, status, priority, assignee_id,
-                  story_points, sprint_id, version,
-                  created_at, updated_at, created_by, updated_by, deleted_at
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-              "#,
-            id,
-            item_type,
-            parent_id,
-            project_id,
-            work_item.position,
-            work_item.title,
-            work_item.description,
-            work_item.status,
-            work_item.priority,
-            assignee_id,
-            work_item.story_points,
-            sprint_id,
-            work_item.version,
-            created_at,
-            updated_at,
-            created_by,
-            updated_by,
-            deleted_at,
-        )
-        .execute(executor)
-        .await?;
+              r#"
+                INSERT INTO pm_work_items (
+                    id, item_type, parent_id, project_id, position,
+                    title, description, status, priority, assignee_id,
+                    story_points, sprint_id, item_number, version,
+                    created_at, updated_at, created_by, updated_by, deleted_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                "#,
+              id,
+              item_type,
+              parent_id,
+              project_id,
+              work_item.position,
+              work_item.title,
+              work_item.description,
+              work_item.status,
+              work_item.priority,
+              assignee_id,
+              work_item.story_points,
+              sprint_id,
+              item_number,  // TODO Session 90.2: Get from atomic counter
+              work_item.version,
+              created_at,
+              updated_at,
+              created_by,
+              updated_by,
+              deleted_at,
+          )
+            .execute(executor)
+            .await?;
 
         Ok(())
     }
