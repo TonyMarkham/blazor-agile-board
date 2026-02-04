@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n              SELECT\n                  id, item_type, parent_id, project_id, position,\n                  title, description, status, priority, assignee_id,\n                  story_points, sprint_id, version,\n                  created_at, updated_at, created_by, updated_by, deleted_at\n              FROM pm_work_items\n              WHERE id = ? AND deleted_at IS NULL\n              ",
+  "query": "\n                SELECT\n                    id, item_type, parent_id, project_id, position,\n                    title, description, status, priority, assignee_id,\n                    story_points, sprint_id, item_number, version,\n                    created_at, updated_at, created_by, updated_by, deleted_at\n                FROM pm_work_items\n                WHERE project_id = ? AND deleted_at IS NULL\n                ORDER BY position\n            ",
   "describe": {
     "columns": [
       {
@@ -64,33 +64,38 @@
         "type_info": "Text"
       },
       {
-        "name": "version",
+        "name": "item_number",
         "ordinal": 12,
         "type_info": "Integer"
       },
       {
-        "name": "created_at",
+        "name": "version",
         "ordinal": 13,
         "type_info": "Integer"
       },
       {
-        "name": "updated_at",
+        "name": "created_at",
         "ordinal": 14,
         "type_info": "Integer"
       },
       {
-        "name": "created_by",
+        "name": "updated_at",
         "ordinal": 15,
-        "type_info": "Text"
+        "type_info": "Integer"
       },
       {
-        "name": "updated_by",
+        "name": "created_by",
         "ordinal": 16,
         "type_info": "Text"
       },
       {
-        "name": "deleted_at",
+        "name": "updated_by",
         "ordinal": 17,
+        "type_info": "Text"
+      },
+      {
+        "name": "deleted_at",
+        "ordinal": 18,
         "type_info": "Integer"
       }
     ],
@@ -115,8 +120,9 @@
       false,
       false,
       false,
+      false,
       true
     ]
   },
-  "hash": "dd46ee1a9907edb53fb14a19411399d4e0e95ee8a80036d8abad9e4789cedc06"
+  "hash": "2700de814f399535dbb0b26a12141609e58a4ea8a4e61ec5fbc2cf994d79ffe1"
 }

@@ -23,6 +23,7 @@ pub fn create_test_project(user_id: Uuid) -> Project {
         created_by: user_id,
         updated_by: user_id,
         deleted_at: None,
+        next_work_item_number: 1,
     }
 }
 
@@ -41,6 +42,7 @@ pub fn create_test_work_item(project_id: Uuid, user_id: Uuid) -> WorkItem {
         assignee_id: None,
         story_points: None,
         sprint_id: None,
+        item_number: 1,
         version: 0,
         created_at: Utc::now(),
         updated_at: Utc::now(),

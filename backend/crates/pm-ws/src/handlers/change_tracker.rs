@@ -61,5 +61,30 @@ pub fn track_changes(current: &WorkItem, request: &UpdateWorkItemRequest) -> Vec
         });
     }
 
+    // Track parent_id changes (uses update_parent flag)
+    if request.update_parent {
+        let current_parent = current
+            .parent_id
+            .map(|id| id.to_string())
+            .unwrap_or_default();
+        let new_parent = request.parent_id.as_ref().map(|s| s.as_str()).unwrap_or("");
+
+        if current_parent != new_parent {
+            changes.push(FieldChange {
+                field_name: "parent_id".to_string(),
+                old_value: if current_parent.is_empty() {
+                    None
+                } else {
+                    Some(current_parent)
+                },
+                new_value: if new_parent.is_empty() {
+                    None
+                } else {
+                    Some(new_parent.to_string())
+                },
+            });
+        }
+    }
+
     changes
 }

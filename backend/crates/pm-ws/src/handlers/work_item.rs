@@ -6,7 +6,7 @@ use crate::{
 };
 
 use pm_core::{ActivityLog, Permission, WorkItem, WorkItemType};
-use pm_db::{ActivityLogRepository, WorkItemRepository};
+use pm_db::{ActivityLogRepository, ProjectRepository, WorkItemRepository};
 use pm_proto::{
     CreateWorkItemRequest, DeleteWorkItemRequest, UpdateWorkItemRequest, WebSocketMessage,
     WorkItemType as ProtoWorkItemType,
@@ -107,7 +107,7 @@ pub async fn handle_create(
 
     // 8. Build work item
     let now = Utc::now();
-    let work_item = WorkItem {
+    let mut work_item = WorkItem {
         id: Uuid::new_v4(),
         item_type: item_type.clone(),
         parent_id,
@@ -120,6 +120,7 @@ pub async fn handle_create(
         assignee_id: None,
         story_points: None,
         sprint_id: None,
+        item_number: 0,
         version: 1,
         created_at: now,
         updated_at: now,
@@ -128,20 +129,35 @@ pub async fn handle_create(
         deleted_at: None,
     };
 
-    // 9. Execute transaction with circuit breaker
+    // 9. Execute transaction with atomic item_number assignment
     let activity = ActivityLog::created("work_item", work_item.id, ctx.user_id);
-    let work_item_clone = work_item.clone();
     let activity_clone = activity.clone();
-    db_write(&ctx, "create_work_item_tx", || async {
+
+    let work_item_for_tx = work_item.clone();
+
+    let item_number = db_write(&ctx, "create_work_item_tx", || async {
         let mut tx = ctx.pool.begin().await?;
 
-        WorkItemRepository::create(&mut *tx, &work_item_clone).await?;
+        // Atomically get and increment the work item number
+        let item_num = ProjectRepository::get_and_increment_work_item_number(&mut tx, project_id)
+            .await
+            .map_err(WsError::from)?;
+
+        // Create work item with assigned number
+        let mut wi = work_item_for_tx.clone();
+        wi.item_number = item_num;
+        WorkItemRepository::create(&mut *tx, &wi).await?;
+
+        // Create activity log
         ActivityLogRepository::create(&mut *tx, &activity_clone).await?;
 
         tx.commit().await?;
-        Ok::<_, WsError>(())
+        Ok::<_, WsError>(item_num)
     })
     .await?;
+
+    // Update our local copy with the assigned number
+    work_item.item_number = item_number;
 
     // 10. Broadcast ActivityLogCreated
     let event = build_activity_log_created_event(&activity);
@@ -176,10 +192,11 @@ pub async fn handle_create(
     }
 
     info!(
-        "{} Created work item {} ({:?}) in project {}",
+        "{} Created work item {} ({:?}) #{} in project {}",
         ctx.log_prefix(),
         work_item.id,
         item_type,
+        item_number,
         project_id
     );
 
@@ -220,6 +237,36 @@ pub async fn handle_update(
             current_version: work_item.version,
             location: ErrorLocation::from(Location::caller()),
         });
+    }
+
+    // 4b. Validate new parent if changing (uses update_parent flag)
+    if req.update_parent {
+        if let Some(ref new_parent_id) = req.parent_id {
+            if !new_parent_id.is_empty() {
+                let parent_uuid = parse_uuid(new_parent_id, "parent_id")?;
+
+                // Can't be your own parent
+                if parent_uuid == work_item.id {
+                    return Err(WsError::ValidationError {
+                        message: format!("Work item {} cannot be its own parent", work_item.id),
+                        field: Some("parent_id".to_string()),
+                        location: ErrorLocation::from(Location::caller()),
+                    });
+                }
+
+                // Validate hierarchy rules
+                db_read(&ctx, "validate_hierarchy", || async {
+                    validate_hierarchy(&ctx.pool, work_item.item_type.clone(), parent_uuid).await
+                })
+                .await?;
+
+                // Prevent circular references (parent can't be a descendant)
+                db_read(&ctx, "check_circular", || async {
+                    check_circular_reference(&ctx.pool, work_item.id, parent_uuid).await
+                })
+                .await?;
+            }
+        }
     }
 
     // 5. Track changes
@@ -429,6 +476,18 @@ fn apply_updates(work_item: &mut WorkItem, req: &UpdateWorkItemRequest) -> Resul
         }
         work_item.story_points = Some(story_points);
     }
+    // Handle parent_id change (uses update_parent flag)
+    if req.update_parent {
+        work_item.parent_id = if let Some(parent_id) = req.parent_id.as_ref() {
+            if parent_id.is_empty() {
+                None // Clear parent (make orphan)
+            } else {
+                Some(parse_uuid(parent_id, "parent_id")?) // Set parent
+            }
+        } else {
+            None // No value means clear parent
+        };
+    }
     Ok(())
 }
 
@@ -469,4 +528,54 @@ pub fn sanitize_string(s: &str) -> String {
         .replace('\'', "&#x27;")
         .trim()
         .to_string()
+}
+
+/// Check that new_parent is not a descendant of work_item (prevent cycles)
+///
+/// Walks up the parent chain from new_parent_id to ensure work_item_id is not
+/// in the ancestry. This prevents circular references like:
+/// - A -> B -> C -> A (would create a cycle)
+///
+/// Also prevents excessively deep hierarchies (max 100 levels).
+async fn check_circular_reference(
+    pool: &sqlx::SqlitePool,
+    work_item_id: Uuid,
+    new_parent_id: Uuid,
+) -> WsErrorResult<()> {
+    // Walk up the tree from new_parent to ensure we don't hit work_item_id
+    let mut current = Some(new_parent_id);
+    let mut depth = 0;
+    const MAX_DEPTH: i32 = 100; // Prevent infinite loops
+
+    while let Some(id) = current {
+        if depth > MAX_DEPTH {
+            return Err(WsError::ValidationError {
+                message: format!(
+                    "Hierarchy too deep: work item {} has parent chain exceeding {} levels. \
+                       Max depth is {}. This may indicate corrupted data or a cycle.",
+                    new_parent_id, depth, MAX_DEPTH
+                ),
+                field: Some("parent_id".to_string()),
+                location: ErrorLocation::from(Location::caller()),
+            });
+        }
+
+        if id == work_item_id {
+            return Err(WsError::ValidationError {
+                message: format!(
+                    "Cannot set parent {} for work item {}: would create circular reference. \
+                       Work item {} is a descendant of work item {}, so {} cannot be its parent.",
+                    new_parent_id, work_item_id, new_parent_id, work_item_id, new_parent_id
+                ),
+                field: Some("parent_id".to_string()),
+                location: ErrorLocation::from(Location::caller()),
+            });
+        }
+
+        let item = WorkItemRepository::find_by_id(pool, id).await?;
+        current = item.and_then(|i| i.parent_id);
+        depth += 1;
+    }
+
+    Ok(())
 }

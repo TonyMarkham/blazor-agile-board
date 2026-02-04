@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                  SELECT next_work_item_number as \"next_work_item_number!\"\n                  FROM pm_projects\n                  WHERE id = ? AND deleted_at IS NULL\n                  ",
+  "describe": {
+    "columns": [
+      {
+        "name": "next_work_item_number!",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "90aab3a1c8b8603508a583dbb490bb1b42a2dc4875b56a7d86797c6cdb0739b4"
+}

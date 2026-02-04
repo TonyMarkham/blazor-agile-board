@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n                SELECT id, title, description, key, status, version,\n                       created_at, updated_at, created_by, updated_by, deleted_at\n                FROM pm_projects\n                WHERE key = ? AND deleted_at IS NULL\n                ",
+  "query": "\n                SELECT id, title, description, key, status, version,\n                    created_at, updated_at, created_by, updated_by, deleted_at,\n                    next_work_item_number\n                FROM pm_projects\n                WHERE key = ? AND deleted_at IS NULL\n                ",
   "describe": {
     "columns": [
       {
@@ -57,6 +57,11 @@
         "name": "deleted_at",
         "ordinal": 10,
         "type_info": "Integer"
+      },
+      {
+        "name": "next_work_item_number",
+        "ordinal": 11,
+        "type_info": "Integer"
       }
     ],
     "parameters": {
@@ -73,8 +78,9 @@
       false,
       false,
       false,
-      true
+      true,
+      false
     ]
   },
-  "hash": "5436488d2f2a5141bcdbb5ac11506a0950e9385392a73d21cbe9459278afb172"
+  "hash": "dbc282ccfd7f99dd165cdcfcf7a52820f76fb239ee08dbdb8c813fb8c21c2d05"
 }

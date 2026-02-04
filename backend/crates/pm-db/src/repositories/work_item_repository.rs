@@ -27,10 +27,9 @@ impl WorkItemRepository {
         let created_by = work_item.created_by.to_string();
         let updated_by = work_item.updated_by.to_string();
         let deleted_at = work_item.deleted_at.map(|dt| dt.timestamp());
-        let item_number = (work_item.id.as_u128() % 1000000) as i32;  // TODO Session 90.2: Get from atomic counter
 
         sqlx::query!(
-              r#"
+            r#"
                 INSERT INTO pm_work_items (
                     id, item_type, parent_id, project_id, position,
                     title, description, status, priority, assignee_id,
@@ -38,28 +37,28 @@ impl WorkItemRepository {
                     created_at, updated_at, created_by, updated_by, deleted_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 "#,
-              id,
-              item_type,
-              parent_id,
-              project_id,
-              work_item.position,
-              work_item.title,
-              work_item.description,
-              work_item.status,
-              work_item.priority,
-              assignee_id,
-              work_item.story_points,
-              sprint_id,
-              item_number,  // TODO Session 90.2: Get from atomic counter
-              work_item.version,
-              created_at,
-              updated_at,
-              created_by,
-              updated_by,
-              deleted_at,
-          )
-            .execute(executor)
-            .await?;
+            id,
+            item_type,
+            parent_id,
+            project_id,
+            work_item.position,
+            work_item.title,
+            work_item.description,
+            work_item.status,
+            work_item.priority,
+            assignee_id,
+            work_item.story_points,
+            sprint_id,
+            work_item.item_number,
+            work_item.version,
+            created_at,
+            updated_at,
+            created_by,
+            updated_by,
+            deleted_at,
+        )
+        .execute(executor)
+        .await?;
 
         Ok(())
     }
@@ -72,14 +71,14 @@ impl WorkItemRepository {
 
         let row = sqlx::query!(
             r#"
-              SELECT
-                  id, item_type, parent_id, project_id, position,
-                  title, description, status, priority, assignee_id,
-                  story_points, sprint_id, version,
-                  created_at, updated_at, created_by, updated_by, deleted_at
-              FROM pm_work_items
-              WHERE id = ? AND deleted_at IS NULL
-              "#,
+                SELECT
+                    id, item_type, parent_id, project_id, position,
+                    title, description, status, priority, assignee_id,
+                    story_points, sprint_id, item_number, version,
+                    created_at, updated_at, created_by, updated_by, deleted_at
+                FROM pm_work_items
+                WHERE id = ? AND deleted_at IS NULL
+            "#,
             id_str
         )
         .fetch_optional(executor)
@@ -116,6 +115,7 @@ impl WorkItemRepository {
                 assignee_id: r.assignee_id.as_ref().and_then(|s| Uuid::parse_str(s).ok()),
                 story_points: r.story_points.map(|sp| sp as i32),
                 sprint_id: r.sprint_id.as_ref().and_then(|s| Uuid::parse_str(s).ok()),
+                item_number: r.item_number as i32,
                 version: r.version as i32,
                 created_at: DateTime::from_timestamp(r.created_at, 0).ok_or_else(|| {
                     DbError::Initialization {
@@ -158,15 +158,15 @@ impl WorkItemRepository {
 
         let rows = sqlx::query!(
             r#"
-              SELECT
-                  id, item_type, parent_id, project_id, position,
-                  title, description, status, priority, assignee_id,
-                  story_points, sprint_id, version,
-                  created_at, updated_at, created_by, updated_by, deleted_at
-              FROM pm_work_items
-              WHERE project_id = ? AND deleted_at IS NULL
-              ORDER BY position
-              "#,
+                SELECT
+                    id, item_type, parent_id, project_id, position,
+                    title, description, status, priority, assignee_id,
+                    story_points, sprint_id, item_number, version,
+                    created_at, updated_at, created_by, updated_by, deleted_at
+                FROM pm_work_items
+                WHERE project_id = ? AND deleted_at IS NULL
+                ORDER BY position
+            "#,
             project_id_str
         )
         .fetch_all(executor)
@@ -204,6 +204,7 @@ impl WorkItemRepository {
                     assignee_id: r.assignee_id.as_ref().and_then(|s| Uuid::parse_str(s).ok()),
                     story_points: r.story_points.map(|sp| sp as i32),
                     sprint_id: r.sprint_id.as_ref().and_then(|s| Uuid::parse_str(s).ok()),
+                    item_number: r.item_number as i32,
                     version: r.version as i32,
                     created_at: DateTime::from_timestamp(r.created_at, 0).ok_or_else(|| {
                         DbError::Initialization {
@@ -315,11 +316,11 @@ impl WorkItemRepository {
                 SELECT
                     id, item_type, parent_id, project_id, position,
                     title, description, status, priority, assignee_id,
-                    story_points, sprint_id, version,
+                    story_points, sprint_id, item_number, version,
                     created_at, updated_at, created_by, updated_by, deleted_at
                 FROM pm_work_items
                 WHERE parent_id = ? AND deleted_at IS NULL
-                "#,
+            "#,
             parent_id_str
         )
         .fetch_all(executor)
@@ -357,6 +358,7 @@ impl WorkItemRepository {
                     assignee_id: r.assignee_id.as_ref().and_then(|s| Uuid::parse_str(s).ok()),
                     story_points: r.story_points.map(|sp| sp as i32),
                     sprint_id: r.sprint_id.as_ref().and_then(|s| Uuid::parse_str(s).ok()),
+                    item_number: r.item_number as i32,
                     version: r.version as i32,
                     created_at: DateTime::from_timestamp(r.created_at, 0).ok_or_else(|| {
                         DbError::Initialization {
@@ -429,12 +431,12 @@ impl WorkItemRepository {
                 SELECT
                     id, item_type, parent_id, project_id, position,
                     title, description, status, priority, assignee_id,
-                    story_points, sprint_id, version,
+                    story_points, sprint_id, item_number, version,
                     created_at, updated_at, created_by, updated_by, deleted_at
                 FROM pm_work_items
                 WHERE project_id = ? AND updated_at > ?
                 ORDER BY position
-                "#,
+            "#,
             project_id_str,
             since_timestamp
         )
@@ -473,6 +475,7 @@ impl WorkItemRepository {
                     assignee_id: r.assignee_id.as_ref().and_then(|s| Uuid::parse_str(s).ok()),
                     story_points: r.story_points.map(|sp| sp as i32),
                     sprint_id: r.sprint_id.as_ref().and_then(|s| Uuid::parse_str(s).ok()),
+                    item_number: r.item_number as i32,
                     version: r.version as i32,
                     created_at: DateTime::from_timestamp(r.created_at, 0).ok_or_else(|| {
                         DbError::Initialization {
@@ -502,5 +505,95 @@ impl WorkItemRepository {
                 })
             })
             .collect::<DbErrorResult<Vec<_>>>()
+    }
+
+    /// Find a work item by project ID and item number (e.g., for "PROJ-123" lookup)
+    pub async fn find_by_project_and_number<'e, E>(
+        executor: E,
+        project_id: Uuid,
+        item_number: i32,
+    ) -> DbErrorResult<Option<WorkItem>>
+    where
+        E: sqlx::Executor<'e, Database = sqlx::Sqlite>,
+    {
+        let project_id_str = project_id.to_string();
+
+        let row = sqlx::query!(
+            r#"
+                SELECT
+                    id, item_type, parent_id, project_id, position,
+                    title, description, status, priority, assignee_id,
+                    story_points, sprint_id, item_number, version,
+                    created_at, updated_at, created_by, updated_by, deleted_at
+                FROM pm_work_items
+                WHERE project_id = ? AND item_number = ? AND deleted_at IS NULL
+                "#,
+            project_id_str,
+            item_number
+        )
+        .fetch_optional(executor)
+        .await?;
+
+        row.map(|r| -> DbErrorResult<WorkItem> {
+            Ok(WorkItem {
+                id: Uuid::parse_str(r.id.as_ref().ok_or_else(|| DbError::Initialization {
+                    message: "work_item.id is NULL".to_string(),
+                    location: ErrorLocation::from(Location::caller()),
+                })?)
+                .map_err(|e| DbError::Initialization {
+                    message: format!("Invalid UUID in work_item.id: {}", e),
+                    location: ErrorLocation::from(Location::caller()),
+                })?,
+                item_type: WorkItemType::from_str(&r.item_type).map_err(|e| {
+                    DbError::Initialization {
+                        message: format!("Invalid WorkItemType in work_item.item_type: {}", e),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                parent_id: r.parent_id.as_ref().and_then(|s| Uuid::parse_str(s).ok()),
+                project_id: Uuid::parse_str(&r.project_id).map_err(|e| {
+                    DbError::Initialization {
+                        message: format!("Invalid UUID in work_item.project_id: {}", e),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                position: r.position as i32,
+                title: r.title,
+                description: r.description,
+                status: r.status,
+                priority: r.priority,
+                assignee_id: r.assignee_id.as_ref().and_then(|s| Uuid::parse_str(s).ok()),
+                story_points: r.story_points.map(|sp| sp as i32),
+                sprint_id: r.sprint_id.as_ref().and_then(|s| Uuid::parse_str(s).ok()),
+                item_number: r.item_number as i32,
+                version: r.version as i32,
+                created_at: DateTime::from_timestamp(r.created_at, 0).ok_or_else(|| {
+                    DbError::Initialization {
+                        message: "Invalid timestamp in work_item.created_at".to_string(),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                updated_at: DateTime::from_timestamp(r.updated_at, 0).ok_or_else(|| {
+                    DbError::Initialization {
+                        message: "Invalid timestamp in work_item.updated_at".to_string(),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                created_by: Uuid::parse_str(&r.created_by).map_err(|e| {
+                    DbError::Initialization {
+                        message: format!("Invalid UUID in work_item.created_by: {}", e),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                updated_by: Uuid::parse_str(&r.updated_by).map_err(|e| {
+                    DbError::Initialization {
+                        message: format!("Invalid UUID in work_item.updated_by: {}", e),
+                        location: ErrorLocation::from(Location::caller()),
+                    }
+                })?,
+                deleted_at: r.deleted_at.and_then(|ts| DateTime::from_timestamp(ts, 0)),
+            })
+        })
+        .transpose()
     }
 }

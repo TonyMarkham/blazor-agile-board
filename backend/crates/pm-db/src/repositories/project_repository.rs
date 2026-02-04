@@ -1,3 +1,26 @@
+//! Project repository for CRUD operations on projects.
+//!
+//! ## Work Item Number Counter
+//!
+//! The `next_work_item_number` field is an atomic counter for assigning
+//! sequential numbers to work items within a project. Numbers are assigned
+//! when work items are created via `get_and_increment_work_item_number()`.
+//!
+//! **IMPORTANT: Counter gaps are EXPECTED and CORRECT behavior.**
+//!
+//! Gaps occur when:
+//! - Transaction rolls back after incrementing counter (e.g., validation fails)
+//! - Work item is soft-deleted (item_number is preserved, gap in active items)
+//!
+//! Example timeline:
+//! 1. Create work item → assigned #5, counter becomes 6
+//! 2. Transaction fails (e.g., circular reference detected)
+//! 3. Counter is still at 6 (gap at #5)
+//! 4. Next work item → assigned #6 (gap at #5 remains)
+//!
+//! This is INTENTIONAL. Work item numbers are unique identifiers, not a
+//! sequential count. Users see "TEST-1, TEST-2, TEST-6" and this is correct.
+
 use crate::{DbError, Result as DbErrorResult};
 
 use pm_core::{Project, ProjectStatus};
@@ -32,9 +55,10 @@ impl ProjectRepository {
             r#"
                 INSERT INTO pm_projects (
                     id, title, description, key, status, version,
-                    created_at, updated_at, created_by, updated_by, deleted_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                "#,
+                    created_at, updated_at, created_by, updated_by, deleted_at,
+                    next_work_item_number
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "#,
             id,
             project.title,
             project.description,
@@ -46,6 +70,7 @@ impl ProjectRepository {
             created_by,
             updated_by,
             deleted_at,
+            project.next_work_item_number,
         )
         .execute(&self.pool)
         .await?;
@@ -59,7 +84,8 @@ impl ProjectRepository {
         let row = sqlx::query!(
             r#"
                 SELECT id, title, description, key, status, version,
-                       created_at, updated_at, created_by, updated_by, deleted_at
+                    created_at, updated_at, created_by, updated_by, deleted_at,
+                    next_work_item_number
                 FROM pm_projects
                 WHERE id = ? AND deleted_at IS NULL
                 "#,
@@ -113,6 +139,7 @@ impl ProjectRepository {
                     }
                 })?,
                 deleted_at: r.deleted_at.and_then(|ts| DateTime::from_timestamp(ts, 0)),
+                next_work_item_number: r.next_work_item_number as i32,
             })
         })
         .transpose()
@@ -122,7 +149,8 @@ impl ProjectRepository {
         let row = sqlx::query!(
             r#"
                 SELECT id, title, description, key, status, version,
-                       created_at, updated_at, created_by, updated_by, deleted_at
+                    created_at, updated_at, created_by, updated_by, deleted_at,
+                    next_work_item_number
                 FROM pm_projects
                 WHERE key = ? AND deleted_at IS NULL
                 "#,
@@ -176,6 +204,7 @@ impl ProjectRepository {
                     }
                 })?,
                 deleted_at: r.deleted_at.and_then(|ts| DateTime::from_timestamp(ts, 0)),
+                next_work_item_number: r.next_work_item_number as i32,
             })
         })
         .transpose()
@@ -185,7 +214,8 @@ impl ProjectRepository {
         let rows = sqlx::query!(
             r#"
                 SELECT id, title, description, key, status, version,
-                       created_at, updated_at, created_by, updated_by, deleted_at
+                    created_at, updated_at, created_by, updated_by, deleted_at,
+                    next_work_item_number
                 FROM pm_projects
                 WHERE deleted_at IS NULL
                 ORDER BY title
@@ -240,6 +270,7 @@ impl ProjectRepository {
                         }
                     })?,
                     deleted_at: r.deleted_at.and_then(|ts| DateTime::from_timestamp(ts, 0)),
+                    next_work_item_number: r.next_work_item_number as i32,
                 })
             })
             .collect::<DbErrorResult<Vec<_>>>()
@@ -249,7 +280,8 @@ impl ProjectRepository {
         let rows = sqlx::query!(
             r#"
                 SELECT id, title, description, key, status, version,
-                       created_at, updated_at, created_by, updated_by, deleted_at
+                    created_at, updated_at, created_by, updated_by, deleted_at,
+                    next_work_item_number
                 FROM pm_projects
                 WHERE status = 'active' AND deleted_at IS NULL
                 ORDER BY title
@@ -304,6 +336,7 @@ impl ProjectRepository {
                         }
                     })?,
                     deleted_at: r.deleted_at.and_then(|ts| DateTime::from_timestamp(ts, 0)),
+                    next_work_item_number: r.next_work_item_number as i32,
                 })
             })
             .collect::<DbErrorResult<Vec<_>>>()
@@ -353,5 +386,66 @@ impl ProjectRepository {
         .await?;
 
         Ok(())
+    }
+
+    /// Atomically get and increment the work item number for a project.
+    /// Returns the number to assign to the new work item.
+    ///
+    /// CRITICAL: This method REQUIRES a Transaction. The type system enforces this.
+    ///
+    /// **Counter Gap Behavior:**
+    /// If the transaction rolls back after incrementing, the counter will have a gap.
+    /// This is EXPECTED and CORRECT behavior. Work item numbers are NOT guaranteed to be
+    /// sequential without gaps - they are only guaranteed to be unique within a project.
+    ///
+    /// Example: Create work item #5 fails → counter is at 6 → next work item is #6 (gap at #5).
+    pub async fn get_and_increment_work_item_number(
+        tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+        project_id: Uuid,
+    ) -> DbErrorResult<i32> {
+        let project_id_str = project_id.to_string();
+
+        // SQLite doesn't support RETURNING, so we need two queries
+        // The transaction isolation ensures atomicity
+
+        // First, get the current value
+        let current = sqlx::query_scalar!(
+            r#"
+                  SELECT next_work_item_number as "next_work_item_number!"
+                  FROM pm_projects
+                  WHERE id = ? AND deleted_at IS NULL
+                  "#,
+            project_id_str
+        )
+        .fetch_one(&mut **tx)
+        .await
+        .map_err(|e| match e {
+            sqlx::Error::RowNotFound => DbError::Initialization {
+                message: format!(
+                    "Project {} not found when incrementing work item counter",
+                    project_id
+                ),
+                location: ErrorLocation::from(Location::caller()),
+            },
+            _ => DbError::from(e),
+        })?;
+
+        let item_number = current as i32;
+        let next_number = item_number + 1;
+
+        // Then increment
+        sqlx::query!(
+            r#"
+                  UPDATE pm_projects
+                  SET next_work_item_number = ?
+                  WHERE id = ? AND deleted_at IS NULL
+                  "#,
+            next_number,
+            project_id_str
+        )
+        .execute(&mut **tx)
+        .await?;
+
+        Ok(item_number)
     }
 }

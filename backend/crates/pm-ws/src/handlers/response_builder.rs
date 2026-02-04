@@ -132,7 +132,7 @@ fn work_item_to_proto(item: &WorkItem) -> PmProtoWorkItem {
         created_by: item.created_by.to_string(),
         updated_by: item.updated_by.to_string(),
         deleted_at: item.deleted_at.map(|dt| dt.timestamp()),
-        item_number: 0,
+        item_number: item.item_number,
     }
 }
 
@@ -153,7 +153,7 @@ fn project_to_proto(project: &Project) -> ProtoProject {
         created_by: project.created_by.to_string(),
         updated_by: project.updated_by.to_string(),
         deleted_at: project.deleted_at.map(|dt| dt.timestamp()),
-        next_work_item_number: 1,
+        next_work_item_number: project.next_work_item_number,
     }
 }
 

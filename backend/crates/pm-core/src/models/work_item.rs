@@ -31,6 +31,11 @@ pub struct WorkItem {
     // Sprint
     pub sprint_id: Option<Uuid>,
 
+    // JIRA-style ID
+    /// Sequential number within project (e.g., 1, 2, 3...)
+    /// Combined with project key to form display ID: "PROJ-123"
+    pub item_number: i32,
+
     // Concurrency control
     pub version: i32,
 
@@ -65,6 +70,7 @@ impl WorkItem {
             assignee_id: None,
             story_points: None,
             sprint_id: None,
+            item_number: 0, // Will be set during DB insert
             version: 0,
             created_at: now,
             updated_at: now,
@@ -72,5 +78,10 @@ impl WorkItem {
             updated_by: created_by,
             deleted_at: None,
         }
+    }
+
+    /// Generate JIRA-style display key (e.g., "PROJ-123")
+    pub fn display_key(&self, project_key: &str) -> String {
+        format!("{}-{}", project_key, self.item_number)
     }
 }

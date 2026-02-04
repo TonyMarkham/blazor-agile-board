@@ -23,6 +23,8 @@ pub struct Project {
     pub created_by: Uuid,
     pub updated_by: Uuid,
     pub deleted_at: Option<DateTime<Utc>>,
+    /// Atomic counter for assigning sequential work item numbers
+    pub next_work_item_number: i32,
 }
 
 impl Project {
@@ -41,6 +43,7 @@ impl Project {
             created_by,
             updated_by: created_by,
             deleted_at: None,
+            next_work_item_number: 1,
         }
     }
 

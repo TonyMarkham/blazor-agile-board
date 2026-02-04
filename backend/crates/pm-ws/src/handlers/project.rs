@@ -93,6 +93,7 @@ pub async fn handle_create(
         created_by: ctx.user_id,
         updated_by: ctx.user_id,
         deleted_at: None,
+        next_work_item_number: 1,
     };
 
     // 5. Create in database

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n              SELECT\n                  id, item_type, parent_id, project_id, position,\n                  title, description, status, priority, assignee_id,\n                  story_points, sprint_id, version,\n                  created_at, updated_at, created_by, updated_by, deleted_at\n              FROM pm_work_items\n              WHERE project_id = ? AND deleted_at IS NULL\n              ORDER BY position\n              ",
+  "query": "\n                SELECT\n                    id, item_type, parent_id, project_id, position,\n                    title, description, status, priority, assignee_id,\n                    story_points, sprint_id, item_number, version,\n                    created_at, updated_at, created_by, updated_by, deleted_at\n                FROM pm_work_items\n                WHERE project_id = ? AND item_number = ? AND deleted_at IS NULL\n                ",
   "describe": {
     "columns": [
       {
@@ -64,38 +64,43 @@
         "type_info": "Text"
       },
       {
-        "name": "version",
+        "name": "item_number",
         "ordinal": 12,
         "type_info": "Integer"
       },
       {
-        "name": "created_at",
+        "name": "version",
         "ordinal": 13,
         "type_info": "Integer"
       },
       {
-        "name": "updated_at",
+        "name": "created_at",
         "ordinal": 14,
         "type_info": "Integer"
       },
       {
-        "name": "created_by",
+        "name": "updated_at",
         "ordinal": 15,
-        "type_info": "Text"
+        "type_info": "Integer"
       },
       {
-        "name": "updated_by",
+        "name": "created_by",
         "ordinal": 16,
         "type_info": "Text"
       },
       {
-        "name": "deleted_at",
+        "name": "updated_by",
         "ordinal": 17,
+        "type_info": "Text"
+      },
+      {
+        "name": "deleted_at",
+        "ordinal": 18,
         "type_info": "Integer"
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 2
     },
     "nullable": [
       true,
@@ -115,8 +120,9 @@
       false,
       false,
       false,
+      false,
       true
     ]
   },
-  "hash": "839427e703c06f4000074d66a210656a261cc02217e8e18e7483a77618411cf6"
+  "hash": "bc2b5d7533ff92c25a433b62e185416a5e747e468efb7b7dc82bd387c02a9b0b"
 }
