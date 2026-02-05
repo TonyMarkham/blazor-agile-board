@@ -72,6 +72,7 @@ pm-core = { path = "backend/crates/pm-core" }
 pm-db = { path = "backend/crates/pm-db" }
 pm-proto = { path = "backend/crates/pm-proto" }
 pm-ws = { path = "backend/crates/pm-ws" }
+pm-server = { path = "backend/pm-server" }
 
 [profile.release]
 strip = true

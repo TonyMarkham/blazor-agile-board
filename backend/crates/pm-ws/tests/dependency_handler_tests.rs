@@ -106,8 +106,8 @@ impl TestFixture {
             (task_b_id, "Task B"),
             (task_c_id, "Task C"),
         ]
-            .iter()
-            .enumerate()
+        .iter()
+        .enumerate()
         {
             sqlx::query(
                 r#"

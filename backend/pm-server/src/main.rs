@@ -1,15 +1,46 @@
-pub(crate) mod admin;
-mod api;
-mod error;
-mod health;
-mod logger;
-mod routes;
+pub mod admin;
+pub mod api;
+pub mod error;
+pub mod health;
+pub mod logger;
+pub mod routes;
 
 #[cfg(test)]
 mod tests;
 
-pub use api::error::ApiError;
-pub use api::extractors::user_id::UserId;
+pub use api::{
+    comments::{
+        comment_dto::CommentDto,
+        comment_list_response::CommentListResponse,
+        comment_response::CommentResponse,
+        comments::{create_comment, delete_comment, list_comments, update_comment},
+        create_comment_request::CreateCommentRequest,
+        update_comment_request::UpdateCommentRequest,
+    },
+    delete_response::DeleteResponse,
+    error::ApiError,
+    error::Result as ApiResult,
+    extractors::user_id::UserId,
+    projects::{
+        project_dto::ProjectDto,
+        project_list_response::ProjectListResponse,
+        project_response::ProjectResponse,
+        projects::{get_project, list_projects},
+    },
+    work_items::{
+        create_work_item_request::CreateWorkItemRequest,
+        list_work_item_query::ListWorkItemsQuery,
+        update_work_item_request::UpdateWorkItemRequest,
+        work_item_dto::WorkItemDto,
+        work_item_list_response::WorkItemListResponse,
+        work_item_response::WorkItemResponse,
+        work_items::{
+            create_work_item, delete_work_item, get_work_item, list_work_items, update_work_item,
+        },
+    },
+};
+
+pub use crate::routes::build_router;
 
 use pm_auth::{JwtValidator, RateLimiterFactory};
 use pm_ws::{
@@ -74,6 +105,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .run(&pool)
         .await?;
     info!("Migrations complete");
+
+    ensure_llm_user(&pool, &config).await;
 
     // Create circuit breaker
     let circuit_breaker = Arc::new(CircuitBreaker::new(CircuitBreakerConfig::default()));
@@ -147,7 +180,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     };
 
     // Build router
-    let app = routes::build_router(app_state);
+    let app = build_router(app_state);
 
     // Create TCP listener
     let bind_addr = config.bind_addr();
@@ -218,4 +251,27 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .await?;
 
     Ok(())
+}
+
+/// Ensure the LLM user exists in the database
+async fn ensure_llm_user(pool: &sqlx::SqlitePool, config: &pm_config::Config) {
+    let llm_user_id = &config.api.llm_user_id;
+    let llm_user_name = &config.api.llm_user_name;
+
+    match sqlx::query("INSERT OR IGNORE INTO users (id, email, display_name) VALUES (?, ?, ?)")
+        .bind(llm_user_id)
+        .bind(format!("{}@system.local", llm_user_id))
+        .bind(llm_user_name)
+        .execute(pool)
+        .await
+    {
+        Ok(result) => {
+            if result.rows_affected() > 0 {
+                log::info!("Created LLM user: {} ({})", llm_user_name, llm_user_id);
+            }
+        }
+        Err(e) => {
+            log::warn!("Failed to create LLM user (may already exist): {}", e);
+        }
+    }
 }

@@ -3,6 +3,8 @@
 //! These errors are designed to produce consistent JSON responses
 //! with appropriate HTTP status codes.
 
+use pm_db::DbError;
+
 use std::panic::Location;
 
 use axum::{
@@ -187,3 +189,42 @@ impl From<pm_ws::WsError> for ApiError {
         }
     }
 }
+
+/// Convert database errors to API errors
+impl From<DbError> for ApiError {
+    #[track_caller]
+    fn from(e: DbError) -> Self {
+        // Log the database error for debugging
+        log::error!("Database error: {}", e);
+
+        match e {
+            DbError::TenantNotFound { tenant_id, .. } => ApiError::NotFound {
+                message: format!("Tenant {} not found", tenant_id),
+                location: ErrorLocation::from(Location::caller()),
+            },
+            DbError::Sqlx { source, .. } => {
+                // Check if it's a NOT NULL constraint or similar user-facing error
+                match source {
+                    sqlx::Error::RowNotFound => ApiError::NotFound {
+                        message: "Resource not found".to_string(),
+                        location: ErrorLocation::from(Location::caller()),
+                    },
+                    _ => ApiError::Internal {
+                        message: "Database operation failed".to_string(),
+                        location: ErrorLocation::from(Location::caller()),
+                    },
+                }
+            }
+            DbError::Migration { message, .. } => ApiError::Internal {
+                message: format!("Database migration error: {}", message),
+                location: ErrorLocation::from(Location::caller()),
+            },
+            DbError::Initialization { message, .. } => ApiError::Internal {
+                message: format!("Database initialization error: {}", message),
+                location: ErrorLocation::from(Location::caller()),
+            },
+        }
+    }
+}
+
+pub type Result<T> = std::result::Result<T, ApiError>;
