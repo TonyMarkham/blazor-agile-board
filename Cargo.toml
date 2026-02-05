@@ -6,6 +6,7 @@ members = [
     "backend/crates/pm-proto",
     "backend/crates/pm-ws",
     "backend/crates/pm-config",
+    "backend/crates/pm-cli",
     "backend/pm-server",
     "desktop/src-tauri"
 ]
@@ -18,7 +19,7 @@ async-trait = { version = "0.1.89" }
 base64 = { version = "0.22.1" }
 bytes = { version = "1.11.1" }
 chrono = { version = "0.4.43", features = ["serde"] }
-clap = { version = "4.5.57" }
+clap = { version = "4.5.57", features = ["derive"] }
 dirs = { version = "6.0.0" }
 dotenvy = { version = "0.15.7" }
 error-location = { version = "0.1.0" }
@@ -35,7 +36,7 @@ log = { version = "0.4.29" }
 metrics = { version = "0.24.3" }
 metrics-exporter-prometheus = { version = "0.18.1" }
 nix = { version = "0.31.1", features = ["signal", "process"] }
-proptest = { version = "1.9.0" }
+proptest = { version = "1.10.0" }
 prost = { version = "0.14.3" }
 prost-build = { version = "0.14.3" }
 reqwest = { version = "0.13.1", default-features = false, features = ["json"] }
@@ -63,6 +64,7 @@ tracing-log = { version = "0.2.0" }
 tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
 uuid = { version = "1.20.0", features = ["v4", "serde"] }
 windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_Threading", "Win32_System_Console"] }
+wiremock = { version = "0.6.5" }
 zip = { version = "7.3.0", default-features = false, features = ["deflate", "bzip2", "time"] }
 
 # Workspae

@@ -29,6 +29,7 @@ rust_auth := "pm-auth"
 rust_proto := "pm-proto"
 rust_ws := "pm-ws"
 rust_config := "pm-config"
+rust_cli := "pm-cli"
 
 # === Build Configurations ===
 config_debug := "Debug"
@@ -361,6 +362,38 @@ watch-test-rs-ws:
 
 watch-test-rs-config:
     cargo watch -x 'test -p {{rust_config}}'
+
+# Check CLI
+check-rs-cli:
+    cargo check -p {{rust_cli}} {{cargo_all_targets}}
+
+# Clippy CLI
+clippy-rs-cli:
+    cargo clippy -p {{rust_cli}} {{cargo_all_targets}} {{cargo_all_features}} -- -D warnings
+
+# Build CLI (debug)
+build-rs-cli:
+    cargo build -p {{rust_cli}}
+
+# Build CLI (release)
+build-rs-cli-release:
+    cargo build -p {{rust_cli}} {{cargo_release}}
+
+# Test CLI
+test-rs-cli:
+    cargo test -p {{rust_cli}}
+
+# Watch CLI - auto-rebuild on file changes
+watch-rs-cli:
+    cargo watch -x 'check -p {{rust_cli}}'
+
+# Watch CLI - auto-test on file changes
+watch-test-rs-cli:
+    cargo watch -x 'test -p {{rust_cli}}'
+
+# Run CLI with arguments (example: just run-cli project list --pretty)
+run-cli *ARGS:
+    cargo run -p {{rust_cli}} -- {{ARGS}}
 
 # ============================================================================
 # Combined Commands

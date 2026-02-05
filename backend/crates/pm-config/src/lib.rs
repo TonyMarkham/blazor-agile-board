@@ -43,8 +43,8 @@ pub use websocket_config::WebSocketConfig;
 // Server Configuration
 // =============================================================================
 
-const DEFAULT_HOST: &str = "127.0.0.1";
-const DEFAULT_PORT: u16 = 8000;
+pub const DEFAULT_HOST: &str = "127.0.0.1";
+pub const DEFAULT_PORT: u16 = 8000;
 const MIN_PORT: u16 = 1024;
 const MIN_MAX_CONNECTIONS: usize = 1;
 const MAX_MAX_CONNECTIONS: usize = 100000;
