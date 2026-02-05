@@ -258,7 +258,7 @@ async fn ensure_llm_user(pool: &sqlx::SqlitePool, config: &pm_config::Config) {
     let llm_user_id = &config.api.llm_user_id;
     let llm_user_name = &config.api.llm_user_name;
 
-    match sqlx::query("INSERT OR IGNORE INTO users (id, email, display_name) VALUES (?, ?, ?)")
+    match sqlx::query("INSERT OR IGNORE INTO users (id, email, name) VALUES (?, ?, ?)")
         .bind(llm_user_id)
         .bind(format!("{}@system.local", llm_user_id))
         .bind(llm_user_name)
