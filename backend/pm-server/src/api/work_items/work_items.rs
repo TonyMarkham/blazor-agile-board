@@ -11,7 +11,8 @@ use crate::{
 use pm_core::{ActivityLog, WorkItem, WorkItemType};
 use pm_db::{ActivityLogRepository, ProjectRepository, WorkItemRepository};
 use pm_ws::{
-    AppState, MessageValidator, build_activity_log_created_event, sanitize_string,
+    AppState, MessageValidator, build_activity_log_created_event, build_work_item_created_response,
+    build_work_item_deleted_response, build_work_item_updated_response, sanitize_string,
     validate_hierarchy, validate_priority, validate_status,
 };
 
@@ -236,6 +237,21 @@ pub async fn create_work_item(
         // This is OK - database operation succeeded, UI will update on next refresh
     }
 
+    // 9b. Broadcast WorkItemCreated to all project subscribers
+    let broadcast =
+        build_work_item_created_response(&Uuid::new_v4().to_string(), &work_item, user_id);
+    let broadcast_bytes = broadcast.encode_to_vec();
+    if let Err(e) = state
+        .registry
+        .broadcast_to_project(
+            &project_id.to_string(),
+            Message::Binary(broadcast_bytes.into()),
+        )
+        .await
+    {
+        log::warn!("Failed to broadcast WorkItemCreated via REST: {}", e);
+    }
+
     log::info!(
         "Created work item {} ({}) via REST API",
         work_item.id,
@@ -377,6 +393,25 @@ pub async fn update_work_item(
         // This is OK - database operation succeeded, UI will update on next refresh
     }
 
+    // 7b. Broadcast WorkItemUpdated to all project subscribers
+    let broadcast = build_work_item_updated_response(
+        &Uuid::new_v4().to_string(),
+        &work_item,
+        &[], // REST API doesn't track field changes currently
+        user_id,
+    );
+    let broadcast_bytes = broadcast.encode_to_vec();
+    if let Err(e) = state
+        .registry
+        .broadcast_to_project(
+            &work_item.project_id.to_string(),
+            Message::Binary(broadcast_bytes.into()),
+        )
+        .await
+    {
+        log::warn!("Failed to broadcast WorkItemUpdated via REST: {}", e);
+    }
+
     log::info!(
         "Updated work item {} to version {} via REST API",
         work_item.id,
@@ -447,6 +482,21 @@ pub async fn delete_work_item(
             e
         );
         // This is OK - database operation succeeded, UI will update on next refresh
+    }
+
+    // 4b. Broadcast WorkItemDeleted to all project subscribers
+    let broadcast =
+        build_work_item_deleted_response(&Uuid::new_v4().to_string(), work_item_id, user_id);
+    let broadcast_bytes = broadcast.encode_to_vec();
+    if let Err(e) = state
+        .registry
+        .broadcast_to_project(
+            &work_item.project_id.to_string(),
+            Message::Binary(broadcast_bytes.into()),
+        )
+        .await
+    {
+        log::warn!("Failed to broadcast WorkItemDeleted via REST: {}", e);
     }
 
     log::info!("Deleted work item {} via REST API", work_item_id);

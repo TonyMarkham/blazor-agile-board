@@ -204,6 +204,32 @@ impl ConnectionRegistry {
 
         Ok(delivered)
     }
+
+    /// Broadcast any message to all clients subscribed to a project
+    pub async fn broadcast_to_project(
+        &self,
+        project_id: &str,
+        message: Message,
+    ) -> WsErrorResult<usize> {
+        let inner = self.inner.read().await;
+        let connections: Vec<(ClientSubscriptions, mpsc::Sender<Message>)> = inner
+            .connections
+            .values()
+            .map(|info| (info.subscriptions.clone(), info.sender.clone()))
+            .collect();
+        drop(inner);
+
+        let mut delivered = 0;
+        for (subscriptions, sender) in connections {
+            if subscriptions.is_subscribed_to_project(project_id)
+                && sender.send(message.clone()).await.is_ok()
+            {
+                delivered += 1;
+            }
+        }
+
+        Ok(delivered)
+    }
 }
 
 impl Clone for ConnectionRegistry {

@@ -169,6 +169,22 @@ pub async fn handle_create(
         .broadcast_activity_log_created(&project_id_str, Some(&work_item_id_str), None, message)
         .await?;
 
+    // 10b. Broadcast WorkItemCreated to all project subscribers
+    let broadcast =
+        build_work_item_created_response(&Uuid::new_v4().to_string(), &work_item, ctx.user_id);
+    let broadcast_bytes = broadcast.encode_to_vec();
+    if let Err(e) = ctx
+        .registry
+        .broadcast_to_project(&project_id_str, Message::Binary(broadcast_bytes.into()))
+        .await
+    {
+        warn!(
+            "{} Failed to broadcast WorkItemCreated: {}",
+            ctx.log_prefix(),
+            e
+        );
+    }
+
     // 11. Build response
     let response = build_work_item_created_response(&ctx.message_id, &work_item, ctx.user_id);
 
@@ -315,6 +331,26 @@ pub async fn handle_update(
         .broadcast_activity_log_created(&project_id_str, Some(&work_item_id_str), None, message)
         .await?;
 
+    // 9b. Broadcast WorkItemUpdated to all project subscribers
+    let broadcast = build_work_item_updated_response(
+        &Uuid::new_v4().to_string(),
+        &work_item,
+        &changes,
+        ctx.user_id,
+    );
+    let broadcast_bytes = broadcast.encode_to_vec();
+    if let Err(e) = ctx
+        .registry
+        .broadcast_to_project(&project_id_str, Message::Binary(broadcast_bytes.into()))
+        .await
+    {
+        warn!(
+            "{} Failed to broadcast WorkItemUpdated: {}",
+            ctx.log_prefix(),
+            e
+        );
+    }
+
     info!(
         "{} Updated work item {} (version {})",
         ctx.log_prefix(),
@@ -399,6 +435,22 @@ pub async fn handle_delete(
     ctx.registry
         .broadcast_activity_log_created(&project_id_str, Some(&work_item_id_str), None, message)
         .await?;
+
+    // 6b. Broadcast WorkItemDeleted to all project subscribers
+    let broadcast =
+        build_work_item_deleted_response(&Uuid::new_v4().to_string(), work_item_id, ctx.user_id);
+    let broadcast_bytes = broadcast.encode_to_vec();
+    if let Err(e) = ctx
+        .registry
+        .broadcast_to_project(&project_id_str, Message::Binary(broadcast_bytes.into()))
+        .await
+    {
+        warn!(
+            "{} Failed to broadcast WorkItemDeleted: {}",
+            ctx.log_prefix(),
+            e
+        );
+    }
 
     info!("{} Deleted work item {}", ctx.log_prefix(), work_item_id);
 
