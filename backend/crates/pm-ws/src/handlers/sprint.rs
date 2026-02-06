@@ -140,6 +140,22 @@ pub async fn handle_create_sprint(
         .broadcast_activity_log_created(&project_id_str, None, Some(&sprint_id_str), message)
         .await?;
 
+    // 8b. Broadcast SprintCreated to all project subscribers
+    let broadcast =
+        build_sprint_created_response(&Uuid::new_v4().to_string(), &sprint, ctx.user_id);
+    let broadcast_bytes = broadcast.encode_to_vec();
+    if let Err(e) = ctx
+        .registry
+        .broadcast_to_project(&project_id_str, Message::Binary(broadcast_bytes.into()))
+        .await
+    {
+        warn!(
+            "{} Failed to broadcast SprintCreated: {}",
+            ctx.log_prefix(),
+            e
+        );
+    }
+
     // 9. Build response
     let response = build_sprint_created_response(&ctx.message_id, &sprint, ctx.user_id);
     let response_bytes = response.encode_to_vec();
@@ -299,6 +315,26 @@ pub async fn handle_update_sprint(
         .broadcast_activity_log_created(&project_id_str, None, Some(&sprint_id_str), message)
         .await?;
 
+    // 9b. Broadcast SprintUpdated to all project subscribers
+    let broadcast = build_sprint_updated_response(
+        &Uuid::new_v4().to_string(),
+        &sprint,
+        &field_changes,
+        ctx.user_id,
+    );
+    let broadcast_bytes = broadcast.encode_to_vec();
+    if let Err(e) = ctx
+        .registry
+        .broadcast_to_project(&project_id_str, Message::Binary(broadcast_bytes.into()))
+        .await
+    {
+        warn!(
+            "{} Failed to broadcast SprintUpdated: {}",
+            ctx.log_prefix(),
+            e
+        );
+    }
+
     info!(
         "{} Updated sprint {} (version {})",
         ctx.log_prefix(),
@@ -418,6 +454,22 @@ pub async fn handle_delete_sprint(
     ctx.registry
         .broadcast_activity_log_created(&project_id_str, None, Some(&sprint_id_str), message)
         .await?;
+
+    // Broadcast SprintDeleted to all project subscribers
+    let broadcast =
+        build_sprint_deleted_response(&Uuid::new_v4().to_string(), sprint_id, ctx.user_id);
+    let broadcast_bytes = broadcast.encode_to_vec();
+    if let Err(e) = ctx
+        .registry
+        .broadcast_to_project(&project_id_str, Message::Binary(broadcast_bytes.into()))
+        .await
+    {
+        warn!(
+            "{} Failed to broadcast SprintDeleted: {}",
+            ctx.log_prefix(),
+            e
+        );
+    }
 
     info!("{} Deleted sprint {}", ctx.log_prefix(), sprint_id);
 

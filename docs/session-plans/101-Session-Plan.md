@@ -21,7 +21,7 @@ This session fixes a systemic design gap where entity CRUD events (WorkItem, Com
 | Session | Scope | Est. Time | Status |
 |---------|-------|-----------|--------|
 | **[101.1](101.1-Session-Plan.md)** | Work Item Broadcasts | 15-30 min | ✅ Complete (2026-02-05) |
-| **[101.2](101.2-Session-Plan.md)** | Sprint Broadcasts | 15-30 min | Pending |
+| **[101.2](101.2-Session-Plan.md)** | Sprint Broadcasts | 15-30 min | ✅ Complete (2026-02-05) |
 | **[101.3](101.3-Session-Plan.md)** | Comment Broadcasts | 15-30 min | Pending |
 
 **Total estimated time: ~1 hour (101.1 completed in ~25 min)**
@@ -152,7 +152,7 @@ Before starting any sub-session:
 - [x] CLI work item CRUD triggers real-time UI updates (✅ 101.1)
 - [x] Multiple Blazor users see each other's work item changes (✅ 101.1)
 - [ ] Multiple Blazor users see each other's comment changes (101.3)
-- [ ] Multiple Blazor users see each other's sprint changes (101.2)
+- [x] Multiple Blazor users see each other's sprint changes (✅ 101.2)
 - [x] No manual navigation/reload required (✅ 101.1 - near-instant updates)
 
 ---
