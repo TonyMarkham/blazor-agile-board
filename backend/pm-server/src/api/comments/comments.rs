@@ -7,7 +7,10 @@ use crate::{
 
 use pm_core::{ActivityLog, Comment};
 use pm_db::{ActivityLogRepository, CommentRepository, WorkItemRepository};
-use pm_ws::{AppState, MessageValidator, build_activity_log_created_event, sanitize_string};
+use pm_ws::{
+    AppState, MessageValidator, build_activity_log_created_event, build_comment_created_response,
+    build_comment_deleted_response, build_comment_updated_response, sanitize_string,
+};
 
 use std::panic::Location;
 
@@ -99,6 +102,20 @@ pub async fn create_comment(
         );
     }
 
+    // 5b. Broadcast CommentCreated to all project subscribers
+    let broadcast = build_comment_created_response(&Uuid::new_v4().to_string(), &comment, user_id);
+    let broadcast_bytes = broadcast.encode_to_vec();
+    if let Err(e) = state
+        .registry
+        .broadcast_to_project(
+            &work_item.project_id.to_string(),
+            Message::Binary(broadcast_bytes.into()),
+        )
+        .await
+    {
+        log::warn!("Failed to broadcast CommentCreated via REST: {}", e);
+    }
+
     log::info!(
         "Created comment {} on work item {} via REST API",
         comment.id,
@@ -175,6 +192,20 @@ pub async fn update_comment(
         );
     }
 
+    // 6b. Broadcast CommentUpdated to all project subscribers
+    let broadcast = build_comment_updated_response(&Uuid::new_v4().to_string(), &comment, user_id);
+    let broadcast_bytes = broadcast.encode_to_vec();
+    if let Err(e) = state
+        .registry
+        .broadcast_to_project(
+            &work_item.project_id.to_string(),
+            Message::Binary(broadcast_bytes.into()),
+        )
+        .await
+    {
+        log::warn!("Failed to broadcast CommentUpdated via REST: {}", e);
+    }
+
     log::info!("Updated comment {} via REST API", comment_uuid);
 
     Ok(Json(CommentResponse {
@@ -236,6 +267,21 @@ pub async fn delete_comment(
             "Failed to broadcast comment deletion to WebSocket clients: {}",
             e
         );
+    }
+
+    // 4b. Broadcast CommentDeleted to all project subscribers
+    let broadcast =
+        build_comment_deleted_response(&Uuid::new_v4().to_string(), comment_uuid, user_id);
+    let broadcast_bytes = broadcast.encode_to_vec();
+    if let Err(e) = state
+        .registry
+        .broadcast_to_project(
+            &work_item.project_id.to_string(),
+            Message::Binary(broadcast_bytes.into()),
+        )
+        .await
+    {
+        log::warn!("Failed to broadcast CommentDeleted via REST: {}", e);
     }
 
     log::info!("Deleted comment {} via REST API", comment_uuid);

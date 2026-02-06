@@ -111,6 +111,22 @@ pub async fn handle_create_comment(
         .broadcast_activity_log_created(&project_id_str, Some(&work_item_id_str), None, message)
         .await?;
 
+    // 8b. Broadcast CommentCreated to all project subscribers
+    let broadcast =
+        build_comment_created_response(&Uuid::new_v4().to_string(), &comment, ctx.user_id);
+    let broadcast_bytes = broadcast.encode_to_vec();
+    if let Err(e) = ctx
+        .registry
+        .broadcast_to_project(&project_id_str, Message::Binary(broadcast_bytes.into()))
+        .await
+    {
+        warn!(
+            "{} Failed to broadcast CommentCreated: {}",
+            ctx.log_prefix(),
+            e
+        );
+    }
+
     // 9. Build response
     let response = build_comment_created_response(&ctx.message_id, &comment, ctx.user_id);
 
@@ -212,6 +228,22 @@ pub async fn handle_update_comment(
         .broadcast_activity_log_created(&project_id_str, Some(&work_item_id_str), None, message)
         .await?;
 
+    // 7b. Broadcast CommentUpdated to all project subscribers
+    let broadcast =
+        build_comment_updated_response(&Uuid::new_v4().to_string(), &comment, ctx.user_id);
+    let broadcast_bytes = broadcast.encode_to_vec();
+    if let Err(e) = ctx
+        .registry
+        .broadcast_to_project(&project_id_str, Message::Binary(broadcast_bytes.into()))
+        .await
+    {
+        warn!(
+            "{} Failed to broadcast CommentUpdated: {}",
+            ctx.log_prefix(),
+            e
+        );
+    }
+
     info!("{} Updated comment {}", ctx.log_prefix(), comment.id);
 
     Ok(build_comment_updated_response(
@@ -283,6 +315,22 @@ pub async fn handle_delete_comment(
     ctx.registry
         .broadcast_activity_log_created(&project_id_str, Some(&work_item_id_str), None, message)
         .await?;
+
+    // Broadcast CommentDeleted to all project subscribers
+    let broadcast =
+        build_comment_deleted_response(&Uuid::new_v4().to_string(), comment_id, ctx.user_id);
+    let broadcast_bytes = broadcast.encode_to_vec();
+    if let Err(e) = ctx
+        .registry
+        .broadcast_to_project(&project_id_str, Message::Binary(broadcast_bytes.into()))
+        .await
+    {
+        warn!(
+            "{} Failed to broadcast CommentDeleted: {}",
+            ctx.log_prefix(),
+            e
+        );
+    }
 
     info!("{} Deleted comment {}", ctx.log_prefix(), comment_id);
 

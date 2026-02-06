@@ -29,3 +29,14 @@ cd /Users/tony/git/blazor-agile-board/target/debug
   --parent-id fff61c39-423f-485d-98ca-416eb36e9e54 \
   --pretty
 ```
+
+```bash
+./pm work-item list cc8dc131-5a26-489c-829f-fa9fa066c850 --pretty
+```
+
+```bash
+./pm comment create \
+  --work-item-id 96d95282-c3bd-4418-b089-5f03f51e5c57 \
+  --content "CLI Made this comment" \
+  --pretty
+```
