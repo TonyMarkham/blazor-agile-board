@@ -1,3 +1,5 @@
+mod activity_log_config;
+mod api_config;
 mod auth_config;
 mod circuit_breaker_config;
 mod config;
@@ -6,14 +8,12 @@ mod error;
 mod handler_config;
 mod log_level;
 mod logging_config;
+mod port_file;
 mod rate_limit_config;
 mod retry_config;
 mod server_config;
 mod validation_config;
 mod websocket_config;
-
-mod activity_log_config;
-mod api_config;
 
 #[cfg(test)]
 mod tests;
@@ -28,6 +28,7 @@ pub use error::{ConfigError, ConfigErrorResult};
 pub use handler_config::HandlerConfig;
 pub use log_level::LogLevel;
 pub use logging_config::LoggingConfig;
+pub use port_file::{is_process_running, port_file_info::PortFileInfo};
 pub use rate_limit_config::RateLimitConfig;
 pub use retry_config::RetryConfig;
 pub use server_config::ServerConfig;
@@ -44,7 +45,7 @@ pub use websocket_config::WebSocketConfig;
 // =============================================================================
 
 pub const DEFAULT_HOST: &str = "127.0.0.1";
-pub const DEFAULT_PORT: u16 = 8000;
+pub const DEFAULT_PORT: u16 = 0;
 const MIN_PORT: u16 = 1024;
 const MIN_MAX_CONNECTIONS: usize = 1;
 const MAX_MAX_CONNECTIONS: usize = 100000;

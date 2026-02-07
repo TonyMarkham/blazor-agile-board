@@ -68,3 +68,33 @@ fn given_max_connections_over_limit_when_validate_then_error() {
     // Then
     assert_that!(result, err(anything()));
 }
+
+#[test]
+#[serial]
+fn given_port_zero_when_validate_then_ok() {
+    // Given - port 0 means OS auto-assign
+    let (_temp, _guard) = setup_config_dir();
+    let _port = EnvGuard::set("PM_SERVER_PORT", "0");
+
+    // When
+    let config = Config::load().unwrap();
+    let result = config.validate();
+
+    // Then
+    assert_that!(result, ok(anything()));
+}
+
+#[test]
+#[serial]
+fn given_port_500_nonzero_below_min_when_validate_then_error() {
+    // Given - port 500 is below MIN_PORT (1024) and not the special 0
+    let (_temp, _guard) = setup_config_dir();
+    let _port = EnvGuard::set("PM_SERVER_PORT", "500");
+
+    // When
+    let config = Config::load().unwrap();
+    let result = config.validate();
+
+    // Then
+    assert_that!(result, err(anything()));
+}

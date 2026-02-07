@@ -29,9 +29,11 @@ impl Default for ServerConfig {
 
 impl ServerConfig {
     pub fn validate(&self) -> ConfigErrorResult<()> {
-        if self.port < MIN_PORT {
+        // Port 0 means "auto-assign" - OS picks an available port.
+        // Any other port must be >= MIN_PORT (1024).
+        if self.port != 0 && self.port < MIN_PORT {
             return Err(ConfigError::config(format!(
-                "server.port must be >= {}, got {}",
+                "server.port must be 0 (auto) or >= {}, got {}",
                 MIN_PORT, self.port
             )));
         }

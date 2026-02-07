@@ -41,25 +41,33 @@ The port file is written to `<config_dir>/server.json` where `<config_dir>` is d
 
 | Session | Scope | Est. Tokens | Status |
 |---------|-------|-------------|--------|
-| **[120.1](120.1-Session-Plan.md)** | pm-config: port_file module, deps, validation, DEFAULT_PORT, tests | ~25-35k | Pending |
+| **[120.1](120.1-Session-Plan.md)** | pm-config: port_file module, deps, validation, DEFAULT_PORT, tests | ~25-35k | ✅ **COMPLETE** |
 | **[120.2](120.2-Session-Plan.md)** | pm-server + pm-cli: write/read port file, config file updates | ~25-35k | Pending |
 
 ---
 
-## Session 120.1: Port File Module & Config Changes (pm-config)
+## Session 120.1: Port File Module & Config Changes (pm-config) ✅ COMPLETE
 
 **Files Created:**
-- `pm-config/src/port_file.rs` - Port file write/read/cleanup with cross-platform PID liveness check
-- `pm-config/src/tests/port_file.rs` - Tests for port file operations
+- `pm-config/src/port_file/` - Module directory (refactored into `mod.rs` + `port_file_info.rs`)
+  - `mod.rs` - Cross-platform PID liveness checking (Unix/Windows/fallback)
+  - `port_file_info.rs` - PortFileInfo struct and write/read/remove methods
+- `pm-config/src/tests/port_file.rs` - 14 comprehensive tests for port file operations
 
 **Files Modified:**
-- `pm-config/Cargo.toml` - Add `serde_json`, `chrono`, `libc` workspace deps
-- `pm-config/src/lib.rs` - Module declaration, re-export, change DEFAULT_PORT to 0
-- `pm-config/src/server_config.rs` - Allow port 0 in validation
-- `pm-config/src/tests/mod.rs` - Add port_file test module
-- `pm-config/src/tests/server.rs` - Add port 0 validation test
+- `pm-config/Cargo.toml` - Added `serde_json`, `chrono`, `libc` dependencies ✅
+- `pm-config/src/lib.rs` - Module declaration, re-export PortFileInfo, changed DEFAULT_PORT to 0 ✅
+- `pm-config/src/server_config.rs` - Updated validation to allow port 0 ✅
+- `pm-config/src/tests/mod.rs` - Registered port_file test module ✅
+- `pm-config/src/tests/server.rs` - Added 2 port 0 validation tests ✅
 
-**Verification:** `just check-rs-config && just test-rs-config`
+**Verification Results:**
+- `just check-rs-config` ✅ Clean build
+- `just test-rs-config` ✅ All 14 tests passing
+- `just check-backend` ✅ Entire workspace compiles
+- `just clippy-rs-config` ✅ Zero warnings
+
+**Implementation Note:** The port_file module was refactored into a directory structure (`mod.rs` + `port_file_info.rs`) for better code organization, which is superior to the single-file plan.
 
 ---
 
@@ -88,27 +96,33 @@ Before starting **any** sub-session:
 
 ## Files Summary
 
-### Create (2 files)
+### Create (120.1 Complete)
 
-| File | Purpose |
-|------|---------|
-| `pm-config/src/port_file.rs` | Port file write/read/remove with cross-platform PID liveness |
-| `pm-config/src/tests/port_file.rs` | Unit tests for port file operations |
+| File | Purpose | Status |
+|------|---------|--------|
+| `pm-config/src/port_file/mod.rs` | Cross-platform PID liveness checking | ✅ |
+| `pm-config/src/port_file/port_file_info.rs` | PortFileInfo struct and methods | ✅ |
+| `pm-config/src/tests/port_file.rs` | 14 comprehensive unit tests | ✅ |
 
-### Modify (9 files)
+### Modify (120.1 Complete)
 
-| File | Change |
-|------|--------|
-| `pm-config/Cargo.toml` | Add serde_json, chrono, libc deps |
-| `pm-config/src/lib.rs` | Add module + re-export, DEFAULT_PORT -> 0 |
-| `pm-config/src/server_config.rs` | Allow port 0 in validation |
-| `pm-config/src/tests/mod.rs` | Add port_file module |
-| `pm-config/src/tests/server.rs` | Add port 0 test |
-| `pm-server/src/main.rs` | Write port file after bind, cleanup on shutdown |
-| `pm-cli/src/main.rs` | Auto-discover from port file |
-| `pm-cli/src/cli.rs` | Update help text |
-| `backend/config.example.toml` | Document port 0 |
-| `.server/config.toml` | Change port to 0 |
+| File | Change | Status |
+|------|--------|--------|
+| `pm-config/Cargo.toml` | Add serde_json, chrono, libc deps | ✅ |
+| `pm-config/src/lib.rs` | Add module + re-export, DEFAULT_PORT -> 0 | ✅ |
+| `pm-config/src/server_config.rs` | Allow port 0 in validation | ✅ |
+| `pm-config/src/tests/mod.rs` | Add port_file module | ✅ |
+| `pm-config/src/tests/server.rs` | Add port 0 validation tests (2) | ✅ |
+
+### Pending (120.2)
+
+| File | Change | Status |
+|------|--------|--------|
+| `pm-server/src/main.rs` | Write port file after bind, cleanup on shutdown | ⏳ |
+| `pm-cli/src/main.rs` | Auto-discover from port file | ⏳ |
+| `pm-cli/src/cli.rs` | Update help text | ⏳ |
+| `backend/config.example.toml` | Document port 0 | ⏳ |
+| `.server/config.toml` | Change port to 0 | ⏳ |
 
 ---
 

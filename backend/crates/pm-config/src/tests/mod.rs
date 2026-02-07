@@ -5,6 +5,7 @@ mod config;
 mod desktop_id;
 mod edge_cases;
 mod handler;
+mod port_file;
 mod retry;
 mod server;
 mod validation;
