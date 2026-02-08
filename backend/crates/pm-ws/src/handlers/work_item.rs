@@ -256,6 +256,7 @@ pub async fn handle_update(
     }
 
     // 4b. Validate new parent if changing (uses update_parent flag)
+    #[allow(clippy::collapsible_if)]
     if req.update_parent {
         if let Some(ref new_parent_id) = req.parent_id {
             if !new_parent_id.is_empty() {

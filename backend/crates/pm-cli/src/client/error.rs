@@ -51,6 +51,7 @@ impl ClientError {
     }
 
     /// Create an API error with location
+    #[allow(dead_code)]
     #[track_caller]
     pub fn api_error(code: String, message: String) -> Self {
         ClientError::Api {
@@ -75,4 +76,5 @@ impl From<serde_json::Error> for ClientError {
     }
 }
 
+#[allow(dead_code)]
 pub type Result<T> = std::result::Result<T, ClientError>;

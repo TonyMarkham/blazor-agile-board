@@ -33,7 +33,7 @@ impl Config {
     /// Load config with full production error handling.
     ///
     /// Loading order:
-    /// 1. Check for PM_CONFIG_DIR env var, else use ./.pm/
+    /// 1. Find .pm/ via fallback chain (git → config.json → ~/.pm/)
     /// 2. Auto-create config directory if it doesn't exist
     /// 3. Load config.toml if it exists, else use defaults
     /// 4. Apply PM_* environment variable overrides
@@ -77,16 +77,67 @@ impl Config {
         })
     }
 
-    /// Get the config directory.
-    /// Priority: PM_CONFIG_DIR env var > ./.pm/ (relative to cwd)
+    /// Get the config directory using the fallback chain.
+    ///
+    /// 1. Git repo root (preferred — works from any subdirectory)
+    /// 2. config.json next to current executable (installed binaries)
+    /// 3. Global fallback (~/.pm/)
+    ///
+    /// No environment variables. No cwd assumptions.
     pub fn config_dir() -> Result<PathBuf, ConfigError> {
-        if let Ok(dir) = std::env::var("PM_CONFIG_DIR") {
-            return Ok(PathBuf::from(dir));
+        // 1. Git repo root
+        if let Ok(dir) = Self::config_dir_from_git(&std::env::current_dir().unwrap_or_default()) {
+            return Ok(dir);
         }
 
-        let cwd = std::env::current_dir()
-            .map_err(|_| ConfigError::config("Cannot determine current working directory"))?;
-        Ok(cwd.join(".pm"))
+        // 2. config.json next to binary
+        if let Some(dir) = Self::config_dir_from_binary_config() {
+            return Ok(dir);
+        }
+
+        // 3. Global fallback
+        Self::global_config_dir()
+    }
+
+    /// Find .pm/ via git rev-parse --show-toplevel.
+    ///
+    /// Public so tests can call it with a specific start path.
+    pub fn config_dir_from_git(start: &std::path::Path) -> Result<PathBuf, ConfigError> {
+        let start_str = start.to_str().unwrap_or(".");
+        let output = std::process::Command::new("git")
+            .args(["-C", start_str, "rev-parse", "--show-toplevel"])
+            .output()
+            .map_err(|_| ConfigError::config("git not found"))?;
+
+        if !output.status.success() {
+            return Err(ConfigError::config("Not inside a git repository"));
+        }
+
+        let root = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        Ok(PathBuf::from(root).join(".pm"))
+    }
+
+    /// Find .pm/ from config.json next to the current executable.
+    ///
+    /// When binaries are installed to `.pm/bin/`, the installer writes
+    /// `.pm/bin/config.json` with `{"repo_root": "/path/to/repo"}`.
+    fn config_dir_from_binary_config() -> Option<PathBuf> {
+        let exe = std::env::current_exe().ok()?;
+        let exe_dir = exe.parent()?;
+        let config_path = exe_dir.join("config.json");
+        let content = std::fs::read_to_string(&config_path).ok()?;
+        let parsed: serde_json::Value = serde_json::from_str(&content).ok()?;
+        let root = parsed.get("repo_root")?.as_str()?;
+        Some(PathBuf::from(root).join(".pm"))
+    }
+
+    /// Global fallback: ~/.pm/
+    fn global_config_dir() -> Result<PathBuf, ConfigError> {
+        dirs::home_dir().map(|h| h.join(".pm")).ok_or_else(|| {
+            ConfigError::config(
+                "Cannot determine home directory — run from inside a git repository",
+            )
+        })
     }
 
     /// Validate all configuration.

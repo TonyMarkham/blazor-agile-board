@@ -19,7 +19,7 @@ For Tauri launched via double-click (outside a terminal/repo context), the insta
 | Session | Scope | Est. Tokens | Status |
 |---------|-------|-------------|--------|
 | **[121.1](121.1-Session-Plan.md)** | Infrastructure: workspace metadata, `.pm/` layout, `.gitignore`, justfile migration | ~25k | **COMPLETE** |
-| **[121.2](121.2-Session-Plan.md)** | Tauri repo-awareness: git-based config discovery, `pm desktop` command | ~35k | Pending |
+| **[121.2](121.2-Session-Plan.md)** | Tauri repo-awareness: git-based config discovery, `pm desktop` command | ~35k | **COMPLETE** |
 | **[121.3](121.3-Session-Plan.md)** | Release distribution: justfile commands, install scripts, `config.json` | ~30k | Pending |
 | **[121.4](121.4-Session-Plan.md)** | Data sync: fix .gitignore, export/import commands, git hooks | ~40k | Pending |
 

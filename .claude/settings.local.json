@@ -42,7 +42,8 @@
       "Bash(just test-backend:*)",
       "Bash(just build-cs-core:*)",
       "Bash(just check-rs-server:*)",
-      "Bash(just test-rs-db:*)"
+      "Bash(just test-rs-db:*)",
+      "Bash(just test-rs-config:*)"
     ]
   }
 }

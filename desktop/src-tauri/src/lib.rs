@@ -5,13 +5,17 @@ mod identity;
 mod logging;
 mod server;
 mod tray;
+mod pm_directory;
 
 use logging::setup_logging;
 use server::{ServerConfig, ServerManager, ServerState};
 use tray::TrayManager;
+use pm_directory::PmDir;
 
 #[cfg(test)]
 mod tests;
+
+use pm_config::Config;
 
 use std::sync::Arc;
 
@@ -19,13 +23,33 @@ use tauri::{Emitter, Manager};
 use tracing::{error, info};
 
 const SERVER_DATA_DIR: &str = ".server";
-const TAURI_DATA_DIR: &str = ".tauri";
+const TAURI_DATA_DIR: &str = "tauri";
 const PM_SERVER_CONFIG_FILENAME: &str = "config.toml";
+const PM_DIR_NAME: &str = ".pm";
+const BINARY_CONFIG_FILENAME: &str = "config.json";
 
 // Tauri event names (must match frontend TauriService constants)
 const EVENT_SERVER_READY: &str = "server-ready";
 const EVENT_SERVER_ERROR: &str = "server-error";
 const EVENT_SERVER_STATE_CHANGED: &str = "server-state-changed";
+
+/// Find server directory from config.json next to the binary.
+///
+/// When Tauri is launched by double-clicking (not from a terminal),
+/// `git rev-parse` fails because there's no repo context. The installer
+/// writes `.pm/bin/config.json` with `{"repo_root": "/path/to/repo"}`.
+/// We read that to find the repo root.
+fn find_server_dir_from_binary() -> Option<std::path::PathBuf> {
+    let exe = std::env::current_exe().ok()?;
+    let exe_dir = exe.parent()?;
+    let config_path = exe_dir.join(BINARY_CONFIG_FILENAME);
+    let content = std::fs::read_to_string(&config_path).ok()?;
+    let parsed: serde_json::Value = serde_json::from_str(&content).ok()?;
+    let root = parsed.get("repo_root")?.as_str()?;
+    let dir = std::path::PathBuf::from(root).join(PM_DIR_NAME);
+    info!("Installed mode (config.json): {}", dir.display());
+    Some(dir)
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -41,12 +65,26 @@ pub fn run() {
         .setup(|app| {
             let app_data_dir = app.path().app_data_dir()?;
 
-            // Server data directory (.server/) - for pm-server
-            let server_dir = app_data_dir.join(SERVER_DATA_DIR);
+            // Find .pm/ directory:
+            // 1. Git repo root (terminal launch, pm desktop, just dev)
+            // 2. config.json next to binary (double-click after install)
+            // 3. Global app data dir (standalone, no CLI integration)
+            let server_dir = match Config::config_dir() {
+                Ok(dir) => {
+                    info!("Repo mode: {}", dir.display());
+                    dir
+                }
+                Err(_) => find_server_dir_from_binary()
+                    .unwrap_or_else(|| {
+                        let dir = app_data_dir.join(PM_DIR_NAME);
+                        info!("Standalone mode: {}", dir.display());
+                        dir
+                    }),
+            };
             std::fs::create_dir_all(&server_dir)?;
 
-            // Tauri data directory (.tauri/) - for Tauri config/logs
-            let tauri_dir = app_data_dir.join(TAURI_DATA_DIR);
+            // Tauri's own config/logs directory — inside .pm/
+            let tauri_dir = server_dir.join(TAURI_DATA_DIR);
             std::fs::create_dir_all(&tauri_dir)?;
 
             // Initialize Tauri logging to .tauri/
@@ -98,6 +136,7 @@ pub fn run() {
             if !pm_config_dest.exists()
                 && let Ok(resource_dir) = app.path().resource_dir()
             {
+                // Resource is bundled under ".server/" destination (from tauri.conf.json)
                 let pm_config_src = resource_dir
                     .join(SERVER_DATA_DIR)
                     .join(PM_SERVER_CONFIG_FILENAME);
@@ -118,6 +157,9 @@ pub fn run() {
                 config,
             ));
             app.manage(manager.clone());
+
+            // Share the resolved .pm/ path with identity module
+            app.manage(PmDir(server_dir.clone()));
 
             // Setup system tray with TrayManager
             let tray_manager = TrayManager::setup(app)?;
@@ -177,7 +219,7 @@ pub fn run() {
                         ServerState::Running { port } => Some(*port),
                         _ => None,
                     };
-                    let ws_url = port.map(|p| format!("ws://127.0.0.1:{}/ws", p));
+                    let ws_url = port.map(|p| format!("ws://127.0.0.1:{p}/ws"));
 
                     // Get PID for state events
                     let pid = manager_for_events.server_pid().await;

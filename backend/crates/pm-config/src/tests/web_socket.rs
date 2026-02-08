@@ -13,7 +13,7 @@ use serial_test::serial;
 #[serial]
 fn given_timeout_less_than_interval_when_validate_then_error() {
     // Given
-    let (_temp, _guard) = setup_config_dir();
+    let _temp = setup_config_dir();
     let _interval = EnvGuard::set("PM_WS_HEARTBEAT_INTERVAL_SECS", "60");
     let _timeout = EnvGuard::set("PM_WS_HEARTBEAT_TIMEOUT_SECS", "30");
 

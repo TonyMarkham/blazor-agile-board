@@ -1,11 +1,9 @@
-use crate::{
-    PortFileInfo,
-    tests::{EnvGuard, setup_config_dir},
-};
+use crate::{Config, PortFileInfo, tests::setup_config_dir, ConfigError};
 
 use googletest::assert_that;
-use googletest::prelude::{anything, eq, err, none, ok};
+use googletest::prelude::{anything, contains_substring, eq, err, none, ok, pat};
 use serial_test::serial;
+use tempfile::TempDir;
 
 const TEST_HOST: &str = "127.0.0.1";
 const TEST_PORT: u16 = 8080;
@@ -18,15 +16,13 @@ const ALT_TEST_PORT: u16 = 9000;
 #[test]
 #[serial]
 fn given_port_and_host_when_write_then_file_created_with_correct_fields() {
-    // Given
-    let (_temp, _guard) = setup_config_dir();
+    let _temp = setup_config_dir();
+    let config_dir = Config::config_dir_from_git(_temp.path()).unwrap();
 
-    // When
-    let path = PortFileInfo::write(TEST_PORT, TEST_HOST).unwrap();
+    let path = PortFileInfo::write_in(&config_dir, TEST_PORT, TEST_HOST).unwrap();
 
-    // Then
     assert!(path.exists());
-    let info = PortFileInfo::read().unwrap().unwrap();
+    let info = PortFileInfo::read_in(&config_dir).unwrap().unwrap();
     assert_that!(info.port, eq(TEST_PORT));
     assert_that!(info.host, eq(TEST_HOST));
     assert_that!(info.pid, eq(std::process::id()));
@@ -37,13 +33,11 @@ fn given_port_and_host_when_write_then_file_created_with_correct_fields() {
 #[test]
 #[serial]
 fn given_no_port_file_when_read_then_returns_none() {
-    // Given
-    let (_temp, _guard) = setup_config_dir();
+    let _temp = setup_config_dir();
+    let config_dir = Config::config_dir_from_git(_temp.path()).unwrap();
 
-    // When
-    let result = PortFileInfo::read().unwrap();
+    let result = PortFileInfo::read_in(&config_dir).unwrap();
 
-    // Then
     assert_that!(result, none());
 }
 
@@ -54,14 +48,12 @@ fn given_no_port_file_when_read_then_returns_none() {
 #[test]
 #[serial]
 fn given_port_file_with_current_pid_when_read_live_then_returns_some() {
-    // Given
-    let (_temp, _guard) = setup_config_dir();
-    PortFileInfo::write(ALT_TEST_PORT, TEST_HOST).unwrap();
+    let _temp = setup_config_dir();
+    let config_dir = Config::config_dir_from_git(_temp.path()).unwrap();
+    PortFileInfo::write_in(&config_dir, ALT_TEST_PORT, TEST_HOST).unwrap();
 
-    // When - current process PID is definitely alive
-    let result = PortFileInfo::read_live().unwrap();
+    let result = PortFileInfo::read_live_in(&config_dir).unwrap();
 
-    // Then
     assert!(result.is_some());
     let info = result.unwrap();
     assert_that!(info.port, eq(ALT_TEST_PORT));
@@ -70,41 +62,35 @@ fn given_port_file_with_current_pid_when_read_live_then_returns_some() {
 #[test]
 #[serial]
 fn given_port_file_with_dead_pid_when_read_live_then_returns_none_and_removes_file() {
-    // Given - Write a port file, then overwrite it with a dead PID
-    let (temp, _guard) = setup_config_dir();
-    PortFileInfo::write(ALT_TEST_PORT, TEST_HOST).unwrap();
+    let temp = setup_config_dir();
+    let config_dir = Config::config_dir_from_git(temp.path()).unwrap();
+    PortFileInfo::write_in(&config_dir, ALT_TEST_PORT, TEST_HOST).unwrap();
 
-    // Overwrite with a PID that's (almost certainly) not running
     let stale_info = serde_json::json!({
-        "pid": 999999,
-        "port": ALT_TEST_PORT,
-        "host": TEST_HOST,
-        "started_at": "2026-01-01T00:00:00Z",
-        "version": "0.1.0"
-    });
-    let path = temp.path().join("server.json");
+          "pid": 999999,
+          "port": ALT_TEST_PORT,
+          "host": TEST_HOST,
+          "started_at": "2026-01-01T00:00:00Z",
+          "version": "0.1.0"
+      });
+    let path = config_dir.join("server.json");
     std::fs::write(&path, serde_json::to_string_pretty(&stale_info).unwrap()).unwrap();
     assert!(path.exists());
 
-    // When
-    let result = PortFileInfo::read_live().unwrap();
+    let result = PortFileInfo::read_live_in(&config_dir).unwrap();
 
-    // Then
     assert_that!(result, none());
-    // Stale file should be removed
     assert!(!path.exists());
 }
 
 #[test]
 #[serial]
 fn given_no_port_file_when_read_live_then_returns_none() {
-    // Given
-    let (_temp, _guard) = setup_config_dir();
+    let _temp = setup_config_dir();
+    let config_dir = Config::config_dir_from_git(_temp.path()).unwrap();
 
-    // When
-    let result = PortFileInfo::read_live().unwrap();
+    let result = PortFileInfo::read_live_in(&config_dir).unwrap();
 
-    // Then
     assert_that!(result, none());
 }
 
@@ -115,29 +101,25 @@ fn given_no_port_file_when_read_live_then_returns_none() {
 #[test]
 #[serial]
 fn given_port_file_exists_when_remove_then_file_deleted() {
-    // Given
-    let (temp, _guard) = setup_config_dir();
-    PortFileInfo::write(TEST_PORT, TEST_HOST).unwrap();
-    let path = temp.path().join("server.json");
+    let temp = setup_config_dir();
+    let config_dir = Config::config_dir_from_git(temp.path()).unwrap();
+    PortFileInfo::write_in(&config_dir, TEST_PORT, TEST_HOST).unwrap();
+    let path = config_dir.join("server.json");
     assert!(path.exists());
 
-    // When
-    PortFileInfo::remove().unwrap();
+    PortFileInfo::remove_in(&config_dir).unwrap();
 
-    // Then
     assert!(!path.exists());
 }
 
 #[test]
 #[serial]
 fn given_no_port_file_when_remove_then_succeeds() {
-    // Given
-    let (_temp, _guard) = setup_config_dir();
+    let _temp = setup_config_dir();
+    let config_dir = Config::config_dir_from_git(_temp.path()).unwrap();
 
-    // When
-    let result = PortFileInfo::remove();
+    let result = PortFileInfo::remove_in(&config_dir);
 
-    // Then
     assert_that!(result, ok(anything()));
 }
 
@@ -148,40 +130,44 @@ fn given_no_port_file_when_remove_then_succeeds() {
 #[test]
 #[serial]
 fn given_live_server_when_write_then_error() {
-    // Given - a port file exists with the current (live) PID
-    let (_temp, _guard) = setup_config_dir();
-    PortFileInfo::write(TEST_PORT, TEST_HOST).unwrap();
+    let _temp = setup_config_dir();
+    let config_dir = Config::config_dir_from_git(_temp.path()).unwrap();
 
-    // When - try to write another port file while server is "running"
-    let result = PortFileInfo::write(9090, "0.0.0.0");
+    PortFileInfo::write_in(&config_dir, TEST_PORT, TEST_HOST).unwrap();
 
-    // Then - should error because existing server is still running
-    assert_that!(result, err(anything()));
+    let result = PortFileInfo::write_in(&config_dir, 9999, TEST_HOST);
+
+    assert_that!(
+          result,
+          err(pat!(ConfigError::Generic {
+              message: contains_substring("Another pm-server is already running"),
+              ..
+          }))
+      );
 }
 
 #[test]
 #[serial]
 fn given_stale_server_when_write_then_overwrites() {
-    // Given - a port file with a dead PID
-    let (temp, _guard) = setup_config_dir();
+    let temp = setup_config_dir();
+    let config_dir = Config::config_dir_from_git(temp.path()).unwrap();
+
     let stale_info = serde_json::json!({
-        "pid": 999999,
-        "port": TEST_PORT,
-        "host": TEST_HOST,
-        "started_at": "2026-01-01T00:00:00Z",
-        "version": "0.1.0"
-    });
-    let path = temp.path().join("server.json");
+          "pid": 999999,
+          "port": ALT_TEST_PORT,
+          "host": TEST_HOST,
+          "started_at": "2026-01-01T00:00:00Z",
+          "version": "0.1.0"
+      });
+    let path = config_dir.join("server.json");
     std::fs::write(&path, serde_json::to_string_pretty(&stale_info).unwrap()).unwrap();
 
-    // When - write a new port file (stale should be auto-cleaned by read_live)
-    let result = PortFileInfo::write(9090, "0.0.0.0");
+    let result = PortFileInfo::write_in(&config_dir, TEST_PORT, TEST_HOST);
 
-    // Then - should succeed (stale file was cleaned before write)
     assert_that!(result, ok(anything()));
-    let info = PortFileInfo::read().unwrap().unwrap();
-    assert_that!(info.port, eq(9090));
-    assert_that!(info.host, eq("0.0.0.0"));
+    let info = PortFileInfo::read_in(&config_dir).unwrap().unwrap();
+    assert_that!(info.port, eq(TEST_PORT));
+    assert_that!(info.pid, eq(std::process::id()));
 }
 
 // =========================================================================
@@ -191,32 +177,37 @@ fn given_stale_server_when_write_then_overwrites() {
 #[test]
 #[serial]
 fn given_directory_not_exist_when_write_then_creates_directory() {
-    // Given - PM_CONFIG_DIR points to a non-existent nested directory
-    let temp = tempfile::TempDir::new().unwrap();
-    let nested = temp.path().join("nested").join("config");
-    let _guard = EnvGuard::set("PM_CONFIG_DIR", nested.to_str().unwrap());
-    assert!(!nested.exists());
+    let temp = TempDir::new().unwrap();
+    let output = std::process::Command::new("git")
+        .args(["init"])
+        .current_dir(temp.path())
+        .output()
+        .expect("git init failed");
+    assert!(output.status.success());
 
-    // When
-    let result = PortFileInfo::write(TEST_PORT, TEST_HOST);
+    let config_dir = temp.path().join(".pm");
 
-    // Then
+    let result = PortFileInfo::write_in(&config_dir, TEST_PORT, TEST_HOST);
+
     assert_that!(result, ok(anything()));
-    assert!(nested.exists());
-    assert!(nested.join("server.json").exists());
+    assert!(config_dir.exists());
 }
 
 #[test]
 #[serial]
 fn given_malformed_json_when_read_then_error() {
-    // Given - a port file with invalid JSON
-    let (temp, _guard) = setup_config_dir();
-    let path = temp.path().join("server.json");
-    std::fs::write(&path, "{ invalid json").unwrap();
+    let temp = setup_config_dir();
+    let config_dir = Config::config_dir_from_git(temp.path()).unwrap();
+    let path = config_dir.join("server.json");
+    std::fs::write(&path, "not json").unwrap();
 
-    // When
-    let result = PortFileInfo::read();
+    let result = PortFileInfo::read_in(&config_dir);
 
-    // Then
-    assert_that!(result, err(anything()));
+    assert_that!(
+          result,
+          err(pat!(ConfigError::Generic {
+              message: contains_substring("Invalid port file"),
+              ..
+          }))
+      );
 }

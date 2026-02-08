@@ -4,4 +4,5 @@ pub(crate) mod update_work_item_request;
 pub(crate) mod work_item_dto;
 pub(crate) mod work_item_list_response;
 pub(crate) mod work_item_response;
+#[allow(clippy::module_inception)]
 pub(crate) mod work_items;

@@ -13,7 +13,7 @@ use serial_test::serial;
 #[serial]
 fn given_auth_enabled_but_no_jwt_config_when_validate_then_error() {
     // Given
-    let (_temp, _guard) = setup_config_dir();
+    let _temp = setup_config_dir();
     let _enabled = EnvGuard::set("PM_AUTH_ENABLED", "true");
 
     // When
@@ -30,7 +30,7 @@ fn given_auth_enabled_but_no_jwt_config_when_validate_then_error() {
 #[serial]
 fn given_jwt_secret_too_short_when_validate_then_error_mentions_32_chars() {
     // Given
-    let (_temp, _guard) = setup_config_dir();
+    let _temp = setup_config_dir();
     let _enabled = EnvGuard::set("PM_AUTH_ENABLED", "true");
     let _secret = EnvGuard::set("PM_AUTH_JWT_SECRET", "tooshort");
 
@@ -48,7 +48,7 @@ fn given_jwt_secret_too_short_when_validate_then_error_mentions_32_chars() {
 #[serial]
 fn given_jwt_secret_exactly_32_chars_when_validate_then_ok() {
     // Given
-    let (_temp, _guard) = setup_config_dir();
+    let _temp = setup_config_dir();
     let _enabled = EnvGuard::set("PM_AUTH_ENABLED", "true");
     let _secret = EnvGuard::set("PM_AUTH_JWT_SECRET", "12345678901234567890123456789012"); // 32 chars
 
@@ -64,7 +64,7 @@ fn given_jwt_secret_exactly_32_chars_when_validate_then_ok() {
 #[serial]
 fn given_jwt_secret_over_32_chars_when_validate_then_ok() {
     // Given
-    let (_temp, _guard) = setup_config_dir();
+    let _temp = setup_config_dir();
     let _enabled = EnvGuard::set("PM_AUTH_ENABLED", "true");
     let _secret = EnvGuard::set(
         "PM_AUTH_JWT_SECRET",
@@ -83,9 +83,10 @@ fn given_jwt_secret_over_32_chars_when_validate_then_ok() {
 #[serial]
 fn given_absolute_jwt_key_path_when_validate_then_error_mentions_relative() {
     // Given
-    let (temp, _guard) = setup_config_dir();
+    let temp = setup_config_dir();
+    std::env::set_current_dir(temp.path()).unwrap();
     std::fs::write(
-        temp.path().join("config.toml"),
+        temp.path().join(".pm/config.toml"),
         r#"
               [auth]
               enabled = true
@@ -108,9 +109,10 @@ fn given_absolute_jwt_key_path_when_validate_then_error_mentions_relative() {
 #[serial]
 fn given_path_traversal_in_jwt_key_path_when_validate_then_error() {
     // Given
-    let (temp, _guard) = setup_config_dir();
+    let temp = setup_config_dir();
+    std::env::set_current_dir(temp.path()).unwrap();
     std::fs::write(
-        temp.path().join("config.toml"),
+        temp.path().join(".pm/config.toml"),
         r#"
               [auth]
               enabled = true
@@ -133,9 +135,10 @@ fn given_path_traversal_in_jwt_key_path_when_validate_then_error() {
 #[serial]
 fn given_nonexistent_jwt_key_file_when_validate_then_error_mentions_path() {
     // Given
-    let (temp, _guard) = setup_config_dir();
+    let temp = setup_config_dir();
+    std::env::set_current_dir(temp.path()).unwrap();
     std::fs::write(
-        temp.path().join("config.toml"),
+        temp.path().join(".pm/config.toml"),
         r#"
               [auth]
               enabled = true

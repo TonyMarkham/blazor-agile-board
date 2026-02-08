@@ -12,14 +12,19 @@ pub(crate) enum Commands {
         #[command(subcommand)]
         action: ProjectCommands,
     },
+
     /// Work item operations
     WorkItem {
         #[command(subcommand)]
         action: WorkItemCommands,
     },
+
     /// Comment operations
     Comment {
         #[command(subcommand)]
         action: CommentCommands,
     },
+
+    /// Launch the desktop app for this repository
+    Desktop,
 }

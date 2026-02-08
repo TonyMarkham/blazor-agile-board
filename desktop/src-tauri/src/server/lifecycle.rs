@@ -63,54 +63,32 @@ impl ServerManager {
     }
 
     /// Find the pm-server binary in development or bundled locations.
+    /// Find the pm-server binary.
+    ///
+    /// Search order:
+    /// 1. Sibling to current exe (bundled production + dev builds)
+    /// 2. Installed at <repo>/.pm/bin/pm-server
+    /// 3. System PATH
     fn find_server_binary(&self) -> ServerResult<PathBuf> {
-        // 1. Environment variable override (development/testing)
-        if let Ok(path) = std::env::var("PM_SERVER_BIN") {
-            let path = PathBuf::from(path);
-            if path.exists() {
-                info!("Using pm-server from PM_SERVER_BIN: {}", path.display());
-                return Ok(path);
-            }
-            warn!(
-                "PM_SERVER_BIN set but path doesn't exist: {}",
-                path.display()
-            );
-        }
-
-        // 2. Bundled location (production) - next to Tauri executable
+        // 1. Sibling to current executable
         if let Ok(exe) = std::env::current_exe()
             && let Some(exe_dir) = exe.parent()
         {
-            let bundled = exe_dir.join("pm-server");
-            if bundled.exists() {
-                info!("Using bundled pm-server: {}", bundled.display());
-                return Ok(bundled);
+            let sibling = exe_dir.join("pm-server");
+            if sibling.exists() {
+                info!("Using pm-server (sibling): {}", sibling.display());
+                return Ok(sibling);
             }
         }
 
-        // 3. Development: walk up to find workspace root
-        if let Ok(exe) = std::env::current_exe() {
-            let mut current = exe.parent();
-            while let Some(dir) = current {
-                let cargo_toml = dir.join("Cargo.toml");
-                if cargo_toml.exists()
-                    && let Ok(content) = std::fs::read_to_string(&cargo_toml)
-                    && content.contains("[workspace]")
-                {
-                    // Found workspace root
-                    for profile in ["release", "debug"] {
-                        let bin = dir.join("target").join(profile).join("pm-server");
-                        if bin.exists() {
-                            info!("Using development pm-server: {}", bin.display());
-                            return Ok(bin);
-                        }
-                    }
-                }
-                current = dir.parent();
-            }
+        // 2. Installed location: <repo>/.pm/bin/pm-server
+        let installed = self.server_dir.join("bin").join("pm-server");
+        if installed.exists() {
+            info!("Using pm-server (installed): {}", installed.display());
+            return Ok(installed);
         }
 
-        // 4. System PATH fallback
+        // 3. System PATH
         if let Ok(output) = std::process::Command::new("which")
             .arg("pm-server")
             .output()
@@ -118,7 +96,7 @@ impl ServerManager {
         {
             let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
             if !path.is_empty() {
-                info!("Using pm-server from PATH: {}", path);
+                info!("Using pm-server (PATH): {}", path);
                 return Ok(PathBuf::from(path));
             }
         }
@@ -126,9 +104,9 @@ impl ServerManager {
         Err(ServerError::ProcessSpawn {
             source: std::io::Error::new(
                 std::io::ErrorKind::NotFound,
-                "pm-server binary not found. Set PM_SERVER_BIN or ensure it's built.",
+                "pm-server binary not found. Build it with `just build-rs-server` or install via install.sh",
             )
-            .into(),
+                .into(),
             location: ErrorLocation::from(Location::caller()),
         })
     }
@@ -220,10 +198,7 @@ impl ServerManager {
         _app: &tauri::AppHandle,
         port: u16,
     ) -> ServerResult<tokio::sync::oneshot::Receiver<()>> {
-        info!(
-            "Spawning standalone pm-server with PM_CONFIG_DIR={}",
-            self.server_dir.display()
-        );
+        info!("Spawning standalone pm-server from {}", self.server_dir.display());
 
         // Find pm-server binary
         let server_binary = self.find_server_binary()?;
@@ -246,7 +221,9 @@ impl ServerManager {
 
         // Spawn as detached process
         let mut cmd = std::process::Command::new(&server_binary);
-        cmd.env("PM_CONFIG_DIR", self.server_dir.to_str().unwrap())
+            // Set cwd to repo root so pm-server's git-based config_dir() works.
+            // self.server_dir is <repo>/.pm/, so parent is the repo root.
+            cmd.current_dir(self.server_dir.parent().unwrap_or(&self.server_dir))
             .env("PM_SERVER_PORT", port.to_string())
             .env("PM_SERVER_HOST", &self.config.server.host)
             .env("PM_LOG_LEVEL", &self.config.logging.level)
@@ -456,7 +433,7 @@ impl ServerManager {
 
                         // Spawn new process
                         let mut cmd = std::process::Command::new(&server_binary);
-                        cmd.env("PM_CONFIG_DIR", server_dir.to_str().unwrap())
+                        cmd.current_dir(server_dir.parent().unwrap_or(&server_dir))
                             .env("PM_SERVER_PORT", port.to_string())
                             .env("PM_SERVER_HOST", &config.server.host)
                             .env("PM_LOG_LEVEL", &config.logging.level)

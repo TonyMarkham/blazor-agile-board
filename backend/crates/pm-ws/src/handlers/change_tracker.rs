@@ -67,6 +67,7 @@ pub fn track_changes(current: &WorkItem, request: &UpdateWorkItemRequest) -> Vec
             .parent_id
             .map(|id| id.to_string())
             .unwrap_or_default();
+        #[allow(clippy::option_as_ref_deref)]
         let new_parent = request.parent_id.as_ref().map(|s| s.as_str()).unwrap_or("");
 
         if current_parent != new_parent {

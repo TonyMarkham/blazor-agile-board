@@ -10,8 +10,6 @@
 #   PM_CB_FAILURE_THRESHOLD=10 overrides [circuit_breaker].failure_threshold
 #   PM_RETRY_MAX_ATTEMPTS=5    overrides [retry].max_attempts
 #   PM_HANDLER_TIMEOUT_SECS=60 overrides [handler].timeout_secs
-#
-# Config directory can be overridden with PM_CONFIG_DIR environment variable.
 
 # =============================================================================
 # Server Configuration

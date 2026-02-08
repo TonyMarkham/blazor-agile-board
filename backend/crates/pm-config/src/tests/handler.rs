@@ -13,7 +13,7 @@ use serial_test::serial;
 #[serial]
 fn given_timeout_zero_when_validate_then_error() {
     // Given
-    let (_temp, _guard) = setup_config_dir();
+    let _temp = setup_config_dir();
     let _timeout = EnvGuard::set("PM_HANDLER_TIMEOUT_SECS", "0");
 
     // When
@@ -28,7 +28,7 @@ fn given_timeout_zero_when_validate_then_error() {
 #[serial]
 fn given_timeout_over_max_when_validate_then_error() {
     // Given
-    let (_temp, _guard) = setup_config_dir();
+    let _temp = setup_config_dir();
     let _timeout = EnvGuard::set("PM_HANDLER_TIMEOUT_SECS", "301");
 
     // When
@@ -43,7 +43,7 @@ fn given_timeout_over_max_when_validate_then_error() {
 #[serial]
 fn given_valid_timeout_when_validate_then_ok() {
     // Given
-    let (_temp, _guard) = setup_config_dir();
+    let _temp = setup_config_dir();
     let _timeout = EnvGuard::set("PM_HANDLER_TIMEOUT_SECS", "60");
 
     // When

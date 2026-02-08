@@ -47,6 +47,7 @@ impl Client {
         let body: Value = response.json().await?;
 
         // Check for error response
+        #[allow(clippy::collapsible_if)]
         if !status.is_success() {
             if let Some(error) = body.get("error") {
                 let code = error
@@ -122,6 +123,7 @@ impl Client {
     }
 
     /// Create a new work item
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_work_item(
         &self,
         project_id: &str,
@@ -162,6 +164,7 @@ impl Client {
     }
 
     /// Update a work item
+    #[allow(clippy::too_many_arguments)]
     pub async fn update_work_item(
         &self,
         id: &str,

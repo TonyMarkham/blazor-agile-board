@@ -41,6 +41,19 @@ pub struct PortFileInfo {
 }
 
 impl PortFileInfo {
+    /// Ensure the parent directory of a path exists.
+    fn ensure_parent_dir(path: &std::path::Path) -> ConfigErrorResult<()> {
+        if let Some(dir) = path.parent()
+            && !dir.exists()
+        {
+            std::fs::create_dir_all(dir).map_err(|e| ConfigError::Io {
+                path: dir.to_path_buf(),
+                source: e,
+            })?;
+        }
+        Ok(())
+    }
+
     /// Write a port discovery file to the config directory.
     ///
     /// Called by the server after `TcpListener::bind()` succeeds.
@@ -53,14 +66,7 @@ impl PortFileInfo {
         let path = Self::path()?;
 
         // Ensure config directory exists (safe to call before Config::load())
-        if let Some(dir) = path.parent() {
-            if !dir.exists() {
-                std::fs::create_dir_all(dir).map_err(|e| ConfigError::Io {
-                    path: dir.to_path_buf(),
-                    source: e,
-                })?;
-            }
-        }
+        Self::ensure_parent_dir(&path)?;
 
         // Guard: refuse to overwrite a live server's port file.
         // Note: there is a small TOCTOU window between this check and the write
@@ -70,6 +76,39 @@ impl PortFileInfo {
             return Err(ConfigError::config(format!(
                 "Another pm-server is already running on port {} (PID {}). \
                    Stop it first or use a different config directory.",
+                existing.port, existing.pid
+            )));
+        }
+
+        let info = PortFileInfo {
+            pid: std::process::id(),
+            port,
+            host: host.to_string(),
+            started_at: chrono::Utc::now().to_rfc3339(),
+            version: env!("CARGO_PKG_VERSION").to_string(),
+        };
+
+        let content = serde_json::to_string_pretty(&info)
+            .map_err(|e| ConfigError::config(format!("Failed to serialize port file: {e}")))?;
+
+        std::fs::write(&path, content).map_err(|e| ConfigError::Io {
+            path: path.clone(),
+            source: e,
+        })?;
+
+        Ok(path)
+    }
+
+    /// Write to a specific config directory (for tests).
+    pub fn write_in(config_dir: &std::path::Path, port: u16, host: &str) -> ConfigErrorResult<PathBuf> {
+        let path = config_dir.join(PORT_FILENAME);
+
+        Self::ensure_parent_dir(&path)?;
+
+        if let Ok(Some(existing)) = Self::read_live_in(config_dir) {
+            return Err(ConfigError::config(format!(
+                "Another pm-server is already running on port {} (PID {}). \
+                     Stop it first or use a different config directory.",
                 existing.port, existing.pid
             )));
         }
@@ -116,6 +155,26 @@ impl PortFileInfo {
         Ok(Some(info))
     }
 
+    /// Read from a specific config directory (for tests).
+    pub fn read_in(config_dir: &std::path::Path) -> ConfigErrorResult<Option<PortFileInfo>> {
+        let path = config_dir.join(PORT_FILENAME);
+
+        if !path.exists() {
+            return Ok(None);
+        }
+
+        let content = std::fs::read_to_string(&path).map_err(|e| ConfigError::Io {
+            path: path.clone(),
+            source: e,
+        })?;
+
+        let info: PortFileInfo = serde_json::from_str(&content).map_err(|e| {
+            ConfigError::config(format!("Invalid port file {}: {e}", path.display()))
+        })?;
+
+        Ok(Some(info))
+    }
+
     /// Read the port discovery file and verify the server process is still alive.
     ///
     /// Returns `Ok(None)` if:
@@ -143,12 +202,39 @@ impl PortFileInfo {
         }
     }
 
+    /// Read from a specific config directory and verify process liveness (for tests).
+    pub fn read_live_in(config_dir: &std::path::Path) -> ConfigErrorResult<Option<PortFileInfo>> {
+        let info = match Self::read_in(config_dir)? {
+            Some(i) => i,
+            None => return Ok(None),
+        };
+
+        if !is_process_running(info.pid) {
+            let _ = Self::remove_in(config_dir);
+            return Ok(None);
+        }
+
+        Ok(Some(info))
+    }
+
     /// Delete the port discovery file.
     ///
     /// Called by the server on graceful shutdown.
     /// Silently succeeds if the file does not exist.
     pub fn remove() -> ConfigErrorResult<()> {
         let path = Self::path()?;
+        if path.exists() {
+            std::fs::remove_file(&path).map_err(|e| ConfigError::Io {
+                path: path.clone(),
+                source: e,
+            })?;
+        }
+        Ok(())
+    }
+
+    /// Remove from a specific config directory (for tests).
+    pub fn remove_in(config_dir: &std::path::Path) -> ConfigErrorResult<()> {
+        let path = config_dir.join(PORT_FILENAME);
         if path.exists() {
             std::fs::remove_file(&path).map_err(|e| ConfigError::Io {
                 path: path.clone(),

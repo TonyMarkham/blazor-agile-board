@@ -101,24 +101,37 @@ Here is a review of the plan:
 
 ### Other
 ```text
-Read `CRITICAL_OPERATING_CONSTRAINTS.md`, `docs/session-plans/121.1-Session-Plan.md` and `docs/session-plans/121-Session-Plan.md`.
+Read `CRITICAL_OPERATING_CONSTRAINTS.md`, `docs/session-plans/121.3-Session-Plan.md` and `docs/session-plans/121-Session-Plan.md`.
 
-Please audit `docs/session-plans/121.1-Session-Plan.md` and cross reference it's contents against the current state of the project to avoid making poor assumptions.
+Please audit `docs/session-plans/121.3-Session-Plan.md` and cross reference it's contents against the current state of the project to avoid making poor assumptions.
+
+I want you to teach me by presenting me with bite-sized chunks for me to write/edit keeping the commentary separate from the code snippets to make the code snippets easier for me to follow
+
+**The audit is important, but teaching is the ultimate goal of this session**
+```
+
+### Other
+```text
+Read `CRITICAL_OPERATING_CONSTRAINTS.md`, `docs/session-plans/121.3-Session-Plan.md` and `docs/session-plans/121-Session-Plan.md`.
+
+Please audit `docs/session-plans/121.3-Session-Plan.md` and cross reference it's contents against the current state of the project to avoid making poor assumptions.
 
 This audit should identify gaps in the **PLAN** not in the repo itself.
 If the repo is missing something that the plan needs, but the plan never addresses that requirement, **THAT** should be highlighted as a gap.
 
 I want you to teach me by presenting me with bite-sized chunks for me to write/edit keeping the commentary separate from the code snippets to make the code snippets easier for me to follow
+
+**The audit is important, but teaching is the ultimate goal of this session**
 ```
 
 ### End of Session Sanity Check
 ```text
-Builds clean and all tests pass. Please sanity check that everything in `docs/session-plans/121.1-Session-Plan.md` was implemented as expected.
+Builds clean and all tests pass. Please sanity check that everything in `docs/session-plans/121.3-Session-Plan.md` was implemented as expected.
 ```
 
 ### Update Docs
 ```text
-Please update `docs/session-plans/121.1-Session-Plan.md` and `docs/session-plans/121-Session-Plan.md`
+Please update `docs/session-plans/121.3-Session-Plan.md` and `docs/session-plans/121-Session-Plan.md`
 ```
 
 ### Commit

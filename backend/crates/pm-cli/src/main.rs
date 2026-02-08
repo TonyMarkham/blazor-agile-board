@@ -33,6 +33,7 @@ use crate::{
 
 use pm_cli::Client;
 
+use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::Parser;
@@ -40,6 +41,11 @@ use clap::Parser;
 #[tokio::main]
 async fn main() -> ExitCode {
     let cli = Cli::parse();
+
+    // Desktop launches Tauri — handle before server discovery
+    if matches!(cli.command, Commands::Desktop) {
+        return launch_desktop();
+    }
 
     // Discover server URL: explicit flag > port file > error
     let server_url = match cli.server {
@@ -127,6 +133,9 @@ async fn main() -> ExitCode {
             CommentCommands::Update { id, content } => client.update_comment(&id, &content).await,
             CommentCommands::Delete { id } => client.delete_comment(&id).await,
         },
+
+        // Desktop is handled above before server discovery
+        Commands::Desktop => unreachable!(),
     };
 
     // Handle result
@@ -179,6 +188,7 @@ fn discover_server_url() -> String {
             eprintln!();
             eprintln!("Start the server first:");
             eprintln!("  cargo run -p pm-server");
+            eprintln!("  pm desktop                # Desktop mode");
             eprintln!();
             eprintln!("Or specify a server URL explicitly:");
             eprintln!("  pm --server http://127.0.0.1:8000 <command>");
@@ -196,4 +206,115 @@ fn discover_server_url() -> String {
             std::process::exit(1);
         }
     }
+}
+
+/// Launch the Tauri desktop app for the current repository.
+fn launch_desktop() -> ExitCode {
+    let repo_root = match pm_config::Config::config_dir() {
+        Ok(pm_dir) => match pm_dir.parent() {
+            Some(root) => root.to_path_buf(),
+            None => {
+                eprintln!("Error: cannot determine repo root from {}", pm_dir.display());
+                return ExitCode::FAILURE;
+            }
+        },
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            eprintln!();
+            eprintln!("pm desktop must be run from inside a git repository.");
+            return ExitCode::FAILURE;
+        }
+    };
+
+    let pm_dir = repo_root.join(".pm");
+
+    // Ensure .pm/ directory exists
+    if let Err(e) = std::fs::create_dir_all(&pm_dir) {
+        eprintln!("Error: cannot create {}: {}", pm_dir.display(), e);
+        return ExitCode::FAILURE;
+    }
+
+    // Find Tauri binary
+    let binary = match find_tauri_binary(&pm_dir) {
+        Some(path) => path,
+        None => {
+            eprintln!("Error: Tauri desktop app not found.");
+            eprintln!();
+            eprintln!("Searched locations:");
+            eprintln!("  1. {}/bin/", pm_dir.display());
+            eprintln!("  2. Next to the pm binary");
+            eprintln!();
+            eprintln!("Install the desktop app or build from source:");
+            eprintln!("  just build");
+            return ExitCode::FAILURE;
+        }
+    };
+
+    eprintln!("Launching desktop app: {}", binary.display());
+    eprintln!("Repository: {}", repo_root.display());
+
+    // Spawn Tauri — no env vars needed.
+    // Tauri finds .pm/ via git (inherits cwd from this process).
+    match std::process::Command::new(&binary)
+        .current_dir(&repo_root)
+        .spawn()
+    {
+        Ok(_) => ExitCode::SUCCESS,
+        Err(e) => {
+            eprintln!("Error: failed to launch {}: {}", binary.display(), e);
+            ExitCode::FAILURE
+        }
+    }
+}
+
+/// Search for the Tauri binary.
+///
+/// Search order:
+/// 1. <repo>/.pm/bin/ — installed location
+/// 2. Next to the current executable — co-located dev/release builds
+fn find_tauri_binary(pm_dir: &std::path::Path) -> Option<PathBuf> {
+    let bin_dir = pm_dir.join("bin");
+
+    // macOS .app bundle (installed builds)
+    #[cfg(target_os = "macos")]
+    {
+        let macos_app = bin_dir
+            .join("Project Manager.app")
+            .join("Contents")
+            .join("MacOS")
+            .join("project-manager");
+        if macos_app.exists() {
+            return Some(macos_app);
+        }
+    }
+
+    // Unix binary (macOS fallback + Linux)
+    #[cfg(unix)]
+    {
+        let unix_bin = bin_dir.join("project-manager");
+        if unix_bin.exists() {
+            return Some(unix_bin);
+        }
+    }
+
+    // Windows binary
+    #[cfg(windows)]
+    {
+        let win_bin = bin_dir.join("project-manager.exe");
+        if win_bin.exists() {
+            return Some(win_bin);
+        }
+    }
+
+    // Sibling to current executable
+    if let Ok(exe) = std::env::current_exe()
+        && let Some(exe_dir) = exe.parent()
+    {
+        let sibling = exe_dir.join("project-manager");
+        if sibling.exists() {
+            return Some(sibling);
+        }
+    }
+
+    None
 }

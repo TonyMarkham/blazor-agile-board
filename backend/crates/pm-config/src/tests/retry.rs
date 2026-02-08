@@ -13,7 +13,7 @@ use serial_test::serial;
 #[serial]
 fn given_max_attempts_zero_when_validate_then_error() {
     // Given
-    let (_temp, _guard) = setup_config_dir();
+    let _temp = setup_config_dir();
     let _attempts = EnvGuard::set("PM_RETRY_MAX_ATTEMPTS", "0");
 
     // When
@@ -28,7 +28,7 @@ fn given_max_attempts_zero_when_validate_then_error() {
 #[serial]
 fn given_max_attempts_over_max_when_validate_then_error() {
     // Given
-    let (_temp, _guard) = setup_config_dir();
+    let _temp = setup_config_dir();
     let _attempts = EnvGuard::set("PM_RETRY_MAX_ATTEMPTS", "11");
 
     // When
@@ -43,7 +43,7 @@ fn given_max_attempts_over_max_when_validate_then_error() {
 #[serial]
 fn given_initial_delay_below_min_when_validate_then_error() {
     // Given
-    let (_temp, _guard) = setup_config_dir();
+    let _temp = setup_config_dir();
     let _delay = EnvGuard::set("PM_RETRY_INITIAL_DELAY_MS", "5");
 
     // When
@@ -58,7 +58,7 @@ fn given_initial_delay_below_min_when_validate_then_error() {
 #[serial]
 fn given_backoff_multiplier_below_min_when_validate_then_error() {
     // Given
-    let (_temp, _guard) = setup_config_dir();
+    let _temp = setup_config_dir();
     let _multiplier = EnvGuard::set("PM_RETRY_BACKOFF_MULTIPLIER", "0.5");
 
     // When
@@ -73,7 +73,7 @@ fn given_backoff_multiplier_below_min_when_validate_then_error() {
 #[serial]
 fn given_backoff_multiplier_over_max_when_validate_then_error() {
     // Given
-    let (_temp, _guard) = setup_config_dir();
+    let _temp = setup_config_dir();
     let _multiplier = EnvGuard::set("PM_RETRY_BACKOFF_MULTIPLIER", "11.0");
 
     // When
@@ -88,7 +88,7 @@ fn given_backoff_multiplier_over_max_when_validate_then_error() {
 #[serial]
 fn given_valid_retry_config_when_validate_then_ok() {
     // Given
-    let (_temp, _guard) = setup_config_dir();
+    let _temp = setup_config_dir();
     let _attempts = EnvGuard::set("PM_RETRY_MAX_ATTEMPTS", "5");
     let _delay = EnvGuard::set("PM_RETRY_INITIAL_DELAY_MS", "200");
     let _multiplier = EnvGuard::set("PM_RETRY_BACKOFF_MULTIPLIER", "3.0");

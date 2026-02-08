@@ -13,9 +13,10 @@ use serial_test::serial;
 #[serial]
 fn given_malformed_toml_when_load_then_error_mentions_file() {
     // Given
-    let (temp, _guard) = setup_config_dir();
+    let temp = setup_config_dir();
+    std::env::set_current_dir(temp.path()).unwrap();
     std::fs::write(
-        temp.path().join("config.toml"),
+        temp.path().join(".pm/config.toml"),
         "this is not valid toml {{{{",
     )
     .unwrap();
@@ -33,7 +34,7 @@ fn given_malformed_toml_when_load_then_error_mentions_file() {
 #[serial]
 fn given_database_path_with_traversal_when_validate_then_error() {
     // Given
-    let (_temp, _guard) = setup_config_dir();
+    let _temp = setup_config_dir();
     let _path = EnvGuard::set("PM_DATABASE_PATH", "../../../etc/passwd");
 
     // When
@@ -50,7 +51,7 @@ fn given_database_path_with_traversal_when_validate_then_error() {
 #[serial]
 fn given_absolute_database_path_when_validate_then_error() {
     // Given
-    let (_temp, _guard) = setup_config_dir();
+    let _temp = setup_config_dir();
     let _path = EnvGuard::set("PM_DATABASE_PATH", "/tmp/data.db");
 
     // When

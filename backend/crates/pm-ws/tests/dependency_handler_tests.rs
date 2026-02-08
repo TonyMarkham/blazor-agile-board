@@ -481,7 +481,7 @@ async fn given_50_dependencies_when_create_51st_then_limit_error() {
             .bind(blocker_id.to_string())
             .bind(fixture.project_id.to_string())
             .bind(format!("Blocker {}", i))
-            .bind(i as i32 + 10)
+            .bind(i + 10)
             .bind(Utc::now().timestamp())
             .bind(Utc::now().timestamp())
             .bind(fixture.user_id.to_string())

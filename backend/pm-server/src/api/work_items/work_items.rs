@@ -65,6 +65,7 @@ pub async fn get_work_item(
 /// GET /api/v1/projects/:project_id/work-items
 ///
 /// List work items in a project with optional filters
+#[allow(clippy::unnecessary_map_or)]
 pub async fn list_work_items(
     State(state): State<AppState>,
     Path(project_id): Path<String>,

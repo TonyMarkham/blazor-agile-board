@@ -18,6 +18,7 @@ pub struct UserId(pub Uuid);
 impl FromRequestParts<AppState> for UserId {
     type Rejection = ApiError;
 
+    #[allow(clippy::manual_async_fn)]
     fn from_request_parts(
         parts: &mut Parts,
         state: &AppState,
@@ -26,6 +27,7 @@ impl FromRequestParts<AppState> for UserId {
             let headers = &parts.headers;
 
             // Try X-User-Id header first
+            #[allow(clippy::collapsible_if)]
             if let Some(header_value) = headers.get("X-User-Id") {
                 if let Ok(user_id_str) = header_value.to_str() {
                     if let Ok(uuid) = Uuid::parse_str(user_id_str) {

@@ -13,7 +13,7 @@ use serial_test::serial;
 #[serial]
 fn given_no_config_file_when_load_then_ok_with_defaults() {
     // Given
-    let (_temp, _guard) = setup_config_dir();
+    let _temp = setup_config_dir();
 
     // When
     let result = Config::load();
@@ -33,7 +33,7 @@ fn given_no_config_file_when_load_then_ok_with_defaults() {
 #[serial]
 fn given_no_config_file_when_load_and_validate_then_ok() {
     // Given
-    let (_temp, _guard) = setup_config_dir();
+    let _temp = setup_config_dir();
 
     // When
     let config = Config::load().unwrap();
@@ -47,9 +47,10 @@ fn given_no_config_file_when_load_and_validate_then_ok() {
 #[serial]
 fn given_valid_toml_file_when_load_then_ok_and_uses_toml_values() {
     // Given
-    let (temp, _guard) = setup_config_dir();
+    let temp = setup_config_dir();
+    std::env::set_current_dir(temp.path()).unwrap();
     std::fs::write(
-        temp.path().join("config.toml"),
+        temp.path().join(".pm/config.toml"),
         r#"
               [server]
               port = 9000
@@ -75,8 +76,12 @@ fn given_valid_toml_file_when_load_then_ok_and_uses_toml_values() {
 #[serial]
 fn given_env_var_and_toml_when_load_then_env_var_overrides_toml() {
     // Given
-    let (temp, _config_guard) = setup_config_dir();
-    std::fs::write(temp.path().join("config.toml"), "[server]\nport = 9000").unwrap();
+    let temp = setup_config_dir();
+    std::env::set_current_dir(temp.path()).unwrap();
+    std::fs::write(
+        temp.path().join(".pm/config.toml"),
+        "[server]\nport = 9000"
+    ).unwrap();
     let _port_guard = EnvGuard::set("PM_SERVER_PORT", "8888");
 
     // When
@@ -90,7 +95,7 @@ fn given_env_var_and_toml_when_load_then_env_var_overrides_toml() {
 #[serial]
 fn given_multiple_env_overrides_when_load_then_all_apply() {
     // Given
-    let (_temp, _config_guard) = setup_config_dir();
+    let _temp = setup_config_dir();
     let _port = EnvGuard::set("PM_SERVER_PORT", "7777");
     let _host = EnvGuard::set("PM_SERVER_HOST", "0.0.0.0");
     let _max = EnvGuard::set("PM_SERVER_MAX_CONNECTIONS", "2000");
