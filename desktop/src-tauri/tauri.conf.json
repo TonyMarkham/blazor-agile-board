@@ -49,7 +49,7 @@
     ],
     "externalBin": [],
     "resources": {
-      "../../.server/config.toml": ".server/config.toml",
+      "../../.pm/config.toml": ".server/config.toml",
       "../../target/release/pm-server": "pm-server"
     },
     "targets": ["app", "dmg", "nsis", "deb", "rpm"],

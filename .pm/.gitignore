@@ -1,0 +1,28 @@
+# .pm/.gitignore
+  # ===============
+  # Runtime files that should NOT be committed.
+  # Files NOT listed here ARE tracked (data.db, config.toml).
+
+  # CRITICAL: Negate root .gitignore's *.db pattern for our database.
+  # Without this line, data.db would be ignored by the root *.db rule.
+  !data.db
+
+  # Installed binaries (downloaded via install.sh or built locally)
+  bin/
+
+  # SQLite WAL/SHM runtime files (recreated automatically on server start)
+  *.db-wal
+  *.db-shm
+
+  # Server discovery file (ephemeral — changes every server start)
+  server.json
+
+  # Process lock file (prevents duplicate server instances)
+  server.lock
+
+  # Server log files
+  logs/
+  log/
+
+  # Tauri desktop runtime data
+  tauri/

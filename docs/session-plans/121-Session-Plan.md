@@ -16,28 +16,46 @@ Two previously separate sessions merged into one coherent goal: **make all tools
 
 | Session | Scope | Est. Tokens | Status |
 |---------|-------|-------------|--------|
-| **[121.1](121.1-Session-Plan.md)** | Infrastructure: workspace metadata, `.pm/` layout, `.gitignore`, justfile migration | ~25k | Pending |
+| **[121.1](121.1-Session-Plan.md)** | Infrastructure: workspace metadata, `.pm/` layout, `.gitignore`, justfile migration | ~25k | ✅ **COMPLETE** |
 | **[121.2](121.2-Session-Plan.md)** | Tauri repo-awareness: `PM_CONFIG_DIR`, `pm desktop` command, `just dev` | ~35k | Pending |
 | **[121.3](121.3-Session-Plan.md)** | Release distribution: justfile commands, install scripts | ~30k | Pending |
 
 ---
 
-## Session 121.1: Infrastructure
+## Session 121.1: Infrastructure ✅ **COMPLETE**
 
 **Files Created:**
 - `.pm/.gitignore` — Selective git tracking for `.pm/` directory
 
 **Files Modified:**
-- `Cargo.toml` (root) — Add `[workspace.package]` section
+- `Cargo.toml` (root) — Add `[workspace.package]` section + typo fix
 - `backend/crates/pm-cli/Cargo.toml` — Inherit workspace metadata
 - `backend/pm-server/Cargo.toml` — Inherit workspace metadata
 - `backend/crates/pm-config/Cargo.toml` — Inherit workspace metadata
+- `backend/crates/pm-core/Cargo.toml` — Inherit workspace metadata (added beyond plan)
+- `backend/crates/pm-db/Cargo.toml` — Inherit workspace metadata (added beyond plan)
+- `backend/crates/pm-auth/Cargo.toml` — Inherit workspace metadata (added beyond plan)
+- `backend/crates/pm-proto/Cargo.toml` — Inherit workspace metadata (added beyond plan)
+- `backend/crates/pm-ws/Cargo.toml` — Inherit workspace metadata (added beyond plan)
 - `.gitignore` — Remove `Cargo.lock`, `.pm/`, `.server`; add `dist/`
 - `justfile` — Change `config_dir` from `.server` to `.pm`
-- `backend/config.example.toml` — Update `.server/` references to `.pm/`
+- `backend/config.example.toml` — Update `.server/` references to `.pm/` (4 places)
 - `desktop/src-tauri/tauri.conf.json` — Update resource source path
 
-**Verification:** `just check-backend && just clippy-backend && just test-backend`
+**Files Newly Tracked:**
+- `Cargo.lock` — Reproducible builds for binary project
+- `.pm/data.db` — Shared database (tracked via `.pm/.gitignore` negation)
+
+**Verification Results:**
+- ✅ `just check-backend` passes
+- ✅ `just test-backend` all tests pass
+- ✅ Workspace version inheritance verified (all crates at 0.1.0)
+- ✅ `.pm/config.toml` created via `just setup-config`
+- ⚠️ Pre-existing clippy warning in pm-config (collapsible_if), not introduced by 121.1
+
+**Deviations from Plan (Intentional):**
+- Description fields skipped in member crates (optional, user decision)
+- All member crates updated (not just pm-cli, pm-server, pm-config) for complete consistency
 
 ---
 

@@ -12,6 +12,12 @@ members = [
 ]
 resolver = "3"
 
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/TonyMarkham/blazor-agile-board"
+
 [workspace.dependencies]
 axum = { version = "0.8.8", features = ["ws"] }
 axum-test = { version = "18.7.0", features = ["ws"] }
@@ -67,7 +73,7 @@ windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Syste
 wiremock = { version = "0.6.5" }
 zip = { version = "7.3.0", default-features = false, features = ["deflate", "bzip2", "time"] }
 
-# Workspae
+# Workspace
 pm-auth = { path = "backend/crates/pm-auth" }
 pm-config = { path = "backend/crates/pm-config" }
 pm-core = { path = "backend/crates/pm-core" }

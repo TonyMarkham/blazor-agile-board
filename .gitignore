@@ -1,6 +1,5 @@
 # Rust
 target/
-Cargo.lock
 **/*.rs.bk
 *.pdb
 
@@ -61,9 +60,8 @@ bld/
 *.sqlite3
 /data/
 
-# Application data directory (desktop mode)
-.pm/
-.server
+# Release distribution archives
+dist/
 
 # OS files
 .DS_Store
