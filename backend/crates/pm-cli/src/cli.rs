@@ -11,7 +11,7 @@ pub struct Cli {
     #[command(subcommand)]
     pub(crate) command: Commands,
 
-    /// Server URL (default: http://127.0.0.1:8000)
+    /// Server URL (auto-discovered from server.json, or specify manually)
     #[arg(long, global = true)]
     pub(crate) server: Option<String>,
 

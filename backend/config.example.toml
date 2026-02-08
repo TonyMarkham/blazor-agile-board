@@ -22,9 +22,20 @@
 # Use "0.0.0.0" to listen on all interfaces
 host = "127.0.0.1"
 
-# Server port (range: 1024-65535, default: 8000)
-# Ports below 1024 require root/admin privileges
-port = 8000
+# Server port (0 = auto-assign, or 1024-65535 for a specific port)
+#
+# Port 0 (auto-assign):
+#   - OS picks an available port automatically
+#   - Actual port is written to .pm/server.json for CLI auto-discovery
+#   - Perfect for multi-repo setups (no conflicts)
+#   - Port changes on every restart (not suitable for webhooks)
+#
+# Specific port (e.g., 8000):
+#   - Stable URL for webhooks, bookmarks, monitoring
+#   - Conflicts if multiple servers run in different repos
+#
+# Recommendation: Use 0 unless you need a stable URL for external tools.
+port = 0
 
 # Maximum concurrent connections (range: 1-100000, default: 10000)
 max_connections = 10000

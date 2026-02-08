@@ -23,14 +23,15 @@ mod project_commands;
 mod work_item_commands;
 
 use crate::{
-    cli::Cli, commands::Commands, comment_commands::CommentCommands,
-    project_commands::ProjectCommands, work_item_commands::WorkItemCommands,
+    cli::Cli,
+    client::{CliClientResult, error::ClientError},
+    commands::Commands,
+    comment_commands::CommentCommands,
+    project_commands::ProjectCommands,
+    work_item_commands::WorkItemCommands,
 };
 
-pub use crate::client::{CliClientResult, error::ClientError};
-
 use pm_cli::Client;
-use pm_config::{DEFAULT_HOST, DEFAULT_PORT};
 
 use std::process::ExitCode;
 
@@ -40,10 +41,11 @@ use clap::Parser;
 async fn main() -> ExitCode {
     let cli = Cli::parse();
 
-    // Build server URL from config defaults if not provided
-    let server_url = cli
-        .server
-        .unwrap_or_else(|| format!("http://{}:{}", DEFAULT_HOST, DEFAULT_PORT));
+    // Discover server URL: explicit flag > port file > error
+    let server_url = match cli.server {
+        Some(url) => url,
+        None => discover_server_url(),
+    };
 
     let client = Client::new(&server_url, cli.user_id.as_deref());
 
@@ -150,6 +152,48 @@ async fn main() -> ExitCode {
         Err(e) => {
             eprintln!("Error: {}", e);
             ExitCode::FAILURE
+        }
+    }
+}
+
+/// Discover the server URL from the port discovery file.
+///
+/// The pm-server writes a `server.json` file after binding, containing
+/// the PID, port, and host. This function reads that file and verifies
+/// the server process is still alive.
+///
+/// Falls back to a clear error message if no server is found.
+fn discover_server_url() -> String {
+    match pm_config::PortFileInfo::read_live() {
+        Ok(Some(info)) => {
+            format!("http://{}:{}", info.host, info.port)
+        }
+        Ok(None) => {
+            let port_path = pm_config::PortFileInfo::path()
+                .map(|p| p.display().to_string())
+                .unwrap_or_else(|_| ".pm/server.json".to_string());
+
+            eprintln!("Error: No running pm-server found.");
+            eprintln!();
+            eprintln!("Checked: {}", port_path);
+            eprintln!();
+            eprintln!("Start the server first:");
+            eprintln!("  cargo run -p pm-server");
+            eprintln!();
+            eprintln!("Or specify a server URL explicitly:");
+            eprintln!("  pm --server http://127.0.0.1:8000 <command>");
+            std::process::exit(1);
+        }
+        Err(e) => {
+            let port_path = pm_config::PortFileInfo::path()
+                .map(|p| p.display().to_string())
+                .unwrap_or_else(|_| ".pm/server.json".to_string());
+
+            eprintln!("Error reading port file ({}): {}", port_path, e);
+            eprintln!();
+            eprintln!("Specify a server URL explicitly:");
+            eprintln!("  pm --server http://127.0.0.1:8000 <command>");
+            std::process::exit(1);
         }
     }
 }

@@ -185,7 +185,19 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Create TCP listener
     let bind_addr = config.bind_addr();
     let listener = TcpListener::bind(&bind_addr).await?;
-    info!("Server listening on {}", bind_addr);
+
+    // Get actual bound address (important when port is 0 / auto-assigned)
+    let actual_addr = listener.local_addr()?;
+    info!("Server listening on {}", actual_addr);
+
+    // Write port discovery file for CLI auto-discovery
+    match pm_config::PortFileInfo::write(actual_addr.port(), &config.server.host) {
+        Ok(path) => info!("Port file written: {}", path.display()),
+        Err(e) => warn!(
+            "Failed to write port file (CLI auto-discovery may not work): {}",
+            e
+        ),
+    }
 
     // Spawn signal handler for graceful shutdown
     let shutdown_for_signal = shutdown.clone();
@@ -249,6 +261,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
             info!("Graceful shutdown complete");
         })
         .await?;
+
+    // Clean up port discovery file
+    if let Err(e) = pm_config::PortFileInfo::remove() {
+        warn!("Failed to remove port file: {}", e);
+    }
 
     Ok(())
 }
