@@ -20,7 +20,7 @@ For Tauri launched via double-click (outside a terminal/repo context), the insta
 |---------|-------|-------------|--------|
 | **[121.1](121.1-Session-Plan.md)** | Infrastructure: workspace metadata, `.pm/` layout, `.gitignore`, justfile migration | ~25k | **COMPLETE** |
 | **[121.2](121.2-Session-Plan.md)** | Tauri repo-awareness: git-based config discovery, `pm desktop` command | ~35k | **COMPLETE** |
-| **[121.3](121.3-Session-Plan.md)** | Release distribution: justfile commands, install scripts, `config.json` | ~30k | Pending |
+| **[121.3](121.3-Session-Plan.md)** | Release distribution: justfile commands, install scripts, `config.json` | ~30k (~28k actual) | **COMPLETE** |
 | **[121.4](121.4-Session-Plan.md)** | Data sync: fix .gitignore, export/import commands, git hooks | ~40k | Pending |
 
 ---
@@ -73,18 +73,23 @@ For Tauri launched via double-click (outside a terminal/repo context), the insta
 
 ---
 
-## Session 121.3: Release Distribution
+## Session 121.3: Release Distribution — COMPLETE
 
 **Files Created:**
-- `install.sh` — macOS/Linux installer (writes `.pm/bin/config.json`)
-- `install.ps1` — Windows installer (writes `.pm\bin\config.json`)
+- `install.sh` — macOS/Linux installer (writes `.pm/bin/config.json`, 218 lines)
+- `install.ps1` — Windows installer (writes `.pm\bin\config.json`, 151 lines)
 
 **Files Modified:**
-- `justfile` — Distribution variables and commands
+- `justfile` — Distribution variables (4 vars) + 6 commands + help text
 
-**Key addition vs original plan:** Install scripts write `.pm/bin/config.json` with `{"repo_root": "<absolute_path>"}` so Tauri can find the repo when double-clicked outside a terminal.
+**Improvements made during implementation:**
+- **Cross-platform target detection**: Used `rustc --print host-tuple` instead of `grep`/`cut` (works in cmd.exe, PowerShell, Git Bash)
+- **Cross-platform version extraction**: Used `os_family()` conditional to extract version from `Cargo.toml` on all platforms
+- **Windows compatibility**: Fixed `setup-config`, `build-dev`, and `build-release` recipes with OS-specific implementations
 
-**Verification:** `just --list | grep archive && bash -n install.sh`
+**Critical contract:** Both install scripts write `.pm/bin/config.json` with `{"repo_root": "<absolute_path>"}` so Tauri can find `.pm/` when double-clicked outside a terminal.
+
+**Verification:** `just check-backend && just test-backend` (all pass)
 
 ---
 

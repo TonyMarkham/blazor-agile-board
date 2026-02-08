@@ -7,6 +7,17 @@ desktop_dir := "desktop"
 config_dir := ".pm"
 coverage_dir := "./coverage"
 
+# === Distribution ===
+# NOTE: Version auto-extracted from workspace Cargo.toml
+dist_dir := "dist"
+version := if os_family() == "unix" {
+`cargo pkgid -p pm-cli | cut -d'#' -f2`
+} else {
+`powershell -NoProfile -Command "(cargo pkgid -p pm-cli).Split('#')[1]"`
+}
+target_triple := `rustc --print host-tuple`
+archive_name := "pm-" + version + "-" + target_triple
+
 # === Solution File ===
 frontend_solution := frontend_dir + "/ProjectManagement.slnx"
 
@@ -415,19 +426,37 @@ lint:
 
 # Build both backend and frontend (debug, parallel)
 build-dev:
-    just setup-config
-    just restore
-    cargo build -p {{rust_server}} & \
-    dotnet publish {{wasm_project}} -c {{config_debug}} {{dotnet_no_restore}} & \
-    wait
+  just setup-config
+  just restore
+  just _build-dev-impl
+
+[unix]
+_build-dev-impl:
+  cargo build -p {{rust_server}} & \
+  dotnet publish {{wasm_project}} -c {{config_debug}} {{dotnet_no_restore}} & \
+  wait
+
+[windows]
+_build-dev-impl:
+  cargo build -p {{rust_server}}
+  dotnet publish {{wasm_project}} -c {{config_debug}} {{dotnet_no_restore}}
 
 # Build both backend and frontend (release, parallel)
 build-release:
-    just setup-config
-    just restore
-    cargo build -p {{rust_server}} {{cargo_release}} & \
-    dotnet publish {{wasm_project}} -c {{config_release}} {{dotnet_no_restore}} & \
-    wait
+  just setup-config
+  just restore
+  just _build-release-impl
+
+[unix]
+_build-release-impl:
+  cargo build -p {{rust_server}} {{cargo_release}} & \
+  dotnet publish {{wasm_project}} -c {{config_release}} {{dotnet_no_restore}} & \
+  wait
+
+[windows]
+_build-release-impl:
+  cargo build -p {{rust_server}} {{cargo_release}}
+  dotnet publish {{wasm_project}} -c {{config_release}} {{dotnet_no_restore}}
 
 # Run all tests (backend + frontend)
 test:
@@ -461,18 +490,75 @@ build:
     cargo tauri build
 
 # ============================================================================
+# Distribution Commands
+# ============================================================================
+
+# Build all binaries in release mode for distribution
+build-portable:
+    @echo "Building portable release ({{target_triple}})..."
+    cargo build -p pm-cli {{cargo_release}}
+    cargo build -p pm-server {{cargo_release}}
+    cargo tauri build
+
+# Create distribution archive from release binaries
+archive: build-portable
+    @echo "Creating archive: {{dist_dir}}/{{archive_name}}.tar.gz"
+    @test -f target/release/pm || (echo "ERROR: pm binary not found in target/release/"; exit 1)
+    @test -f target/release/pm-server || (echo "ERROR: pm-server binary not found in target/release/"; exit 1)
+    mkdir -p {{dist_dir}}/{{archive_name}}/bin
+    cp target/release/pm {{dist_dir}}/{{archive_name}}/bin/
+    cp target/release/pm-server {{dist_dir}}/{{archive_name}}/bin/
+    @# macOS: copy .app bundle if it exists
+    @if [ -d "target/release/bundle/macos/Project Manager.app" ]; then \
+        cp -r "target/release/bundle/macos/Project Manager.app" {{dist_dir}}/{{archive_name}}/bin/; \
+    fi
+    @# Linux: copy AppImage if it exists
+    @if ls target/release/bundle/appimage/*.AppImage 1>/dev/null 2>&1; then \
+        cp target/release/bundle/appimage/*.AppImage {{dist_dir}}/{{archive_name}}/bin/project-manager; \
+    fi
+    cd {{dist_dir}} && tar czf {{archive_name}}.tar.gz {{archive_name}}/
+    @echo ""
+    @echo "Archive created: {{dist_dir}}/{{archive_name}}.tar.gz"
+    @echo "Contents:"
+    @tar tzf {{dist_dir}}/{{archive_name}}.tar.gz
+
+# Build + archive in one step
+release-build: archive
+
+# Clean distribution artifacts
+clean-dist:
+    rm -rf {{dist_dir}}
+
+# Upload archive to an existing GitHub release (requires gh CLI)
+release-upload tag:
+    gh release upload {{tag}} {{dist_dir}}/{{archive_name}}.tar.gz --clobber
+
+# Create a new GitHub release and upload the archive
+release tag:
+    gh release create {{tag}} {{dist_dir}}/{{archive_name}}.tar.gz \
+        --title "v{{version}}" \
+        --notes "Release v{{version}} for {{target_triple}}"
+
+# ============================================================================
 # Utility Commands
 # ============================================================================
 
 # Copy example config to .pm directory if it doesn't exist
 setup-config:
-    mkdir -p {{config_dir}}
-    @if [ ! -f {{config_file}} ]; then \
-        cp {{config_example}} {{config_file}} && \
-        echo "{{msg_config_created}}"; \
-    else \
-        echo "{{msg_config_exists}}"; \
-    fi
+  @just _setup-config-impl
+
+[unix]
+_setup-config-impl:
+  mkdir -p {{config_dir}}
+  @if [ ! -f {{config_file}} ]; then \
+      cp {{config_example}} {{config_file}} && echo "{{msg_config_created}}"; \
+  else \
+      echo "{{msg_config_exists}}"; \
+  fi
+
+[windows]
+_setup-config-impl:
+  @if not exist "{{config_file}}" ( mkdir "{{config_dir}}" 2>NUL & copy "{{config_example}}" "{{config_file}}" & echo {{msg_config_created}} ) else ( echo {{msg_config_exists}} )
 
 # Show this help message
 @help:
@@ -506,6 +592,14 @@ setup-config:
     echo "🚀 Production:"
     echo "  just build-release             - Build backend + frontend (Release)"
     echo "  just build                     - Full production Tauri build"
+    echo ""
+    echo "📦 Distribution:"
+    echo "  just build-portable          - Build all binaries (release)"
+    echo "  just archive                 - Build + create distribution archive"
+    echo "  just release-build           - Alias for archive"
+    echo "  just release <tag>           - Create GitHub release with archive"
+    echo "  just release-upload <tag>    - Upload to existing GitHub release"
+    echo "  just clean-dist              - Remove dist/ directory"
     echo ""
     echo "🧹 Maintenance:"
     echo "  just clean                     - Clean all build artifacts"
