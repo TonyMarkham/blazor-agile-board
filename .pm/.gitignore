@@ -1,28 +1,32 @@
 # .pm/.gitignore
-  # ===============
-  # Runtime files that should NOT be committed.
-  # Files NOT listed here ARE tracked (data.db, config.toml).
+# ===============
+# Runtime files that should NOT be committed.
+# data.json and config.toml ARE tracked (not listed here = tracked).
 
-  # CRITICAL: Negate root .gitignore's *.db pattern for our database.
-  # Without this line, data.db would be ignored by the root *.db rule.
-  !data.db
+# SQLite database (local performance — use data.json for git sync)
+# Binary files cannot be merged by git. Two developers editing work items
+# independently produces an unresolvable binary conflict.
+data.db
 
-  # Installed binaries (downloaded via install.sh or built locally)
-  bin/
+# Negate root .gitignore's *.json pattern if one exists
+!data.json
 
-  # SQLite WAL/SHM runtime files (recreated automatically on server start)
-  *.db-wal
-  *.db-shm
+# Installed binaries (downloaded via install.sh or built locally)
+bin/
 
-  # Server discovery file (ephemeral — changes every server start)
-  server.json
+# SQLite WAL/SHM runtime files (recreated automatically on server start)
+*.db-wal
+*.db-shm
 
-  # Process lock file (prevents duplicate server instances)
-  server.lock
+# Server discovery file (ephemeral — changes every server start)
+server.json
 
-  # Server log files
-  logs/
-  log/
+# Process lock file (prevents duplicate server instances)
+server.lock
 
-  # Tauri desktop runtime data
-  tauri/
+# Server log files
+logs/
+log/
+
+# Tauri desktop runtime data
+tauri/
