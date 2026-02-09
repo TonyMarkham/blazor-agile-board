@@ -43,7 +43,9 @@
       "Bash(just build-cs-core:*)",
       "Bash(just check-rs-server:*)",
       "Bash(just test-rs-db:*)",
-      "Bash(just test-rs-config:*)"
+      "Bash(just test-rs-config:*)",
+      "Bash(just check-rs-cli:*)",
+      "Bash(just test-rs-cli:*)"
     ]
   }
 }

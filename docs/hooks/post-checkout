@@ -1,0 +1,31 @@
+#!/bin/bash
+# Post-checkout hook: Auto-import agile board data on branch switch
+#
+# This hook runs after 'git checkout' or 'git switch'.
+# Only triggers for branch checkouts, not file checkouts.
+
+# $3 is a flag: 1 = branch checkout, 0 = file checkout
+if [ "$3" != "1" ]; then
+    exit 0
+fi
+
+# Only run if data.json exists
+if [ ! -f .pm/data.json ]; then
+    exit 0
+fi
+
+# Only run if pm CLI is installed
+if ! command -v pm &>/dev/null; then
+    exit 0
+fi
+
+echo "Importing agile board data for this branch..."
+pm sync import --merge --quiet
+
+if [ $? -eq 0 ]; then
+    echo "✓ Imported .pm/data.json"
+else
+    echo "Warning: Failed to import data. Run manually: pm sync import --merge"
+fi
+
+exit 0

@@ -1,0 +1,29 @@
+#!/bin/bash
+# Post-merge hook: Auto-import agile board data
+#
+# This hook runs after 'git pull' or 'git merge' completes.
+# If data.json was updated, import it into the local database.
+
+# Only run if data.json exists
+if [ ! -f .pm/data.json ]; then
+    exit 0
+fi
+
+# Only run if pm CLI is installed
+if ! command -v pm &>/dev/null; then
+    exit 0
+fi
+
+# Check if data.json was modified in the merge
+if git diff-tree -r --name-only --no-commit-id ORIG_HEAD HEAD | grep -q "^.pm/data.json$"; then
+    echo "Importing updated agile board data..."
+    pm sync import --merge --quiet
+
+    if [ $? -eq 0 ]; then
+        echo "✓ Imported .pm/data.json"
+    else
+        echo "Warning: Failed to import data. Run manually: pm sync import --merge"
+    fi
+fi
+
+exit 0

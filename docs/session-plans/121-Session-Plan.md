@@ -21,7 +21,7 @@ For Tauri launched via double-click (outside a terminal/repo context), the insta
 | **[121.1](121.1-Session-Plan.md)** | Infrastructure: workspace metadata, `.pm/` layout, `.gitignore`, justfile migration | ~25k | **COMPLETE** |
 | **[121.2](121.2-Session-Plan.md)** | Tauri repo-awareness: git-based config discovery, `pm desktop` command | ~35k | **COMPLETE** |
 | **[121.3](121.3-Session-Plan.md)** | Release distribution: justfile commands, install scripts, `config.json` | ~30k (~28k actual) | **COMPLETE** |
-| **[121.4](121.4-Session-Plan.md)** | Data sync: fix .gitignore, export/import commands, git hooks | ~40k | Pending |
+| **[121.4](121.4-Session-Plan.md)** | Data sync: fix .gitignore, export/import commands, git hooks | ~40k | **COMPLETE** |
 
 ---
 
@@ -93,24 +93,39 @@ For Tauri launched via double-click (outside a terminal/repo context), the insta
 
 ---
 
-## Session 121.4: Data Sync
+## Session 121.4: Data Sync — COMPLETE
 
 **Core problem:** Binary SQLite files (`data.db`) cannot be merged by git. When two developers modify work items independently, git produces an unresolvable binary conflict. The solution is SQLite for local performance + JSON export for git distribution.
 
-**Files Created:**
-- `backend/crates/pm-cli/src/sync_commands.rs` — `pm sync export` and `pm sync import` commands
+**Implementation approach:** Used **Option B** (bulk server endpoints) instead of the planned Option A (iterate client methods). This provides better performance and atomicity.
 
-**Files Modified:**
+**Files Created:**
+- `backend/pm-server/src/api/sync/export.rs` — Bulk export endpoint (49 lines)
+- `backend/pm-server/src/api/sync/import.rs` — Bulk import with upsert (176 lines)
+- `backend/pm-server/src/api/sync/mod.rs` — Module exports
+- `docs/hooks/pre-commit` — Git pre-commit hook template (34 lines)
+- `docs/hooks/post-merge` — Git post-merge hook template (29 lines)
+- `docs/hooks/post-checkout` — Git post-checkout hook template (31 lines)
+- `docs/git-hooks.md` — Complete documentation (345 lines)
+
+**Files Modified (earlier work):**
 - `.pm/.gitignore` — Track `data.json`, ignore `data.db`
 - `backend/crates/pm-cli/src/commands.rs` — Add `Sync` variant
-- `backend/crates/pm-cli/src/main.rs` — Add sync handler
+- `backend/crates/pm-cli/src/sync_commands.rs` — Enum definitions
+- `backend/crates/pm-cli/src/main.rs` — Wire to client methods
+- `backend/crates/pm-cli/src/client/client.rs` — Add `export_data()` and `import_data()`
+- `backend/pm-server/src/routes.rs` — Wire sync routes
+- `pm-core` — Add `ExportData` and `ImportResult` types
 
 **Key design decisions:**
-- Conflict resolution: Timestamp-based "last write wins" (each entity has `updated_at`)
+- Bulk endpoints: Single HTTP request for export/import (not N+1 queries)
+- Server-side conflict resolution: Timestamp-based "last write wins"
+- Transaction safety: All imports in single DB transaction
 - UUIDs prevent ID collisions between developers
-- Git hooks (pre-commit auto-export, post-merge auto-import) documented but user-installed
+- Git hooks: Copy-ready templates, user-installed (not auto-installed)
+- Full entity support: Projects, sprints, swim lanes, work items, comments, dependencies, time entries
 
-**Verification:** `just check-rs-cli && just test-rs-cli`
+**Verification:** `just check-backend && just clippy-backend && just test-backend` (all pass)
 
 ---
 
