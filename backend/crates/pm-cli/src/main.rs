@@ -23,6 +23,7 @@ mod dependency_commands;
 mod project_commands;
 mod sprint_commands;
 mod swim_lane_commands;
+mod time_entry_commands;
 mod work_item_commands;
 
 use crate::{
@@ -34,6 +35,7 @@ use crate::{
     project_commands::ProjectCommands,
     sprint_commands::SprintCommands,
     swim_lane_commands::SwimLaneCommands,
+    time_entry_commands::TimeEntryCommands,
     work_item_commands::WorkItemCommands,
 };
 
@@ -221,6 +223,33 @@ async fn main() -> ExitCode {
         // Swim lane commands (read-only)
         Commands::SwimLane { action } => match action {
             SwimLaneCommands::List { project_id } => client.list_swim_lanes(&project_id).await,
+        },
+
+        // Time entry commands
+        Commands::TimeEntry { action } => match action {
+            TimeEntryCommands::List { work_item_id } => {
+                client.list_time_entries(&work_item_id).await
+            }
+            TimeEntryCommands::Get { id } => client.get_time_entry(&id).await,
+            TimeEntryCommands::Create {
+                work_item_id,
+                description,
+            } => {
+                client
+                    .create_time_entry(&work_item_id, description.as_deref())
+                    .await
+            }
+            TimeEntryCommands::Update {
+                id,
+                stop,
+                description,
+            } => {
+                let stop_flag = if stop { Some(true) } else { None };
+                client
+                    .update_time_entry(&id, stop_flag, description.as_deref())
+                    .await
+            }
+            TimeEntryCommands::Delete { id } => client.delete_time_entry(&id).await,
         },
 
         // Desktop is handled above before server discovery

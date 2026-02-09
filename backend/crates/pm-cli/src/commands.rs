@@ -1,7 +1,8 @@
 use crate::{
     comment_commands::CommentCommands, dependency_commands::DependencyCommands,
     project_commands::ProjectCommands, sprint_commands::SprintCommands,
-    swim_lane_commands::SwimLaneCommands, work_item_commands::WorkItemCommands,
+    swim_lane_commands::SwimLaneCommands, time_entry_commands::TimeEntryCommands,
+    work_item_commands::WorkItemCommands,
 };
 
 use clap::Subcommand;
@@ -42,6 +43,12 @@ pub(crate) enum Commands {
     SwimLane {
         #[command(subcommand)]
         action: SwimLaneCommands,
+    },
+
+    /// Time entry operations (start/stop timers)
+    TimeEntry {
+        #[command(subcommand)]
+        action: TimeEntryCommands,
     },
 
     /// Launch the desktop app for this repository

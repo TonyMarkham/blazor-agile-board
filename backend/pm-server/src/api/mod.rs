@@ -6,4 +6,5 @@ pub(crate) mod extractors;
 pub(crate) mod projects;
 pub(crate) mod sprints;
 pub(crate) mod swim_lanes;
+pub(crate) mod time_entries;
 pub(crate) mod work_items;

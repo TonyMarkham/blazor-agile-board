@@ -1,9 +1,10 @@
 use crate::{
-    admin, create_comment, create_dependency, create_project, create_sprint, create_work_item,
-    delete_comment, delete_dependency, delete_project, delete_sprint, delete_work_item,
-    get_project, get_sprint, get_work_item, health, list_comments, list_dependencies,
-    list_projects, list_sprints, list_swim_lanes, list_work_items, update_comment, update_project,
-    update_sprint, update_work_item,
+    admin, create_comment, create_dependency, create_project, create_sprint, create_time_entry,
+    create_work_item, delete_comment, delete_dependency, delete_project, delete_sprint,
+    delete_time_entry, delete_work_item, get_project, get_sprint, get_time_entry, get_work_item,
+    health, list_comments, list_dependencies, list_projects, list_sprints, list_swim_lanes,
+    list_time_entries, list_work_items, update_comment, update_project, update_sprint,
+    update_time_entry, update_work_item,
 };
 
 use pm_ws::AppState;
@@ -70,6 +71,15 @@ pub fn build_router(state: AppState) -> Router {
             "/api/v1/projects/{project_id}/swim-lanes",
             get(list_swim_lanes),
         )
+        // REST API v1 - Time Entries
+        .route(
+            "/api/v1/work-items/{id}/time-entries",
+            get(list_time_entries),
+        )
+        .route("/api/v1/time-entries", post(create_time_entry))
+        .route("/api/v1/time-entries/{id}", get(get_time_entry))
+        .route("/api/v1/time-entries/{id}", put(update_time_entry))
+        .route("/api/v1/time-entries/{id}", delete(delete_time_entry))
         // Add shared state
         .with_state(state)
         // CORS middleware (allow all origins for WebSocket)

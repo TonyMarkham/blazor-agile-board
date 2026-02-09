@@ -44,6 +44,13 @@ pub use api::{
         swim_lane_dto::SwimLaneDto, swim_lane_list_response::SwimLaneListResponse,
         swim_lanes::list_swim_lanes,
     },
+    time_entries::{
+        create_time_entry_request::CreateTimeEntryRequest, time_entries::create_time_entry,
+        time_entries::delete_time_entry, time_entries::get_time_entry,
+        time_entries::list_time_entries, time_entries::update_time_entry,
+        time_entry_dto::TimeEntryDto, time_entry_list_response::TimeEntryListResponse,
+        time_entry_response::TimeEntryResponse, update_time_entry_request::UpdateTimeEntryRequest,
+    },
     work_items::{
         create_work_item_request::CreateWorkItemRequest,
         list_work_item_query::ListWorkItemsQuery,

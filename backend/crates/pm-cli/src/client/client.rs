@@ -489,4 +489,69 @@ impl Client {
         );
         self.execute(req).await
     }
+
+    // =========================================================================
+    // Time Entry Operations
+    // =========================================================================
+
+    pub async fn list_time_entries(&self, work_item_id: &str) -> CliClientResult<Value> {
+        let req = self.request(
+            Method::GET,
+            &format!("/api/v1/work-items/{}/time-entries", work_item_id),
+        );
+        self.execute(req).await
+    }
+
+    pub async fn get_time_entry(&self, id: &str) -> CliClientResult<Value> {
+        let req = self.request(Method::GET, &format!("/api/v1/time-entries/{}", id));
+        self.execute(req).await
+    }
+
+    pub async fn create_time_entry(
+        &self,
+        work_item_id: &str,
+        description: Option<&str>,
+    ) -> CliClientResult<Value> {
+        #[derive(Serialize)]
+        struct CreateRequest<'a> {
+            work_item_id: &'a str,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            description: Option<&'a str>,
+        }
+
+        let body = CreateRequest {
+            work_item_id,
+            description,
+        };
+        let req = self
+            .request(Method::POST, "/api/v1/time-entries")
+            .json(&body);
+        self.execute(req).await
+    }
+
+    pub async fn update_time_entry(
+        &self,
+        id: &str,
+        stop: Option<bool>,
+        description: Option<&str>,
+    ) -> CliClientResult<Value> {
+        #[derive(Serialize)]
+        struct UpdateRequest<'a> {
+            #[serde(skip_serializing_if = "Option::is_none")]
+            stop: Option<bool>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            description: Option<&'a str>,
+        }
+
+        let body = UpdateRequest { stop, description };
+        let req = self
+            .request(Method::PUT, &format!("/api/v1/time-entries/{}", id))
+            .json(&body);
+        self.execute(req).await
+    }
+
+    pub async fn delete_time_entry(&self, id: &str) -> CliClientResult<Value> {
+        let req = self.request(Method::DELETE, &format!("/api/v1/time-entries/{}", id));
+        self.execute(req).await
+    }
 }
