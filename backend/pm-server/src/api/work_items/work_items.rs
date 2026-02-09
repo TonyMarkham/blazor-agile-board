@@ -5,10 +5,10 @@
 
 use crate::{
     ApiError, ApiResult, CreateWorkItemRequest, DeleteResponse, ListWorkItemsQuery,
-    UpdateWorkItemRequest, UserId, WorkItemDto, WorkItemListResponse, WorkItemResponse,
+    UpdateWorkItemRequest, UserId, WorkItemListResponse, WorkItemResponse,
 };
 
-use pm_core::{ActivityLog, WorkItem, WorkItemType};
+use pm_core::{ActivityLog, WorkItem, WorkItemDto, WorkItemType};
 use pm_db::{ActivityLogRepository, ProjectRepository, WorkItemRepository};
 use pm_ws::{
     AppState, MessageValidator, build_activity_log_created_event, build_work_item_created_response,
@@ -177,7 +177,7 @@ pub async fn create_work_item(
         item_type,
         parent_id,
         project_id,
-        position: max_position + 1,
+        position: (max_position + 1) as i32,
         title: sanitize_string(&req.title),
         description: req.description.as_ref().map(|d| sanitize_string(d)),
         status: req.status.unwrap_or_else(|| "backlog".to_string()),

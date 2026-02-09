@@ -379,4 +379,74 @@ impl TimeEntryRepository {
 
         Ok(())
     }
+
+    pub async fn find_all(&self) -> DbErrorResult<Vec<TimeEntry>> {
+        let rows = sqlx::query!(
+            r#"
+              SELECT id, work_item_id, user_id, started_at, ended_at,
+                     duration_seconds, description,
+                     created_at, updated_at, deleted_at
+              FROM pm_time_entries
+              WHERE deleted_at IS NULL
+              ORDER BY started_at DESC
+          "#
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        rows.into_iter()
+            .map(|r| -> DbErrorResult<TimeEntry> {
+                Ok(TimeEntry {
+                    id: Uuid::parse_str(r.id.as_ref().ok_or_else(|| DbError::Initialization {
+                        message: "time_entry.id is NULL".to_string(),
+                        location: ErrorLocation::from(Location::caller()),
+                    })?)
+                    .map_err(|e| DbError::Initialization {
+                        message: format!("Invalid UUID in time_entry.id: {}", e),
+                        location: ErrorLocation::from(Location::caller()),
+                    })?,
+                    work_item_id: Uuid::parse_str(&r.work_item_id).map_err(|e| {
+                        DbError::Initialization {
+                            message: format!("Invalid UUID in time_entry.work_item_id: {}", e),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    user_id: Uuid::parse_str(&r.user_id).map_err(|e| DbError::Initialization {
+                        message: format!("Invalid UUID in time_entry.user_id: {}", e),
+                        location: ErrorLocation::from(Location::caller()),
+                    })?,
+                    started_at: DateTime::from_timestamp(r.started_at, 0).ok_or_else(|| {
+                        DbError::Initialization {
+                            message: "Invalid timestamp in time_entry.started_at".to_string(),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    ended_at: r
+                        .ended_at
+                        .map(|ts| {
+                            DateTime::from_timestamp(ts, 0).ok_or_else(|| DbError::Initialization {
+                                message: "Invalid timestamp in time_entry.ended_at".to_string(),
+                                location: ErrorLocation::from(Location::caller()),
+                            })
+                        })
+                        .transpose()?,
+                    duration_seconds: r.duration_seconds.map(|d| d as i32),
+                    description: r.description,
+                    created_at: DateTime::from_timestamp(r.created_at, 0).ok_or_else(|| {
+                        DbError::Initialization {
+                            message: "Invalid timestamp in time_entry.created_at".to_string(),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    updated_at: DateTime::from_timestamp(r.updated_at, 0).ok_or_else(|| {
+                        DbError::Initialization {
+                            message: "Invalid timestamp in time_entry.updated_at".to_string(),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    deleted_at: r.deleted_at.and_then(|ts| DateTime::from_timestamp(ts, 0)),
+                })
+            })
+            .collect::<DbErrorResult<Vec<_>>>()
+    }
 }

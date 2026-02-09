@@ -10,7 +10,6 @@ mod tests;
 
 pub use api::{
     comments::{
-        comment_dto::CommentDto,
         comment_list_response::CommentListResponse,
         comment_response::CommentResponse,
         comments::{create_comment, delete_comment, list_comments, update_comment},
@@ -21,7 +20,6 @@ pub use api::{
     dependencies::{
         create_dependency_request::CreateDependencyRequest,
         dependencies::{create_dependency, delete_dependency, list_dependencies},
-        dependency_dto::DependencyDto,
         dependency_list_response::DependencyListResponse,
     },
     error::ApiError,
@@ -29,7 +27,6 @@ pub use api::{
     extractors::user_id::UserId,
     projects::{
         create_project_request::CreateProjectRequest,
-        project_dto::ProjectDto,
         project_list_response::ProjectListResponse,
         project_response::ProjectResponse,
         projects::{create_project, delete_project, get_project, list_projects, update_project},
@@ -37,28 +34,24 @@ pub use api::{
     },
     sprints::{
         create_sprint_request::CreateSprintRequest,
-        sprint_dto::SprintDto,
         sprint_list_response::SprintListResponse,
         sprint_response::SprintResponse,
         sprints::{create_sprint, delete_sprint, get_sprint, list_sprints, update_sprint},
         update_sprint_request::UpdateSprintRequest,
     },
-    swim_lanes::{
-        swim_lane_dto::SwimLaneDto, swim_lane_list_response::SwimLaneListResponse,
-        swim_lanes::list_swim_lanes,
-    },
+    swim_lanes::{swim_lane_list_response::SwimLaneListResponse, swim_lanes::list_swim_lanes},
+    sync::{export::sync_export, import::sync_import},
     time_entries::{
         create_time_entry_request::CreateTimeEntryRequest, time_entries::create_time_entry,
         time_entries::delete_time_entry, time_entries::get_time_entry,
         time_entries::list_time_entries, time_entries::update_time_entry,
-        time_entry_dto::TimeEntryDto, time_entry_list_response::TimeEntryListResponse,
-        time_entry_response::TimeEntryResponse, update_time_entry_request::UpdateTimeEntryRequest,
+        time_entry_list_response::TimeEntryListResponse, time_entry_response::TimeEntryResponse,
+        update_time_entry_request::UpdateTimeEntryRequest,
     },
     work_items::{
         create_work_item_request::CreateWorkItemRequest,
         list_work_item_query::ListWorkItemsQuery,
         update_work_item_request::UpdateWorkItemRequest,
-        work_item_dto::WorkItemDto,
         work_item_list_response::WorkItemListResponse,
         work_item_response::WorkItemResponse,
         work_items::{

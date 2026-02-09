@@ -3,11 +3,11 @@
 //! Read-only handlers for listing and retrieving projects.
 
 use crate::{
-    ApiError, ApiResult, CreateProjectRequest, DeleteResponse, ProjectDto, ProjectListResponse,
+    ApiError, ApiResult, CreateProjectRequest, DeleteResponse, ProjectListResponse,
     ProjectResponse, UpdateProjectRequest, UserId,
 };
 
-use pm_core::{ActivityLog, Project, ProjectStatus};
+use pm_core::{ActivityLog, Project, ProjectDto, ProjectStatus};
 use pm_db::{ActivityLogRepository, ProjectRepository};
 use pm_ws::{
     AppState, build_activity_log_created_event, build_project_created_response,

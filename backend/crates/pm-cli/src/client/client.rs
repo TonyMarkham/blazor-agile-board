@@ -554,4 +554,37 @@ impl Client {
         let req = self.request(Method::DELETE, &format!("/api/v1/time-entries/{}", id));
         self.execute(req).await
     }
+
+    // =========================================================================
+    // Import / Export Operations
+    // =========================================================================
+
+    /// Export all data to JSON
+    pub async fn export_data(&self, output: Option<&str>) -> CliClientResult<Value> {
+        let req = self.request(Method::GET, "/api/v1/sync/export");
+        let result = self.execute(req).await?;
+
+        // If output file specified, write to file
+        if let Some(path) = output {
+            let json = serde_json::to_string_pretty(&result)?;
+            std::fs::write(path, json)?;
+        }
+
+        Ok(result)
+    }
+
+    /// Import data from JSON file
+    pub async fn import_data(&self, file_path: &str) -> CliClientResult<Value> {
+        // Read file
+        let json_str = std::fs::read_to_string(file_path)?;
+
+        // Parse JSON
+        let data: Value = serde_json::from_str(&json_str)?;
+
+        // Send to server
+        let req = self
+            .request(Method::POST, "/api/v1/sync/import")
+            .json(&data);
+        self.execute(req).await
+    }
 }

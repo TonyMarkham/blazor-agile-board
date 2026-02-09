@@ -4,11 +4,10 @@
 //! via WebSocket so connected clients see updates in real-time.
 
 use crate::{
-    ApiError, ApiResult, CreateDependencyRequest, DeleteResponse, DependencyDto,
-    DependencyListResponse, UserId,
+    ApiError, ApiResult, CreateDependencyRequest, DeleteResponse, DependencyListResponse, UserId,
 };
 
-use pm_core::{ActivityLog, Dependency, DependencyType};
+use pm_core::{ActivityLog, Dependency, DependencyDto, DependencyType};
 use pm_db::{ActivityLogRepository, DependencyRepository, WorkItemRepository};
 use pm_ws::{
     AppState, build_activity_log_created_event, build_dependency_created_response,

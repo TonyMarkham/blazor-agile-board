@@ -1,8 +1,8 @@
 use crate::{
     comment_commands::CommentCommands, dependency_commands::DependencyCommands,
     project_commands::ProjectCommands, sprint_commands::SprintCommands,
-    swim_lane_commands::SwimLaneCommands, time_entry_commands::TimeEntryCommands,
-    work_item_commands::WorkItemCommands,
+    swim_lane_commands::SwimLaneCommands, sync_commands::SyncCommands,
+    time_entry_commands::TimeEntryCommands, work_item_commands::WorkItemCommands,
 };
 
 use clap::Subcommand;
@@ -53,4 +53,10 @@ pub(crate) enum Commands {
 
     /// Launch the desktop app for this repository
     Desktop,
+
+    /// Bulk data sync operations (export/import)
+    Sync {
+        #[command(subcommand)]
+        action: SyncCommands,
+    },
 }

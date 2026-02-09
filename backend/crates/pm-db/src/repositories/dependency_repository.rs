@@ -390,4 +390,66 @@ impl DependencyRepository {
         }
         Ok(None)
     }
+
+    pub async fn find_all(&self) -> DbErrorResult<Vec<Dependency>> {
+        let rows = sqlx::query!(
+            r#"
+              SELECT id, blocking_item_id, blocked_item_id, dependency_type,
+                     created_at, created_by, deleted_at
+              FROM pm_dependencies
+              WHERE deleted_at IS NULL
+          "#
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        rows.into_iter()
+            .map(|r| -> DbErrorResult<Dependency> {
+                Ok(Dependency {
+                    id: Uuid::parse_str(r.id.as_ref().ok_or_else(|| DbError::Initialization {
+                        message: "dependency.id is NULL".to_string(),
+                        location: ErrorLocation::from(Location::caller()),
+                    })?)
+                    .map_err(|e| DbError::Initialization {
+                        message: format!("Invalid UUID in dependency.id: {}", e),
+                        location: ErrorLocation::from(Location::caller()),
+                    })?,
+                    blocking_item_id: Uuid::parse_str(&r.blocking_item_id).map_err(|e| {
+                        DbError::Initialization {
+                            message: format!("Invalid UUID in dependency.blocking_item_id: {}", e),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    blocked_item_id: Uuid::parse_str(&r.blocked_item_id).map_err(|e| {
+                        DbError::Initialization {
+                            message: format!("Invalid UUID in dependency.blocked_item_id: {}", e),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    dependency_type: DependencyType::from_str(&r.dependency_type).map_err(|e| {
+                        DbError::Initialization {
+                            message: format!(
+                                "Invalid DependencyType in dependency.dependency_type: {}",
+                                e
+                            ),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    created_at: DateTime::from_timestamp(r.created_at, 0).ok_or_else(|| {
+                        DbError::Initialization {
+                            message: "Invalid timestamp in dependency.created_at".to_string(),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    created_by: Uuid::parse_str(&r.created_by).map_err(|e| {
+                        DbError::Initialization {
+                            message: format!("Invalid UUID in dependency.created_by: {}", e),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    deleted_at: r.deleted_at.and_then(|ts| DateTime::from_timestamp(ts, 0)),
+                })
+            })
+            .collect::<DbErrorResult<Vec<_>>>()
+    }
 }

@@ -1,8 +1,8 @@
-use pm_core::TimeEntry;
+use crate::TimeEntry;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TimeEntryDto {
     pub id: String,
     pub work_item_id: String,

@@ -4,11 +4,11 @@
 //! via WebSocket so connected clients see updates in real-time.
 
 use crate::{
-    ApiError, ApiResult, CreateTimeEntryRequest, DeleteResponse, TimeEntryDto,
-    TimeEntryListResponse, TimeEntryResponse, UpdateTimeEntryRequest, UserId,
+    ApiError, ApiResult, CreateTimeEntryRequest, DeleteResponse, TimeEntryListResponse,
+    TimeEntryResponse, UpdateTimeEntryRequest, UserId,
 };
 
-use pm_core::{ActivityLog, TimeEntry};
+use pm_core::{ActivityLog, TimeEntry, TimeEntryDto};
 use pm_db::{ActivityLogRepository, TimeEntryRepository, WorkItemRepository};
 use pm_ws::{
     AppState, build_activity_log_created_event, build_time_entry_created_response,

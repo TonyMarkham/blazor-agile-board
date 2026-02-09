@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n                SELECT\n                    id, item_type, parent_id, project_id, position,\n                    title, description, status, priority, assignee_id,\n                    story_points, sprint_id, item_number, version,\n                    created_at, updated_at, created_by, updated_by, deleted_at\n                FROM pm_work_items\n                WHERE project_id = ? AND updated_at > ?\n                ORDER BY position\n            ",
+  "query": "\n              SELECT\n                  id, item_type, parent_id, project_id, position,\n                  title, description, status, priority, assignee_id,\n                  story_points, sprint_id, item_number, version,\n                  created_at, updated_at, created_by, updated_by, deleted_at\n              FROM pm_work_items\n              WHERE project_id = ? AND updated_at > ?\n              ORDER BY position\n          ",
   "describe": {
     "columns": [
       {
@@ -124,5 +124,5 @@
       true
     ]
   },
-  "hash": "98b8c188025b6c0e91283174a56897a1df9f7970730efb3f04ea41bb1cb9b9e0"
+  "hash": "df6c0a3a9813832f80ca538f49ac31454635201e25c54f81a78c11fc085703dd"
 }

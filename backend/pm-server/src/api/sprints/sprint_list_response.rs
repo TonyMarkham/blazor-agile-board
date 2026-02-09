@@ -1,4 +1,4 @@
-use crate::SprintDto;
+use pm_core::SprintDto;
 
 use serde::Serialize;
 

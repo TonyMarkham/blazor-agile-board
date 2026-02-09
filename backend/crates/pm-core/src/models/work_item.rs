@@ -1,6 +1,10 @@
-use crate::WorkItemType;
+use crate::{CoreError, CoreResult, WorkItemDto, WorkItemType, parse_timestamp, parse_uuid};
+
+use std::panic::Location;
+use std::str::FromStr;
 
 use chrono::{DateTime, Utc};
+use error_location::ErrorLocation;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -83,5 +87,51 @@ impl WorkItem {
     /// Generate JIRA-style display key (e.g., "PROJ-123")
     pub fn display_key(&self, project_key: &str) -> String {
         format!("{}-{}", project_key, self.item_number)
+    }
+}
+
+impl TryFrom<WorkItemDto> for WorkItem {
+    type Error = CoreError;
+
+    fn try_from(dto: WorkItemDto) -> CoreResult<Self> {
+        Ok(WorkItem {
+            id: parse_uuid(&dto.id, "work_item.id")?,
+            project_id: parse_uuid(&dto.project_id, "work_item.project_id")?,
+            parent_id: dto
+                .parent_id
+                .as_deref()
+                .map(|s| parse_uuid(s, "work_item.parent_id"))
+                .transpose()?,
+            assignee_id: dto
+                .assignee_id
+                .as_deref()
+                .map(|s| parse_uuid(s, "work_item.assignee_id"))
+                .transpose()?,
+            sprint_id: dto
+                .sprint_id
+                .as_deref()
+                .map(|s| parse_uuid(s, "work_item.sprint_id"))
+                .transpose()?,
+            item_type: WorkItemType::from_str(&dto.item_type).map_err(|_| {
+                CoreError::Validation {
+                    message: format!("Invalid work item type: {}", dto.item_type),
+                    field: Some("item_type".into()),
+                    location: ErrorLocation::from(Location::caller()),
+                }
+            })?,
+            title: dto.title,
+            description: dto.description,
+            status: dto.status,
+            priority: dto.priority,
+            position: dto.position,
+            story_points: dto.story_points,
+            item_number: dto.item_number,
+            version: dto.version,
+            created_at: parse_timestamp(dto.created_at, "work_item.created_at")?,
+            updated_at: parse_timestamp(dto.updated_at, "work_item.updated_at")?,
+            created_by: parse_uuid(&dto.created_by, "work_item.created_by")?,
+            updated_by: parse_uuid(&dto.updated_by, "work_item.updated_by")?,
+            deleted_at: None,
+        })
     }
 }

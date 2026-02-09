@@ -23,6 +23,7 @@ mod dependency_commands;
 mod project_commands;
 mod sprint_commands;
 mod swim_lane_commands;
+mod sync_commands;
 mod time_entry_commands;
 mod work_item_commands;
 
@@ -35,6 +36,7 @@ use crate::{
     project_commands::ProjectCommands,
     sprint_commands::SprintCommands,
     swim_lane_commands::SwimLaneCommands,
+    sync_commands::SyncCommands,
     time_entry_commands::TimeEntryCommands,
     work_item_commands::WorkItemCommands,
 };
@@ -254,6 +256,12 @@ async fn main() -> ExitCode {
 
         // Desktop is handled above before server discovery
         Commands::Desktop => unreachable!(),
+
+        // Sync commands (bulk export/import)
+        Commands::Sync { action } => match action {
+            SyncCommands::Export { output } => client.export_data(output.as_deref()).await,
+            SyncCommands::Import { file } => client.import_data(&file).await,
+        },
     };
 
     // Handle result

@@ -196,4 +196,56 @@ impl SwimLaneRepository {
 
         Ok(())
     }
+
+    pub async fn find_all(&self) -> DbErrorResult<Vec<SwimLane>> {
+        let rows = sqlx::query!(
+            r#"
+            SELECT id, project_id, name, status_value, position, is_default,
+                   created_at, updated_at, deleted_at
+            FROM pm_swim_lanes
+            WHERE deleted_at IS NULL
+            ORDER BY position ASC
+            "#
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        rows.into_iter()
+            .map(|r| -> DbErrorResult<SwimLane> {
+                Ok(SwimLane {
+                    id: Uuid::parse_str(r.id.as_ref().ok_or_else(|| DbError::Initialization {
+                        message: "swim_lane.id is NULL".to_string(),
+                        location: ErrorLocation::from(Location::caller()),
+                    })?)
+                    .map_err(|e| DbError::Initialization {
+                        message: format!("Invalid UUID in swim_lane.id: {}", e),
+                        location: ErrorLocation::from(Location::caller()),
+                    })?,
+                    project_id: Uuid::parse_str(&r.project_id).map_err(|e| {
+                        DbError::Initialization {
+                            message: format!("Invalid UUID in swim_lane.project_id: {}", e),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    name: r.name,
+                    status_value: r.status_value,
+                    position: r.position as i32,
+                    is_default: r.is_default,
+                    created_at: DateTime::from_timestamp(r.created_at, 0).ok_or_else(|| {
+                        DbError::Initialization {
+                            message: "Invalid timestamp in swim_lane.created_at".to_string(),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    updated_at: DateTime::from_timestamp(r.updated_at, 0).ok_or_else(|| {
+                        DbError::Initialization {
+                            message: "Invalid timestamp in swim_lane.updated_at".to_string(),
+                            location: ErrorLocation::from(Location::caller()),
+                        }
+                    })?,
+                    deleted_at: r.deleted_at.and_then(|ts| DateTime::from_timestamp(ts, 0)),
+                })
+            })
+            .collect::<DbErrorResult<Vec<_>>>()
+    }
 }

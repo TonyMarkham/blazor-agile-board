@@ -1,4 +1,4 @@
-use crate::SwimLaneDto;
+use pm_core::SwimLaneDto;
 
 use serde::Serialize;
 

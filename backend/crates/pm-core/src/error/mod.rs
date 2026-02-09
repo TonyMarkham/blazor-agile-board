@@ -5,9 +5,11 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum CoreError {
-    #[error("Validation error: {message} {location}")]
+    /// Validation error (400)
+    #[error("Validation failed: {message} {location}")]
     Validation {
         message: String,
+        field: Option<String>,
         location: ErrorLocation,
     },
 

@@ -1,6 +1,10 @@
-use crate::DependencyType;
+use crate::{CoreError, CoreResult, DependencyDto, DependencyType, parse_timestamp, parse_uuid};
+
+use std::panic::Location;
+use std::str::FromStr;
 
 use chrono::{DateTime, Utc};
+use error_location::ErrorLocation;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -35,5 +39,27 @@ impl Dependency {
             created_by,
             deleted_at: None,
         }
+    }
+}
+
+impl TryFrom<DependencyDto> for Dependency {
+    type Error = CoreError;
+
+    fn try_from(dto: DependencyDto) -> CoreResult<Self> {
+        Ok(Dependency {
+            id: parse_uuid(&dto.id, "dependency.id")?,
+            blocking_item_id: parse_uuid(&dto.blocking_item_id, "dependency.blocking_item_id")?,
+            blocked_item_id: parse_uuid(&dto.blocked_item_id, "dependency.blocked_item_id")?,
+            dependency_type: DependencyType::from_str(&dto.dependency_type).map_err(|_| {
+                CoreError::Validation {
+                    message: format!("Invalid dependency type: {}", dto.dependency_type),
+                    field: Some("dependency_type".into()),
+                    location: ErrorLocation::from(Location::caller()),
+                }
+            })?,
+            created_at: parse_timestamp(dto.created_at, "dependency.created_at")?,
+            created_by: parse_uuid(&dto.created_by, "dependency.created_by")?,
+            deleted_at: None,
+        })
     }
 }

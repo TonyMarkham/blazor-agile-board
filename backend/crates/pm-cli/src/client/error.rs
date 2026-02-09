@@ -27,6 +27,14 @@ pub enum ClientError {
         #[source]
         source: serde_json::Error,
     },
+
+    #[error("I/O error: {message} {location}")]
+    Io {
+        message: String,
+        location: ErrorLocation,
+        #[source]
+        source: std::io::Error,
+    },
 }
 
 impl ClientError {
@@ -60,6 +68,16 @@ impl ClientError {
             location: ErrorLocation::from(Location::caller()),
         }
     }
+
+    /// Convert I/O error with context
+    #[track_caller]
+    pub fn from_io(err: std::io::Error) -> Self {
+        ClientError::Io {
+            message: err.to_string(),
+            location: ErrorLocation::from(Location::caller()),
+            source: err,
+        }
+    }
 }
 
 impl From<reqwest::Error> for ClientError {
@@ -73,6 +91,13 @@ impl From<serde_json::Error> for ClientError {
     #[track_caller]
     fn from(err: serde_json::Error) -> Self {
         ClientError::from_json(err)
+    }
+}
+
+impl From<std::io::Error> for ClientError {
+    #[track_caller]
+    fn from(err: std::io::Error) -> Self {
+        ClientError::from_io(err)
     }
 }
 

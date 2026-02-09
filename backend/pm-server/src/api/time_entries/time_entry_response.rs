@@ -1,4 +1,4 @@
-use crate::TimeEntryDto;
+use pm_core::TimeEntryDto;
 
 use serde::Serialize;
 

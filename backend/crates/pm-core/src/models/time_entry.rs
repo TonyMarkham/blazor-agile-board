@@ -1,3 +1,5 @@
+use crate::{CoreError, CoreResult, TimeEntryDto, parse_timestamp, parse_uuid};
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -46,5 +48,27 @@ impl TimeEntry {
 
     pub fn is_running(&self) -> bool {
         self.ended_at.is_none()
+    }
+}
+
+impl TryFrom<TimeEntryDto> for TimeEntry {
+    type Error = CoreError;
+
+    fn try_from(dto: TimeEntryDto) -> CoreResult<Self> {
+        Ok(TimeEntry {
+            id: parse_uuid(&dto.id, "time_entry.id")?,
+            work_item_id: parse_uuid(&dto.work_item_id, "time_entry.work_item_id")?,
+            user_id: parse_uuid(&dto.user_id, "time_entry.user_id")?,
+            started_at: parse_timestamp(dto.started_at, "time_entry.started_at")?,
+            ended_at: dto
+                .ended_at
+                .map(|ts| parse_timestamp(ts, "time_entry.ended_at"))
+                .transpose()?,
+            duration_seconds: dto.duration_seconds,
+            description: dto.description,
+            created_at: parse_timestamp(dto.created_at, "time_entry.created_at")?,
+            updated_at: parse_timestamp(dto.updated_at, "time_entry.updated_at")?,
+            deleted_at: None,
+        })
     }
 }

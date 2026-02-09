@@ -1,8 +1,9 @@
-use pm_core::WorkItem;
-use serde::Serialize;
+use crate::WorkItem;
+
+use serde::{Deserialize, Serialize};
 
 /// Work item DTO for JSON serialization
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct WorkItemDto {
     pub id: String,
     pub display_key: String,

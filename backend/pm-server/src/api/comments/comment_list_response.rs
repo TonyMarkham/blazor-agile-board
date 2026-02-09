@@ -1,4 +1,4 @@
-use crate::CommentDto;
+use pm_core::CommentDto;
 
 use serde::Serialize;
 

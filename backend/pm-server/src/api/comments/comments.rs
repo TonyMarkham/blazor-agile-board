@@ -1,11 +1,11 @@
 //! Comment REST API handlers
 
 use crate::{
-    ApiError, ApiResult, CommentDto, CommentListResponse, CommentResponse, CreateCommentRequest,
+    ApiError, ApiResult, CommentListResponse, CommentResponse, CreateCommentRequest,
     DeleteResponse, UpdateCommentRequest, UserId,
 };
 
-use pm_core::{ActivityLog, Comment};
+use pm_core::{ActivityLog, Comment, CommentDto};
 use pm_db::{ActivityLogRepository, CommentRepository, WorkItemRepository};
 use pm_ws::{
     AppState, MessageValidator, build_activity_log_created_event, build_comment_created_response,

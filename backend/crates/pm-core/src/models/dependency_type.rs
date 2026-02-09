@@ -1,4 +1,4 @@
-use crate::{CoreError, Result as CoreErrorResult};
+use crate::{CoreError, CoreResult};
 
 use std::panic::Location;
 use std::str::FromStr;
@@ -26,7 +26,7 @@ impl FromStr for DependencyType {
     type Err = CoreError;
 
     #[track_caller]
-    fn from_str(s: &str) -> CoreErrorResult<Self> {
+    fn from_str(s: &str) -> CoreResult<Self> {
         match s {
             "blocks" => Ok(Self::Blocks),
             "relates_to" => Ok(Self::RelatesTo),

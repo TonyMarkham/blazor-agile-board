@@ -1,4 +1,4 @@
-use crate::DependencyDto;
+use pm_core::DependencyDto;
 
 use serde::Serialize;
 

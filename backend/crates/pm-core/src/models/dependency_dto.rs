@@ -1,8 +1,8 @@
-use pm_core::Dependency;
+use crate::Dependency;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct DependencyDto {
     pub id: String,
     pub blocking_item_id: String,

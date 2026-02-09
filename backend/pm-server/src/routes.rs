@@ -3,8 +3,8 @@ use crate::{
     create_work_item, delete_comment, delete_dependency, delete_project, delete_sprint,
     delete_time_entry, delete_work_item, get_project, get_sprint, get_time_entry, get_work_item,
     health, list_comments, list_dependencies, list_projects, list_sprints, list_swim_lanes,
-    list_time_entries, list_work_items, update_comment, update_project, update_sprint,
-    update_time_entry, update_work_item,
+    list_time_entries, list_work_items, sync_export, sync_import, update_comment, update_project,
+    update_sprint, update_time_entry, update_work_item,
 };
 
 use pm_ws::AppState;
@@ -80,6 +80,9 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/v1/time-entries/{id}", get(get_time_entry))
         .route("/api/v1/time-entries/{id}", put(update_time_entry))
         .route("/api/v1/time-entries/{id}", delete(delete_time_entry))
+        // REST API v1 - Sync (bulk export/import)
+        .route("/api/v1/sync/export", get(sync_export))
+        .route("/api/v1/sync/import", post(sync_import))
         // Add shared state
         .with_state(state)
         // CORS middleware (allow all origins for WebSocket)

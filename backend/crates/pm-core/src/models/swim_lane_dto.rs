@@ -1,9 +1,9 @@
-use pm_core::SwimLane;
+use crate::SwimLane;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 /// Swim Lane DTO for JSON serialization
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SwimLaneDto {
     pub id: String,
     pub project_id: String,

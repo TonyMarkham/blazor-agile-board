@@ -112,7 +112,7 @@ pub async fn handle_create(
         item_type: item_type.clone(),
         parent_id,
         project_id,
-        position: max_position + 1,
+        position: (max_position + 1) as i32,
         title: sanitize_string(&req.title),
         description: req.description.as_ref().map(|d| sanitize_string(d)),
         status: req.status.clone().unwrap_or_else(|| "backlog".to_string()),

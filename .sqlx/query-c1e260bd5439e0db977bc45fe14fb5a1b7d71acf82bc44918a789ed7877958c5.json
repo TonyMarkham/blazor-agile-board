@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "\n              SELECT id, blocking_item_id, blocked_item_id, dependency_type,\n                     created_at, created_by, deleted_at\n              FROM pm_dependencies\n              WHERE deleted_at IS NULL\n          ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "blocking_item_id",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "blocked_item_id",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "dependency_type",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_by",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "deleted_at",
+        "ordinal": 6,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "c1e260bd5439e0db977bc45fe14fb5a1b7d71acf82bc44918a789ed7877958c5"
+}

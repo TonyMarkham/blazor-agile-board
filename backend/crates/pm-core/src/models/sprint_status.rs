@@ -1,4 +1,4 @@
-use crate::{CoreError, Result as CoreErrorResult};
+use crate::{CoreError, CoreResult};
 
 use std::panic::Location;
 use std::str::FromStr;
@@ -30,7 +30,7 @@ impl FromStr for SprintStatus {
     type Err = CoreError;
 
     #[track_caller]
-    fn from_str(s: &str) -> CoreErrorResult<Self> {
+    fn from_str(s: &str) -> CoreResult<Self> {
         match s {
             "planned" => Ok(Self::Planned),
             "active" => Ok(Self::Active),

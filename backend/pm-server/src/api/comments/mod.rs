@@ -1,4 +1,3 @@
-pub(crate) mod comment_dto;
 pub(crate) mod comment_list_response;
 pub(crate) mod comment_response;
 #[allow(clippy::module_inception)]

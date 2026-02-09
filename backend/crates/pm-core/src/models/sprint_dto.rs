@@ -1,9 +1,9 @@
-use pm_core::Sprint;
+use crate::Sprint;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-/// Sprint DTO for JSON serialization
-#[derive(Debug, Serialize)]
+/// Sprint DTO for JSON serialization and deserialization
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SprintDto {
     pub id: String,
     pub project_id: String,

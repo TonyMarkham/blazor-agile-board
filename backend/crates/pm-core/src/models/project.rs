@@ -1,8 +1,12 @@
 //! Project entity - organizational container for work items.
 
-use crate::ProjectStatus;
+use crate::{CoreError, CoreResult, ProjectDto, ProjectStatus, parse_timestamp, parse_uuid};
+
+use std::panic::Location;
+use std::str::FromStr;
 
 use chrono::{DateTime, Utc};
+use error_location::ErrorLocation;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -55,5 +59,30 @@ impl Project {
     /// Check if project is archived
     pub fn is_archived(&self) -> bool {
         self.status == ProjectStatus::Archived
+    }
+}
+
+impl TryFrom<ProjectDto> for Project {
+    type Error = CoreError;
+
+    fn try_from(dto: ProjectDto) -> CoreResult<Self> {
+        Ok(Project {
+            id: parse_uuid(&dto.id, "project.id")?,
+            title: dto.title,
+            description: dto.description,
+            key: dto.key,
+            status: ProjectStatus::from_str(&dto.status).map_err(|_| CoreError::Validation {
+                message: format!("Invalid project status: {}", dto.status),
+                field: Some("status".into()),
+                location: ErrorLocation::from(Location::caller()),
+            })?,
+            version: dto.version,
+            created_at: parse_timestamp(dto.created_at, "project.created_at")?,
+            updated_at: parse_timestamp(dto.updated_at, "project.updated_at")?,
+            created_by: parse_uuid(&dto.created_by, "project.created_by")?,
+            updated_by: parse_uuid(&dto.updated_by, "project.updated_by")?,
+            deleted_at: None,
+            next_work_item_number: dto.next_work_item_number,
+        })
     }
 }

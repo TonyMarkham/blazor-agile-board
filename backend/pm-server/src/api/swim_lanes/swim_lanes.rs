@@ -3,8 +3,9 @@
 //! Swim lanes are fixed configuration created by migrations.
 //! This module provides read-only access via GET endpoint.
 
-use crate::{ApiResult, SwimLaneDto, SwimLaneListResponse};
+use crate::{ApiResult, SwimLaneListResponse};
 
+use pm_core::SwimLaneDto;
 use pm_db::SwimLaneRepository;
 use pm_ws::AppState;
 

@@ -1,4 +1,5 @@
-use crate::ProjectDto;
+use pm_core::ProjectDto;
+
 use serde::Serialize;
 
 /// Single project response

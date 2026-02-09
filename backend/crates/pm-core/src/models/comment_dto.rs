@@ -1,8 +1,8 @@
-use pm_core::Comment;
+use crate::Comment;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CommentDto {
     pub id: String,
     pub work_item_id: String,

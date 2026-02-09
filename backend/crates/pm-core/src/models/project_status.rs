@@ -1,4 +1,4 @@
-use crate::{CoreError, Result as CoreErrorResult};
+use crate::{CoreError, CoreResult};
 
 use std::panic::Location;
 use std::str::FromStr;
@@ -31,7 +31,7 @@ impl FromStr for ProjectStatus {
     type Err = CoreError;
 
     #[track_caller]
-    fn from_str(s: &str) -> CoreErrorResult<Self> {
+    fn from_str(s: &str) -> CoreResult<Self> {
         match s {
             "active" => Ok(Self::Active),
             "archived" => Ok(Self::Archived),

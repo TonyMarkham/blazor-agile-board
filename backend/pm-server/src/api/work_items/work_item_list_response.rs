@@ -1,4 +1,5 @@
-use crate::WorkItemDto;
+use pm_core::WorkItemDto;
+
 use serde::Serialize;
 
 /// List of work items response
