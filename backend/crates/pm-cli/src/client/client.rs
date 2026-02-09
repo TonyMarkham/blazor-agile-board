@@ -150,6 +150,104 @@ impl Client {
     }
 
     // =========================================================================
+    // Sprint Operations
+    // =========================================================================
+
+    /// List sprints in a project
+    pub async fn list_sprints(&self, project_id: &str) -> CliClientResult<Value> {
+        let req = self.request(
+            Method::GET,
+            &format!("/api/v1/projects/{}/sprints", project_id),
+        );
+        self.execute(req).await
+    }
+
+    /// Get a sprint by ID
+    pub async fn get_sprint(&self, id: &str) -> CliClientResult<Value> {
+        let req = self.request(Method::GET, &format!("/api/v1/sprints/{}", id));
+        self.execute(req).await
+    }
+
+    /// Create a new sprint
+    pub async fn create_sprint(
+        &self,
+        project_id: &str,
+        name: &str,
+        start_date: i64,
+        end_date: i64,
+        goal: Option<&str>,
+    ) -> CliClientResult<Value> {
+        #[derive(Serialize)]
+        struct CreateSprintRequest<'a> {
+            project_id: &'a str,
+            name: &'a str,
+            start_date: i64,
+            end_date: i64,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            goal: Option<&'a str>,
+        }
+
+        let body = CreateSprintRequest {
+            project_id,
+            name,
+            start_date,
+            end_date,
+            goal,
+        };
+
+        let req = self.request(Method::POST, "/api/v1/sprints").json(&body);
+        self.execute(req).await
+    }
+
+    /// Update a sprint
+    #[allow(clippy::too_many_arguments)]
+    pub async fn update_sprint(
+        &self,
+        id: &str,
+        name: Option<&str>,
+        goal: Option<&str>,
+        start_date: Option<i64>,
+        end_date: Option<i64>,
+        status: Option<&str>,
+        expected_version: i32,
+    ) -> CliClientResult<Value> {
+        #[derive(Serialize)]
+        struct UpdateSprintRequest<'a> {
+            #[serde(skip_serializing_if = "Option::is_none")]
+            name: Option<&'a str>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            goal: Option<&'a str>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            start_date: Option<i64>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            end_date: Option<i64>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            status: Option<&'a str>,
+            expected_version: i32,
+        }
+
+        let body = UpdateSprintRequest {
+            name,
+            goal,
+            start_date,
+            end_date,
+            status,
+            expected_version,
+        };
+
+        let req = self
+            .request(Method::PUT, &format!("/api/v1/sprints/{}", id))
+            .json(&body);
+        self.execute(req).await
+    }
+
+    /// Delete a sprint
+    pub async fn delete_sprint(&self, id: &str) -> CliClientResult<Value> {
+        let req = self.request(Method::DELETE, &format!("/api/v1/sprints/{}", id));
+        self.execute(req).await
+    }
+
+    // =========================================================================
     // Work Item Operations
     // =========================================================================
 

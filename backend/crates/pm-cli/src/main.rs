@@ -20,6 +20,7 @@ mod client;
 mod commands;
 mod comment_commands;
 mod project_commands;
+mod sprint_commands;
 mod work_item_commands;
 
 use crate::{
@@ -28,6 +29,7 @@ use crate::{
     commands::Commands,
     comment_commands::CommentCommands,
     project_commands::ProjectCommands,
+    sprint_commands::SprintCommands,
     work_item_commands::WorkItemCommands,
 };
 
@@ -87,6 +89,45 @@ async fn main() -> ExitCode {
                     .await
             }
             ProjectCommands::Delete { id } => client.delete_project(&id).await,
+        },
+
+        // Sprint commands
+        Commands::Sprint { action } => match action {
+            SprintCommands::List { project_id } => client.list_sprints(&project_id).await,
+            SprintCommands::Get { id } => client.get_sprint(&id).await,
+            SprintCommands::Create {
+                project_id,
+                name,
+                start_date,
+                end_date,
+                goal,
+            } => {
+                client
+                    .create_sprint(&project_id, &name, start_date, end_date, goal.as_deref())
+                    .await
+            }
+            SprintCommands::Update {
+                id,
+                name,
+                goal,
+                start_date,
+                end_date,
+                status,
+                expected_version,
+            } => {
+                client
+                    .update_sprint(
+                        &id,
+                        name.as_deref(),
+                        goal.as_deref(),
+                        start_date,
+                        end_date,
+                        status.as_deref(),
+                        expected_version,
+                    )
+                    .await
+            }
+            SprintCommands::Delete { id } => client.delete_sprint(&id).await,
         },
 
         // Work item commands

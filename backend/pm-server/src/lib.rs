@@ -26,6 +26,14 @@ pub use api::{
         projects::{create_project, delete_project, get_project, list_projects, update_project},
         update_project_request::UpdateProjectRequest,
     },
+    sprints::{
+        create_sprint_request::CreateSprintRequest,
+        sprint_dto::SprintDto,
+        sprint_list_response::SprintListResponse,
+        sprint_response::SprintResponse,
+        sprints::{create_sprint, delete_sprint, get_sprint, list_sprints, update_sprint},
+        update_sprint_request::UpdateSprintRequest,
+    },
     work_items::{
         create_work_item_request::CreateWorkItemRequest,
         list_work_item_query::ListWorkItemsQuery,

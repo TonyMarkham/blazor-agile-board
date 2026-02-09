@@ -3,6 +3,7 @@ use crate::{
     work_item_commands::WorkItemCommands,
 };
 
+use crate::sprint_commands::SprintCommands;
 use clap::Subcommand;
 
 #[derive(Subcommand)]
@@ -11,6 +12,12 @@ pub(crate) enum Commands {
     Project {
         #[command(subcommand)]
         action: ProjectCommands,
+    },
+
+    /// Sprint operations
+    Sprint {
+        #[command(subcommand)]
+        action: SprintCommands,
     },
 
     /// Work item operations
