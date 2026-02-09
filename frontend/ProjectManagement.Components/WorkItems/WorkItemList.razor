@@ -238,7 +238,13 @@
                 { "WorkItem", item },
                 { "ProjectId", item.ProjectId }
             },
-            new DialogOptions { Width = "600px" });
+            new DialogOptions
+            {
+                Width = "900px",      // Wider default
+                Height = "80vh",      // 80% of viewport height
+                Resizable = true,     // 👈 Adds resize handles
+                Draggable = true      // Keep it draggable
+            });
 
         if (result is true)
         {
@@ -294,7 +300,13 @@
                 { "ProjectId", ProjectId },
                 { "ParentId", ProjectId }
             },
-            new DialogOptions { Width = "600px" });
+            new DialogOptions
+            {
+                Width = "900px",      // Wider default
+                Height = "80vh",      // 80% of viewport height
+                Resizable = true,     // 👈 Adds resize handles
+                Draggable = true      // Keep it draggable
+            });
 
         if (result is true)
         {

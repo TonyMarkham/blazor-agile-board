@@ -1,0 +1,25 @@
+@using Radzen.Blazor
+
+<div class="markdown-editor">
+    <RadzenTabs>
+        <Tabs>
+            <RadzenTabsItem Text="Write">
+                <RadzenTextArea
+                    @bind-Value="@Value"
+                    Rows="10"
+                    Class="markdown-textarea"
+                    Placeholder="Write markdown here..." />
+            </RadzenTabsItem>
+            <RadzenTabsItem Text="Preview">
+                <div class="markdown-preview">
+                    <MarkdownRenderer Content="@Value" />
+                </div>
+            </RadzenTabsItem>
+        </Tabs>
+    </RadzenTabs>
+</div>
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+}

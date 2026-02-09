@@ -1,26 +1,59 @@
 <div class="comment-editor">
-  <RadzenTextArea @bind-Value="_content"
-                  Placeholder="@Placeholder"
-                  Rows="@Rows"
-                  @onkeydown="HandleKeyDown" />
+    <div class="editor-tabs">
+        <button type="button"
+                class="tab @(_activeTab == EditorTab.Write ? "active" : "")"
+                @onclick="() => _activeTab = EditorTab.Write">
+            Write
+        </button>
+        <button type="button"
+                class="tab @(_activeTab == EditorTab.Preview ? "active" : "")"
+                @onclick="() => _activeTab = EditorTab.Preview">
+            Preview
+        </button>
+    </div>
 
-  <div class="editor-actions">
-      <RadzenText TextStyle="TextStyle.Caption" class="char-count">
-          @_content.Length / 5000
-      </RadzenText>
+    <div class="editor-content">
+        @if (_activeTab == EditorTab.Write)
+        {
+            <RadzenTextArea @bind-Value="_content"
+                            Placeholder="@Placeholder"
+                            Rows="@Rows"
+                            @onkeydown="HandleKeyDown" />
+        }
+        else
+        {
+            <div class="preview-container">
+                @if (string.IsNullOrWhiteSpace(_content))
+                {
+                    <RadzenText TextStyle="TextStyle.Body2" class="preview-empty">
+                        Nothing to preview
+                    </RadzenText>
+                }
+                else
+                {
+                    <MarkdownRenderer Content="@_content" />
+                }
+            </div>
+        }
+    </div>
 
-      <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
-          @if (OnCancel.HasDelegate)
-          {
-              <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Light"
-                            Size="ButtonSize.Small" Click="HandleCancel" />
-          }
-          <RadzenButton Text="@SubmitText" ButtonStyle="ButtonStyle.Primary"
-                        Size="ButtonSize.Small"
-                        Disabled="@(!CanSubmit)"
-                        Click="HandleSubmit" />
-      </RadzenStack>
-  </div>
+    <div class="editor-actions">
+        <RadzenText TextStyle="TextStyle.Caption" class="char-count">
+            @_content.Length / 5000
+        </RadzenText>
+
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
+            @if (OnCancel.HasDelegate)
+            {
+                <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Light"
+                              Size="ButtonSize.Small" Click="HandleCancel" />
+            }
+            <RadzenButton Text="@SubmitText" ButtonStyle="ButtonStyle.Primary"
+                          Size="ButtonSize.Small"
+                          Disabled="@(!CanSubmit)"
+                          Click="HandleSubmit" />
+        </RadzenStack>
+    </div>
 </div>
 
 @code {
@@ -37,6 +70,9 @@
     [Parameter] public EventCallback OnCancel { get; set; }
 
     private string _content = "";
+    private EditorTab _activeTab = EditorTab.Write;
+
+    private enum EditorTab { Write, Preview }
 
     private bool CanSubmit => !string.IsNullOrWhiteSpace(_content) &&
                               _content.Length <= 5000;

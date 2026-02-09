@@ -41,10 +41,8 @@
               }
               else
               {
-                  <RadzenText TextStyle="TextStyle.Body2" class="comment-content">
-                      @comment.Content
-                  </RadzenText>
-
+                  <MarkdownRenderer Content="@comment.Content" />
+                  
                   @if (CanEditComment(comment))
                   {
                       <div class="comment-actions">

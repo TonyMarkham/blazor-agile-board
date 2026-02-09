@@ -14,7 +14,10 @@
     <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.2" />
     <!-- UI -->
     <PackageVersion Include="Microsoft.JSInterop" Version="10.0.2" />
-    <PackageVersion Include="Radzen.Blazor" Version="8.6.2" />
+    <PackageVersion Include="Radzen.Blazor" Version="8.7.5" />
+    <!-- Markdown -->
+    <PackageVersion Include="Markdig" Version="0.44.0" />
+    <PackageVersion Include="Markdown.ColorCode" Version="3.0.1" />
     <!-- Testing -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="xunit" Version="2.9.3" />

@@ -16,6 +16,8 @@
     <ItemGroup>
         <PackageReference Include="Microsoft.AspNetCore.Components.Web"/>
         <PackageReference Include="Radzen.Blazor"/>
+        <PackageReference Include="Markdig"/>
+        <PackageReference Include="Markdown.ColorCode"/>
     </ItemGroup>
 
 </Project> 

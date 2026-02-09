@@ -1,0 +1,29 @@
+@using Markdig
+@using Markdown.ColorCode
+
+<div class="markdown-body">
+    @((MarkupString)_renderedHtml)
+</div>
+
+@code {
+    [Parameter] public string? Content { get; set; }
+
+    private string _renderedHtml = "";
+
+    private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
+        .UseAdvancedExtensions()
+        .UseColorCode()
+        .DisableHtml()
+        .Build();
+
+    protected override void OnParametersSet()
+    {
+        if (string.IsNullOrWhiteSpace(Content))
+        {
+            _renderedHtml = "";
+            return;
+        }
+
+        _renderedHtml = Markdown.ToHtml(Content, Pipeline);
+    }
+}

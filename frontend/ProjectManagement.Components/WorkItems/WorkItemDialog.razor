@@ -84,12 +84,7 @@
     @* Description *@
     <div>
         <RadzenFormField Text="Description" Style="width: 100%;">
-            <RadzenTextArea @bind-Value="_description"
-                            MaxLength="5000"
-                            Placeholder="Add a description..."
-                            Rows="4"
-                            Style="width: 100%;"
-                            Change="@HandleDescriptionChange" />
+            <MarkdownEditor @bind-Value="_description" />
         </RadzenFormField>
         <div class="text-end mt-1">
             <RadzenText TextStyle="TextStyle.Caption" class="text-muted">

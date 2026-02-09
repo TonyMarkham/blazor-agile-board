@@ -13,3 +13,47 @@
 .char-count {
     color: var(--rz-text-secondary-color);
 }
+
+.editor-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--rz-border-color);
+    margin-bottom: 0.5rem;
+}
+
+.editor-tabs .tab {
+    background: none;
+    border: none;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    color: var(--rz-text-secondary-color);
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+}
+
+.editor-tabs .tab:hover {
+    color: var(--rz-text-color);
+    background: var(--rz-base-200);
+}
+
+.editor-tabs .tab.active {
+    color: var(--rz-primary);
+    border-bottom-color: var(--rz-primary);
+}
+
+.preview-container {
+    min-height: 100px;
+    padding: 0.75rem;
+    border: 1px solid var(--rz-border-color);
+    border-radius: 4px;
+    background: var(--rz-base-100);
+}
+
+.preview-empty {
+    color: var(--rz-text-secondary-color);
+    font-style: italic;
+    text-align: center;
+    padding: 2rem 0;
+}

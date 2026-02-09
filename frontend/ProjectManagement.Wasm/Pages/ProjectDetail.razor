@@ -202,7 +202,13 @@ else
             {
                 { "ProjectId", ProjectId }
             },
-            new DialogOptions { Width = "600px" });
+            new DialogOptions
+            {
+                Width = "900px",      // Wider default
+                Height = "80vh",      // 80% of viewport height
+                Resizable = true,     // 👈 Adds resize handles
+                Draggable = true      // Keep it draggable
+            });
     }
 
     private void HandleStateChanged()
@@ -260,7 +266,13 @@ else
                 { "OnCreate", EventCallback.Factory.Create<CreateSprintRequest>(this, HandleCreateSprint) },
                 { "OnCancel", EventCallback.Factory.Create(this, () => DialogService.Close()) }
             },
-            new DialogOptions { Width = "500px" });
+            new DialogOptions
+            {
+                Width = "900px",      // Wider default
+                Height = "80vh",      // 80% of viewport height
+                Resizable = true,     // 👈 Adds resize handles
+                Draggable = true      // Keep it draggable
+            });
     }
 
     private async Task ShowEditSprintDialog(Sprint sprint)
@@ -273,7 +285,13 @@ else
                 { "OnUpdate", EventCallback.Factory.Create<UpdateSprintRequest>(this, HandleUpdateSprint) },
                 { "OnCancel", EventCallback.Factory.Create(this, () => DialogService.Close()) }
             },
-            new DialogOptions { Width = "500px" });
+            new DialogOptions
+            {
+                Width = "900px",      // Wider default
+                Height = "80vh",      // 80% of viewport height
+                Resizable = true,     // 👈 Adds resize handles
+                Draggable = true      // Keep it draggable
+            });
     }
 
     private async Task HandleCreateSprint(CreateSprintRequest request)
