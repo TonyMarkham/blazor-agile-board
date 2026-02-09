@@ -107,6 +107,15 @@ Here is a review of the plan:
 
 ### Other
 ```text
+- Read `CRITICAL_OPERATING_CONSTRAINTS.md`
+- use the /pm SKILL to audit the `PONE-56` Epic
+- Cross reference it's contents against the current state of the project to avoid making poor assumptions.
+- Teach me by presenting bite-sized chunks for me to write/edit keeping the commentary separate from the code snippets to make the code snippets easier for me to follow
+- **The audit is important, but teaching is the ultimate goal of this session**
+```
+
+### Other
+```text
 Read `CRITICAL_OPERATING_CONSTRAINTS.md`, `docs/session-plans/120.2-Session-Plan.md` and `docs/session-plans/120-Session-Plan.md`.
 
 Please audit `docs/session-plans/120.2-Session-Plan.md` and cross reference it's contents against the current state of the project to avoid making poor assumptions.

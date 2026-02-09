@@ -46,7 +46,13 @@
       "Bash(just test-rs-config:*)",
       "Bash(just check-rs-cli:*)",
       "Bash(just test-rs-cli:*)",
-      "Bash(just check-rs-config:*)"
+      "Bash(just check-rs-config:*)",
+      "Bash(.pm/bin/pm project list:*)",
+      "Bash(.pm/bin/pm work-item create:*)",
+      "Bash(.pm/bin/pm work-item get:*)",
+      "Bash(.pm/bin/pm work-item update:*)",
+      "Bash(.pm/bin/pm work-item list:*)",
+      "Bash(.pm/bin/pm comment list:*)"
     ]
   }
 }
