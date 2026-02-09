@@ -15,6 +15,12 @@ pub use api::{
         update_comment_request::UpdateCommentRequest,
     },
     delete_response::DeleteResponse,
+    dependencies::{
+        create_dependency_request::CreateDependencyRequest,
+        dependencies::{create_dependency, delete_dependency, list_dependencies},
+        dependency_dto::DependencyDto,
+        dependency_list_response::DependencyListResponse,
+    },
     error::ApiError,
     error::Result as ApiResult,
     extractors::user_id::UserId,

@@ -6,6 +6,7 @@ pub(crate) mod cli;
 pub(crate) mod client;
 pub(crate) mod commands;
 pub(crate) mod comment_commands;
+pub(crate) mod dependency_commands;
 pub(crate) mod project_commands;
 pub(crate) mod sprint_commands;
 pub(crate) mod work_item_commands;

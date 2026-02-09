@@ -19,6 +19,7 @@ mod cli;
 mod client;
 mod commands;
 mod comment_commands;
+mod dependency_commands;
 mod project_commands;
 mod sprint_commands;
 mod work_item_commands;
@@ -28,6 +29,7 @@ use crate::{
     client::{CliClientResult, error::ClientError},
     commands::Commands,
     comment_commands::CommentCommands,
+    dependency_commands::DependencyCommands,
     project_commands::ProjectCommands,
     sprint_commands::SprintCommands,
     work_item_commands::WorkItemCommands,
@@ -200,6 +202,18 @@ async fn main() -> ExitCode {
             } => client.create_comment(&work_item_id, &content).await,
             CommentCommands::Update { id, content } => client.update_comment(&id, &content).await,
             CommentCommands::Delete { id } => client.delete_comment(&id).await,
+        },
+
+        Commands::Dependency { action } => match action {
+            DependencyCommands::List { work_item_id } => {
+                client.list_dependencies(&work_item_id).await
+            }
+            DependencyCommands::Create {
+                blocking,
+                blocked,
+                r#type,
+            } => client.create_dependency(&blocking, &blocked, &r#type).await,
+            DependencyCommands::Delete { id } => client.delete_dependency(&id).await,
         },
 
         // Desktop is handled above before server discovery

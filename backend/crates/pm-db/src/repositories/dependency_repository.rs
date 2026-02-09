@@ -2,6 +2,7 @@ use crate::{DbError, Result as DbErrorResult};
 
 use pm_core::{Dependency, DependencyType};
 
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::{panic::Location, str::FromStr};
 
 use chrono::DateTime;
@@ -344,5 +345,49 @@ impl DependencyRepository {
         .await?;
 
         Ok(())
+    }
+
+    /// Check if adding `blocking_id → blocked_id` would create a cycle.
+    /// Returns `Ok(None)` if no cycle, `Ok(Some(path))` if cycle detected.
+    /// Only follows `Blocks` edges — `RelatesTo` cannot create cycles.
+    pub async fn detect_cycle(
+        &self,
+        blocking_id: Uuid,
+        blocked_id: Uuid,
+    ) -> DbErrorResult<Option<Vec<Uuid>>> {
+        let mut visited = HashSet::new();
+        let mut queue = VecDeque::new();
+        let mut parent_map: HashMap<Uuid, Uuid> = HashMap::new();
+
+        queue.push_back(blocked_id);
+        visited.insert(blocked_id);
+
+        while let Some(current) = queue.pop_front() {
+            let blocked_by_current = self.find_blocked(current).await?;
+
+            for dep in blocked_by_current {
+                if dep.dependency_type != DependencyType::Blocks {
+                    continue;
+                }
+                if dep.blocked_item_id == blocking_id {
+                    // Reconstruct cycle path for error message
+                    let mut path = vec![blocking_id];
+                    let mut node = current;
+                    while let Some(&parent) = parent_map.get(&node) {
+                        path.push(node);
+                        node = parent;
+                    }
+                    path.push(blocked_id);
+                    path.reverse();
+                    return Ok(Some(path));
+                }
+                if !visited.contains(&dep.blocked_item_id) {
+                    visited.insert(dep.blocked_item_id);
+                    parent_map.insert(dep.blocked_item_id, current);
+                    queue.push_back(dep.blocked_item_id);
+                }
+            }
+        }
+        Ok(None)
     }
 }

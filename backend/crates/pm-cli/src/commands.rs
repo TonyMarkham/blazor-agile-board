@@ -1,9 +1,9 @@
 use crate::{
-    comment_commands::CommentCommands, project_commands::ProjectCommands,
+    comment_commands::CommentCommands, dependency_commands::DependencyCommands,
+    project_commands::ProjectCommands, sprint_commands::SprintCommands,
     work_item_commands::WorkItemCommands,
 };
 
-use crate::sprint_commands::SprintCommands;
 use clap::Subcommand;
 
 #[derive(Subcommand)]
@@ -30,6 +30,12 @@ pub(crate) enum Commands {
     Comment {
         #[command(subcommand)]
         action: CommentCommands,
+    },
+
+    /// Dependency operations
+    Dependency {
+        #[command(subcommand)]
+        action: DependencyCommands,
     },
 
     /// Launch the desktop app for this repository

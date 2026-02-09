@@ -1,5 +1,6 @@
 pub(crate) mod comments;
 pub(crate) mod delete_response;
+pub(crate) mod dependencies;
 pub(crate) mod error;
 pub(crate) mod extractors;
 pub(crate) mod projects;

@@ -14,7 +14,6 @@ use pm_proto::{
     CreateDependencyRequest, DeleteDependencyRequest, GetDependenciesRequest, WebSocketMessage,
 };
 
-use std::collections::{HashMap, HashSet, VecDeque};
 use std::panic::Location;
 
 use axum::extract::ws::Message;
@@ -30,92 +29,6 @@ fn parse_uuid(s: &str, field: &str) -> WsErrorResult<Uuid> {
         field: Some(field.to_string()),
         location: ErrorLocation::from(Location::caller()),
     })
-}
-
-/// Detect circular dependencies using BFS.
-///
-/// If adding `blocking_id -> blocked_id`, we need to check whether
-/// `blocked_id` can eventually reach `blocking_id` through existing
-/// Blocks-type dependencies.
-///
-/// # Algorithm
-///
-/// 1. Start BFS from `blocked_id`
-/// 2. Follow all outgoing Blocks edges (items that blocked_id blocks)
-/// 3. If we reach `blocking_id`, we have a cycle
-/// 4. Return error with the cycle path for debugging
-///
-/// # Returns
-///
-/// - `Ok(())` if no cycle detected
-/// - `Err` with cycle path if cycle would be created
-async fn detect_circular_dependency(
-    repo: &DependencyRepository,
-    blocking_id: Uuid,
-    blocked_id: Uuid,
-) -> WsErrorResult<()> {
-    let mut visited = HashSet::new();
-    let mut queue = VecDeque::new();
-    let mut parent_map: HashMap<Uuid, Uuid> = HashMap::new();
-
-    queue.push_back(blocked_id);
-    visited.insert(blocked_id);
-
-    while let Some(current) = queue.pop_front() {
-        // Get all items that `current` blocks (outgoing edges)
-        let blocked_by_current =
-            repo.find_blocked(current)
-                .await
-                .map_err(|e| WsError::Database {
-                    message: e.to_string(),
-                    location: ErrorLocation::from(Location::caller()),
-                })?;
-
-        for dep in blocked_by_current {
-            // Only follow Blocks edges (RelatesTo doesn't create cycles)
-            if dep.dependency_type != DependencyType::Blocks {
-                continue;
-            }
-
-            if dep.blocked_item_id == blocking_id {
-                // Found a cycle! Build the path for error message
-                let mut path = vec![blocking_id];
-                let mut node = current;
-
-                // Walk back through parent_map to reconstruct path
-                while let Some(&parent) = parent_map.get(&node) {
-                    path.push(node);
-                    node = parent;
-                }
-                path.push(blocked_id);
-                path.reverse();
-
-                // Format path with short UUIDs for readability
-                let path_str = path
-                    .iter()
-                    .map(|id| id.to_string()[..8].to_string())
-                    .collect::<Vec<_>>()
-                    .join(" → ");
-
-                return Err(WsError::ValidationError {
-                    message: format!(
-                        "Circular dependency detected: {}. This would create a cycle.",
-                        path_str
-                    ),
-                    field: Some("blocking_item_id".into()),
-                    location: ErrorLocation::from(Location::caller()),
-                });
-            }
-
-            if !visited.contains(&dep.blocked_item_id) {
-                visited.insert(dep.blocked_item_id);
-                parent_map.insert(dep.blocked_item_id, current);
-                queue.push_back(dep.blocked_item_id);
-            }
-        }
-    }
-
-    Ok(())
 }
 
 /// Create a dependency between two work items.
@@ -256,8 +169,28 @@ pub async fn handle_create_dependency(
     }
 
     // 10. CIRCULAR DEPENDENCY CHECK (only for Blocks type)
-    if dep_type == DependencyType::Blocks {
-        detect_circular_dependency(&dep_repo, blocking_id, blocked_id).await?;
+    if dep_type == DependencyType::Blocks
+        && let Some(cycle_path) = dep_repo
+            .detect_cycle(blocking_id, blocked_id)
+            .await
+            .map_err(|e| WsError::Database {
+                message: e.to_string(),
+                location: ErrorLocation::from(Location::caller()),
+            })?
+    {
+        let path_str = cycle_path
+            .iter()
+            .map(|id| id.to_string()[..8].to_string())
+            .collect::<Vec<_>>()
+            .join(" → ");
+        return Err(WsError::ValidationError {
+            message: format!(
+                "Circular dependency detected: {}. This would create a cycle.",
+                path_str
+            ),
+            field: Some("blocking_item_id".into()),
+            location: ErrorLocation::from(Location::caller()),
+        });
     }
 
     // 11. Create dependency

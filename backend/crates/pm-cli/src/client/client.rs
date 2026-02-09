@@ -432,4 +432,48 @@ impl Client {
         let req = self.request(Method::DELETE, &format!("/api/v1/comments/{}", id));
         self.execute(req).await
     }
+
+    // =========================================================================
+    // Dependency Operations
+    // =========================================================================
+
+    /// List dependencies for a work item (both blocking and blocked)
+    pub async fn list_dependencies(&self, work_item_id: &str) -> CliClientResult<Value> {
+        let req = self.request(
+            Method::GET,
+            &format!("/api/v1/work-items/{}/dependencies", work_item_id),
+        );
+        self.execute(req).await
+    }
+
+    /// Create a dependency link
+    pub async fn create_dependency(
+        &self,
+        blocking_item_id: &str,
+        blocked_item_id: &str,
+        dependency_type: &str,
+    ) -> CliClientResult<Value> {
+        #[derive(Serialize)]
+        struct CreateRequest<'a> {
+            blocking_item_id: &'a str,
+            blocked_item_id: &'a str,
+            dependency_type: &'a str,
+        }
+
+        let body = CreateRequest {
+            blocking_item_id,
+            blocked_item_id,
+            dependency_type,
+        };
+        let req = self
+            .request(Method::POST, "/api/v1/dependencies")
+            .json(&body);
+        self.execute(req).await
+    }
+
+    /// Delete a dependency
+    pub async fn delete_dependency(&self, id: &str) -> CliClientResult<Value> {
+        let req = self.request(Method::DELETE, &format!("/api/v1/dependencies/{}", id));
+        self.execute(req).await
+    }
 }
