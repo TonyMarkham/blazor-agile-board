@@ -147,15 +147,38 @@ main() {
     fi
 
     # Extract archive
-    info "Extracting to ${install_dir}/..."
+    info "Extracting archive..."
     tar xzf "$tmp_dir/$archive_file" -C "$tmp_dir"
 
-    # Copy binaries from archive's bin/ to install directory
+    # Verify archive structure
     [ -d "$tmp_dir/$archive_name/bin" ] || error "Archive missing expected bin/ directory"
-    cp -r "$tmp_dir/$archive_name/bin/"* "$install_dir/"
 
-    # Make binaries executable
+    # Install CLI binaries to .pm/bin/
+    info "Installing CLI binaries to ${install_dir}/"
+    cp "$tmp_dir/$archive_name/bin/pm" "$install_dir/" 2>/dev/null || true
+    cp "$tmp_dir/$archive_name/bin/pm-server" "$install_dir/" 2>/dev/null || true
     chmod +x "$install_dir/pm" "$install_dir/pm-server" 2>/dev/null || true
+
+    # Install Tauri desktop app if present
+    local app_installed=false
+    if [ -d "$tmp_dir/$archive_name/bin/Project Manager.app" ]; then
+        info "Installing Tauri desktop app..."
+        local app_dir="${repo_root}/.pm"
+        cp -r "$tmp_dir/$archive_name/bin/Project Manager.app" "$app_dir/" 2>/dev/null || true
+        if [ -d "$app_dir/Project Manager.app" ]; then
+            ok "Installed desktop app to ${app_dir}/Project Manager.app"
+            app_installed=true
+        fi
+    elif [ -f "$tmp_dir/$archive_name/bin/project-manager" ]; then
+        # Linux AppImage
+        info "Installing desktop app (AppImage)..."
+        cp "$tmp_dir/$archive_name/bin/project-manager" "$install_dir/" 2>/dev/null || true
+        chmod +x "$install_dir/project-manager" 2>/dev/null || true
+        if [ -f "$install_dir/project-manager" ]; then
+            ok "Installed desktop app to ${install_dir}/project-manager"
+            app_installed=true
+        fi
+    fi
 
     # Write config.json for Tauri double-click support.
     # When Tauri is launched outside a terminal, git rev-parse fails.
@@ -193,6 +216,10 @@ server.lock
 logs/
 log/
 tauri/
+
+# Desktop app (build artifact)
+*.app/
+project-manager
 GITIGNORE
         ok "Created .pm/.gitignore"
     fi
@@ -201,16 +228,38 @@ GITIGNORE
     echo ""
     ok "Installation complete!"
     echo ""
-    echo "  Installed to: ${install_dir}"
+    echo "  📦 Installed Components:"
     echo ""
-    echo "  Binaries:"
-    ls -1 "$install_dir/" | while read -r f; do echo "    $f"; done
+    echo "    CLI Tools (${install_dir}):"
+    echo "      • pm          - Project management CLI"
+    echo "      • pm-server   - Backend server"
     echo ""
-    echo "  Usage:"
+
+    if [ "$app_installed" = true ]; then
+        if [ -d "${repo_root}/.pm/Project Manager.app" ]; then
+            echo "    Desktop App (macOS):"
+            echo "      • ${repo_root}/.pm/Project Manager.app"
+            echo ""
+            echo "  🚀 Launch Desktop App:"
+            echo "    open \"${repo_root}/.pm/Project Manager.app\""
+            echo ""
+            echo "    Or move to Applications folder:"
+            echo "    mv \"${repo_root}/.pm/Project Manager.app\" /Applications/"
+        elif [ -f "$install_dir/project-manager" ]; then
+            echo "    Desktop App (Linux AppImage):"
+            echo "      • ${install_dir}/project-manager"
+            echo ""
+            echo "  🚀 Launch Desktop App:"
+            echo "    ${install_dir}/project-manager"
+        fi
+        echo ""
+    fi
+
+    echo "  💻 CLI Usage:"
     echo "    .pm/bin/pm project list --pretty"
     echo "    .pm/bin/pm desktop"
     echo ""
-    echo "  Add to PATH (optional):"
+    echo "  📝 Add to PATH (optional):"
     echo "    export PATH=\"${repo_root}/.pm/bin:\$PATH\""
     echo ""
 }

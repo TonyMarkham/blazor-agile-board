@@ -48,10 +48,7 @@
       "icons/icon.ico"
     ],
     "externalBin": [],
-    "resources": {
-      "../../.pm/config.toml": ".server/config.toml",
-      "../../target/release/pm-server": "pm-server"
-    },
+    "resources": [],
     "targets": ["app", "dmg", "nsis", "deb", "rpm"],
     "category": "Productivity",
     "shortDescription": "Agile project management",

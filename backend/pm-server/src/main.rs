@@ -84,13 +84,25 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Construct log file path if configured
     let log_file_path: Option<std::path::PathBuf> = if let Some(ref filename) = config.logging.file
     {
-        let config_dir = pm_config::Config::config_dir()?;
-        let log_dir = config_dir.join(&config.logging.dir);
+        let path = std::path::Path::new(filename);
 
-        // Ensure log directory exists
-        std::fs::create_dir_all(&log_dir)?;
+        // If PM_LOG_FILE is an absolute path, use it directly
+        if path.is_absolute() {
+            // Ensure parent directory exists
+            if let Some(parent) = path.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            Some(path.to_path_buf())
+        } else {
+            // Relative path: join with config_dir/logging.dir
+            let config_dir = pm_config::Config::config_dir()?;
+            let log_dir = config_dir.join(&config.logging.dir);
 
-        Some(log_dir.join(filename))
+            // Ensure log directory exists
+            std::fs::create_dir_all(&log_dir)?;
+
+            Some(log_dir.join(filename))
+        }
     } else {
         None
     };
