@@ -28,10 +28,11 @@ The port file is written to `<config_dir>/server.json` where `<config_dir>` is d
 
 **Default location**: `.pm/server.json`
 
-**Note**: The `.server/` directory in the repo root holds a working copy of `config.toml`. It is **not** the config directory used by `Config::config_dir()`. These are separate concerns:
-- `.pm/` — runtime data: database (`data.db`), port file (`server.json`)
-- `.server/` — configuration template: `config.toml`
-- `backend/config.example.toml` — reference copy of config.toml
+**Note**: The `.pm/` directory holds both runtime data and configuration:
+- `.pm/server.json` — port discovery file (written by server, read by CLI)
+- `.pm/data.db` — SQLite database
+- `.pm/config.toml` — active configuration (copied from `backend/config.example.toml` via `just setup-config`)
+- `backend/config.example.toml` — reference/template copy of config.toml
 
 **Verification**: Run `echo $PM_CONFIG_DIR` to check if the env var is set. If unset, the default `.pm/` is used.
 
@@ -42,7 +43,7 @@ The port file is written to `<config_dir>/server.json` where `<config_dir>` is d
 | Session | Scope | Est. Tokens | Status |
 |---------|-------|-------------|--------|
 | **[120.1](120.1-Session-Plan.md)** | pm-config: port_file module, deps, validation, DEFAULT_PORT, tests | ~25-35k | ✅ **COMPLETE** |
-| **[120.2](120.2-Session-Plan.md)** | pm-server + pm-cli: write/read port file, config file updates | ~25-35k | Pending |
+| **[120.2](120.2-Session-Plan.md)** | pm-server + pm-cli: write/read port file, config file updates | ~25-35k | ✅ **COMPLETE** |
 
 ---
 
@@ -71,16 +72,19 @@ The port file is written to `<config_dir>/server.json` where `<config_dir>` is d
 
 ---
 
-## Session 120.2: Server & CLI Integration
+## Session 120.2: Server & CLI Integration ✅ COMPLETE
 
 **Files Modified:**
-- `pm-server/src/main.rs` - Write port file after bind, cleanup on shutdown
-- `pm-cli/src/main.rs` - Auto-discover server URL from port file
-- `pm-cli/src/cli.rs` - Update --server help text
-- `backend/config.example.toml` - Document port 0 auto-assign
-- `.server/config.toml` - Change port from 8000 to 0
+- `pm-server/src/main.rs` - Write port file after bind, cleanup on shutdown ✅
+- `pm-cli/src/main.rs` - Auto-discover server URL from port file ✅
+- `pm-cli/src/cli.rs` - Update --server help text ✅
+- `backend/config.example.toml` - Document port 0 auto-assign ✅
+- `.pm/config.toml` - Change port from 8000 to 0 ✅
 
-**Verification:** `just check-backend && just test-backend`
+**Verification Results:**
+- `just check-backend` ✅ Clean build
+- `just clippy-backend` ✅ Zero warnings
+- Port file infrastructure fully integrated
 
 ---
 
@@ -114,15 +118,15 @@ Before starting **any** sub-session:
 | `pm-config/src/tests/mod.rs` | Add port_file module | ✅ |
 | `pm-config/src/tests/server.rs` | Add port 0 validation tests (2) | ✅ |
 
-### Pending (120.2)
+### Complete (120.2)
 
 | File | Change | Status |
 |------|--------|--------|
-| `pm-server/src/main.rs` | Write port file after bind, cleanup on shutdown | ⏳ |
-| `pm-cli/src/main.rs` | Auto-discover from port file | ⏳ |
-| `pm-cli/src/cli.rs` | Update help text | ⏳ |
-| `backend/config.example.toml` | Document port 0 | ⏳ |
-| `.server/config.toml` | Change port to 0 | ⏳ |
+| `pm-server/src/main.rs` | Write port file after bind, cleanup on shutdown | ✅ |
+| `pm-cli/src/main.rs` | Auto-discover from port file | ✅ |
+| `pm-cli/src/cli.rs` | Update help text | ✅ |
+| `backend/config.example.toml` | Document port 0 | ✅ |
+| `.pm/config.toml` | Change port to 0 | ✅ |
 
 ---
 

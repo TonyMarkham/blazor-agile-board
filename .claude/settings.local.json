@@ -45,7 +45,8 @@
       "Bash(just test-rs-db:*)",
       "Bash(just test-rs-config:*)",
       "Bash(just check-rs-cli:*)",
-      "Bash(just test-rs-cli:*)"
+      "Bash(just test-rs-cli:*)",
+      "Bash(just check-rs-config:*)"
     ]
   }
 }
