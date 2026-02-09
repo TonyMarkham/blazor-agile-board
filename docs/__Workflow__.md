@@ -107,9 +107,9 @@ Here is a review of the plan:
 
 ### Other
 ```text
-Read `CRITICAL_OPERATING_CONSTRAINTS.md`, `docs/session-plans/121.3.2.4-Session-Plan.md` and `docs/session-plans/121.3.2-Session-Plan.md`.
+Read `CRITICAL_OPERATING_CONSTRAINTS.md`, `docs/session-plans/121.3.2.5-Session-Plan.md` and `docs/session-plans/121.3.2-Session-Plan.md`.
 
-Please audit `docs/session-plans/121.3.2.4-Session-Plan.md` and cross reference it's contents against the current state of the project to avoid making poor assumptions.
+Please audit `docs/session-plans/121.3.2.5-Session-Plan.md` and cross reference it's contents against the current state of the project to avoid making poor assumptions.
 
 I want you to teach me by presenting me with bite-sized chunks for me to write/edit keeping the commentary separate from the code snippets to make the code snippets easier for me to follow
 
@@ -118,12 +118,12 @@ I want you to teach me by presenting me with bite-sized chunks for me to write/e
 
 ### End of Session Sanity Check
 ```text
-Builds clean and all tests pass. Please sanity check that everything in `docs/session-plans/121.3.2.4-Session-Plan.md` was implemented as expected.
+Builds clean and all tests pass. Please sanity check that everything in `docs/session-plans/121.3.2.5-Session-Plan.md` was implemented as expected.
 ```
 
 ### Update Docs
 ```text
-Please update `docs/session-plans/121.3.2.4-Session-Plan.md` and `docs/session-plans/121.3.2-Session-Plan.md`
+Please update `docs/session-plans/121.3.2.5-Session-Plan.md` and `docs/session-plans/121.3.2-Session-Plan.md`
 ```
 
 ### Commit

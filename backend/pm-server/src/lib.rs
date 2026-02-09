@@ -40,6 +40,10 @@ pub use api::{
         sprints::{create_sprint, delete_sprint, get_sprint, list_sprints, update_sprint},
         update_sprint_request::UpdateSprintRequest,
     },
+    swim_lanes::{
+        swim_lane_dto::SwimLaneDto, swim_lane_list_response::SwimLaneListResponse,
+        swim_lanes::list_swim_lanes,
+    },
     work_items::{
         create_work_item_request::CreateWorkItemRequest,
         list_work_item_query::ListWorkItemsQuery,

@@ -1,7 +1,7 @@
 use crate::{
     comment_commands::CommentCommands, dependency_commands::DependencyCommands,
     project_commands::ProjectCommands, sprint_commands::SprintCommands,
-    work_item_commands::WorkItemCommands,
+    swim_lane_commands::SwimLaneCommands, work_item_commands::WorkItemCommands,
 };
 
 use clap::Subcommand;
@@ -36,6 +36,12 @@ pub(crate) enum Commands {
     Dependency {
         #[command(subcommand)]
         action: DependencyCommands,
+    },
+
+    /// Swim lane operations (read-only)
+    SwimLane {
+        #[command(subcommand)]
+        action: SwimLaneCommands,
     },
 
     /// Launch the desktop app for this repository

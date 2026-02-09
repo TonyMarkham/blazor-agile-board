@@ -5,4 +5,5 @@ pub(crate) mod error;
 pub(crate) mod extractors;
 pub(crate) mod projects;
 pub(crate) mod sprints;
+pub(crate) mod swim_lanes;
 pub(crate) mod work_items;

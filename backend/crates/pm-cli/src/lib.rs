@@ -9,6 +9,7 @@ pub(crate) mod comment_commands;
 pub(crate) mod dependency_commands;
 pub(crate) mod project_commands;
 pub(crate) mod sprint_commands;
+pub(crate) mod swim_lane_commands;
 pub(crate) mod work_item_commands;
 
 #[cfg(test)]

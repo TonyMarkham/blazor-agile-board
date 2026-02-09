@@ -2,8 +2,8 @@ use crate::{
     admin, create_comment, create_dependency, create_project, create_sprint, create_work_item,
     delete_comment, delete_dependency, delete_project, delete_sprint, delete_work_item,
     get_project, get_sprint, get_work_item, health, list_comments, list_dependencies,
-    list_projects, list_sprints, list_work_items, update_comment, update_project, update_sprint,
-    update_work_item,
+    list_projects, list_sprints, list_swim_lanes, list_work_items, update_comment, update_project,
+    update_sprint, update_work_item,
 };
 
 use pm_ws::AppState;
@@ -65,6 +65,11 @@ pub fn build_router(state: AppState) -> Router {
         )
         .route("/api/v1/dependencies", post(create_dependency))
         .route("/api/v1/dependencies/{id}", delete(delete_dependency))
+        // REST API v1 - Swim Lanes (read-only, fixed configuration)
+        .route(
+            "/api/v1/projects/{project_id}/swim-lanes",
+            get(list_swim_lanes),
+        )
         // Add shared state
         .with_state(state)
         // CORS middleware (allow all origins for WebSocket)

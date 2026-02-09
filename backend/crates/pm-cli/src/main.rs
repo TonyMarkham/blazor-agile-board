@@ -22,6 +22,7 @@ mod comment_commands;
 mod dependency_commands;
 mod project_commands;
 mod sprint_commands;
+mod swim_lane_commands;
 mod work_item_commands;
 
 use crate::{
@@ -32,6 +33,7 @@ use crate::{
     dependency_commands::DependencyCommands,
     project_commands::ProjectCommands,
     sprint_commands::SprintCommands,
+    swim_lane_commands::SwimLaneCommands,
     work_item_commands::WorkItemCommands,
 };
 
@@ -214,6 +216,11 @@ async fn main() -> ExitCode {
                 r#type,
             } => client.create_dependency(&blocking, &blocked, &r#type).await,
             DependencyCommands::Delete { id } => client.delete_dependency(&id).await,
+        },
+
+        // Swim lane commands (read-only)
+        Commands::SwimLane { action } => match action {
+            SwimLaneCommands::List { project_id } => client.list_swim_lanes(&project_id).await,
         },
 
         // Desktop is handled above before server discovery

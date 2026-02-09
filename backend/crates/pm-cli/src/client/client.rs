@@ -476,4 +476,17 @@ impl Client {
         let req = self.request(Method::DELETE, &format!("/api/v1/dependencies/{}", id));
         self.execute(req).await
     }
+
+    // =========================================================================
+    // Swim Lane Operations (read-only — swim lanes are fixed configuration)
+    // =========================================================================
+
+    /// List swim lanes for a project (ordered by position)
+    pub async fn list_swim_lanes(&self, project_id: &str) -> CliClientResult<Value> {
+        let req = self.request(
+            Method::GET,
+            &format!("/api/v1/projects/{}/swim-lanes", project_id),
+        );
+        self.execute(req).await
+    }
 }
