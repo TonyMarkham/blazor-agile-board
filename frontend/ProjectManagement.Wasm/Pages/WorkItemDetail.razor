@@ -10,6 +10,7 @@
 @inject NotificationService NotificationService
 @inject NavigationManager NavigationManager
 @inject IDependencyStore DependencyStore
+@inject ILogger<WorkItemDetail> Logger
 @implements IDisposable
 
 <PageTitle>@(_workItem?.Title ?? "Work Item") - Agile Board</PageTitle>
@@ -36,7 +37,17 @@ else
         {
             <a href="@($"/project/{_project.Id}")">@_project.Title</a>
             <span class="separator">/</span>
-            <span class="current">@_workItem.GetDisplayKey(_project.Key)</span>
+
+            @* Render parent chain (Epic → Story → etc.) *@
+            @foreach (var parent in _parentChain)
+            {
+                <a href="@($"/workitem/{parent.Id}")"
+                   title="@parent.Title">@parent.GetDisplayKey(_project.Key)</a>
+                <span class="separator">/</span>
+            }
+
+            @* Current work item (non-clickable) *@
+            <span class="current" title="@_workItem.Title">@_workItem.GetDisplayKey(_project.Key)</span>
         }
         else
         {
@@ -219,9 +230,12 @@ else
     private bool _isConnected = true;
     private bool _deleting = false;
     private Guid _currentUserId;
+    private List<WorkItemViewModel> _parentChain = new();
+    private ILogger<WorkItemDetail> _logger = default!;
 
     protected override void OnInitialized()
     {
+        _logger = Logger;
         _currentUserId = AppState.CurrentUser?.Id ?? Guid.Empty;
         _isConnected = AppState.ConnectionState == ConnectionState.Connected;
         AppState.OnStateChanged += HandleStateChanged;
@@ -273,6 +287,9 @@ else
             // Load children
             var children = AppState.WorkItems.GetChildren(WorkItemId);
             _children = ViewModelFactory.CreateMany(children).ToList();
+
+            // Build parent chain for breadcrumbs (Epic → Story → Task order)
+            _parentChain = BuildParentChain(_workItem);
         }
         finally
         {
@@ -280,6 +297,53 @@ else
             _initialLoadComplete = true;
             StateHasChanged();
         }
+    }
+    
+    /// <summary>
+    /// Builds the parent chain from root to current work item (excluding current).
+    /// Returns Epic → Story → Task order (top-down).
+    ///
+    /// Backend guarantees no cycles (see work_item.rs:586-634 check_circular_reference).
+    /// Frontend depth limit is defensive programming only.
+    /// </summary>
+    private List<WorkItemViewModel> BuildParentChain(WorkItemViewModel currentItem)
+    {
+        const int MAX_DEPTH = 20; // Defensive limit (backend enforces MAX_DEPTH=100)
+        var chain = new List<WorkItemViewModel>();
+
+        var currentParentId = currentItem.ParentId;
+        var depth = 0;
+
+        while (currentParentId.HasValue && depth < MAX_DEPTH)
+        {
+            var parent = AppState.WorkItems.GetById(currentParentId.Value);
+
+            if (parent is null)
+            {
+                // Parent not found in cache (race condition, data inconsistency)
+                _logger.LogWarning(
+                    "Parent work item {ParentId} not found in cache for work item {WorkItemId}. " +
+                    "Stopping parent chain traversal. Partial breadcrumb will be shown.",
+                    currentParentId.Value, currentItem.Id);
+                break;
+            }
+
+            chain.Add(ViewModelFactory.Create(parent));
+            currentParentId = parent.ParentId;
+            depth++;
+        }
+
+        if (depth >= MAX_DEPTH)
+        {
+            _logger.LogWarning(
+                "Work item {WorkItemId} has parent chain exceeding MAX_DEPTH={MaxDepth}. " +
+                "This should not happen with backend validation. Truncating breadcrumb.",
+                currentItem.Id, MAX_DEPTH);
+        }
+
+        // Reverse to get top-down order (Epic → Story → Task)
+        chain.Reverse();
+        return chain;
     }
 
     private async Task ShowEditDialog()
