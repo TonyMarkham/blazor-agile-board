@@ -3,14 +3,14 @@
 mod commands;
 mod identity;
 mod logging;
+mod pm_directory;
 mod server;
 mod tray;
-mod pm_directory;
 
 use logging::setup_logging;
+use pm_directory::PmDir;
 use server::{ServerConfig, ServerManager, ServerState};
 use tray::TrayManager;
-use pm_directory::PmDir;
 
 #[cfg(test)]
 mod tests;
@@ -74,12 +74,11 @@ pub fn run() {
                     info!("Repo mode: {}", dir.display());
                     dir
                 }
-                Err(_) => find_server_dir_from_binary()
-                    .unwrap_or_else(|| {
-                        let dir = app_data_dir.join(PM_DIR_NAME);
-                        info!("Standalone mode: {}", dir.display());
-                        dir
-                    }),
+                Err(_) => find_server_dir_from_binary().unwrap_or_else(|| {
+                    let dir = app_data_dir.join(PM_DIR_NAME);
+                    info!("Standalone mode: {}", dir.display());
+                    dir
+                }),
             };
             std::fs::create_dir_all(&server_dir)?;
 

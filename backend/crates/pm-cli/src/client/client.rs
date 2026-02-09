@@ -87,6 +87,68 @@ impl Client {
         self.execute(req).await
     }
 
+    /// Create a new project
+    pub async fn create_project(
+        &self,
+        title: &str,
+        key: &str,
+        description: Option<&str>,
+    ) -> CliClientResult<Value> {
+        #[derive(Serialize)]
+        struct CreateRequest<'a> {
+            title: &'a str,
+            key: &'a str,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            description: Option<&'a str>,
+        }
+
+        let body = CreateRequest {
+            title,
+            key,
+            description,
+        };
+        let req = self.request(Method::POST, "/api/v1/projects").json(&body);
+        self.execute(req).await
+    }
+
+    /// Update a project
+    pub async fn update_project(
+        &self,
+        id: &str,
+        title: Option<&str>,
+        description: Option<&str>,
+        status: Option<&str>,
+        expected_version: i32,
+    ) -> CliClientResult<Value> {
+        #[derive(Serialize)]
+        struct UpdateRequest<'a> {
+            #[serde(skip_serializing_if = "Option::is_none")]
+            title: Option<&'a str>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            description: Option<&'a str>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            status: Option<&'a str>,
+            expected_version: i32,
+        }
+
+        let body = UpdateRequest {
+            title,
+            description,
+            status,
+            expected_version,
+        };
+        let req = self
+            .request(Method::PUT, &format!("/api/v1/projects/{}", id))
+            .json(&body);
+        self.execute(req).await
+    }
+
+    /// Delete a project
+    pub async fn delete_project(&self, id: &str) -> CliClientResult<Value> {
+        let req = self.request(Method::DELETE, &format!("/api/v1/projects/{}", id));
+        self.execute(req).await
+    }
+
     // =========================================================================
     // Work Item Operations
     // =========================================================================

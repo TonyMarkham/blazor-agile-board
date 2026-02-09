@@ -19,10 +19,12 @@ pub use api::{
     error::Result as ApiResult,
     extractors::user_id::UserId,
     projects::{
+        create_project_request::CreateProjectRequest,
         project_dto::ProjectDto,
         project_list_response::ProjectListResponse,
         project_response::ProjectResponse,
-        projects::{get_project, list_projects},
+        projects::{create_project, delete_project, get_project, list_projects, update_project},
+        update_project_request::UpdateProjectRequest,
     },
     work_items::{
         create_work_item_request::CreateWorkItemRequest,

@@ -60,6 +60,33 @@ async fn main() -> ExitCode {
         Commands::Project { action } => match action {
             ProjectCommands::List => client.list_projects().await,
             ProjectCommands::Get { id } => client.get_project(&id).await,
+            ProjectCommands::Create {
+                title,
+                key,
+                description,
+            } => {
+                client
+                    .create_project(&title, &key, description.as_deref())
+                    .await
+            }
+            ProjectCommands::Update {
+                id,
+                title,
+                description,
+                status,
+                expected_version,
+            } => {
+                client
+                    .update_project(
+                        &id,
+                        title.as_deref(),
+                        description.as_deref(),
+                        status.as_deref(),
+                        expected_version,
+                    )
+                    .await
+            }
+            ProjectCommands::Delete { id } => client.delete_project(&id).await,
         },
 
         // Work item commands
@@ -214,7 +241,10 @@ fn launch_desktop() -> ExitCode {
         Ok(pm_dir) => match pm_dir.parent() {
             Some(root) => root.to_path_buf(),
             None => {
-                eprintln!("Error: cannot determine repo root from {}", pm_dir.display());
+                eprintln!(
+                    "Error: cannot determine repo root from {}",
+                    pm_dir.display()
+                );
                 return ExitCode::FAILURE;
             }
         },

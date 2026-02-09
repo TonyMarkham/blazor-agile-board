@@ -1,4 +1,4 @@
-use crate::{Config, PortFileInfo, tests::setup_config_dir, ConfigError};
+use crate::{Config, ConfigError, PortFileInfo, tests::setup_config_dir};
 
 use googletest::assert_that;
 use googletest::prelude::{anything, contains_substring, eq, err, none, ok, pat};
@@ -67,12 +67,12 @@ fn given_port_file_with_dead_pid_when_read_live_then_returns_none_and_removes_fi
     PortFileInfo::write_in(&config_dir, ALT_TEST_PORT, TEST_HOST).unwrap();
 
     let stale_info = serde_json::json!({
-          "pid": 999999,
-          "port": ALT_TEST_PORT,
-          "host": TEST_HOST,
-          "started_at": "2026-01-01T00:00:00Z",
-          "version": "0.1.0"
-      });
+        "pid": 999999,
+        "port": ALT_TEST_PORT,
+        "host": TEST_HOST,
+        "started_at": "2026-01-01T00:00:00Z",
+        "version": "0.1.0"
+    });
     let path = config_dir.join("server.json");
     std::fs::write(&path, serde_json::to_string_pretty(&stale_info).unwrap()).unwrap();
     assert!(path.exists());
@@ -138,12 +138,12 @@ fn given_live_server_when_write_then_error() {
     let result = PortFileInfo::write_in(&config_dir, 9999, TEST_HOST);
 
     assert_that!(
-          result,
-          err(pat!(ConfigError::Generic {
-              message: contains_substring("Another pm-server is already running"),
-              ..
-          }))
-      );
+        result,
+        err(pat!(ConfigError::Generic {
+            message: contains_substring("Another pm-server is already running"),
+            ..
+        }))
+    );
 }
 
 #[test]
@@ -153,12 +153,12 @@ fn given_stale_server_when_write_then_overwrites() {
     let config_dir = Config::config_dir_from_git(temp.path()).unwrap();
 
     let stale_info = serde_json::json!({
-          "pid": 999999,
-          "port": ALT_TEST_PORT,
-          "host": TEST_HOST,
-          "started_at": "2026-01-01T00:00:00Z",
-          "version": "0.1.0"
-      });
+        "pid": 999999,
+        "port": ALT_TEST_PORT,
+        "host": TEST_HOST,
+        "started_at": "2026-01-01T00:00:00Z",
+        "version": "0.1.0"
+    });
     let path = config_dir.join("server.json");
     std::fs::write(&path, serde_json::to_string_pretty(&stale_info).unwrap()).unwrap();
 
@@ -204,10 +204,10 @@ fn given_malformed_json_when_read_then_error() {
     let result = PortFileInfo::read_in(&config_dir);
 
     assert_that!(
-          result,
-          err(pat!(ConfigError::Generic {
-              message: contains_substring("Invalid port file"),
-              ..
-          }))
-      );
+        result,
+        err(pat!(ConfigError::Generic {
+            message: contains_substring("Invalid port file"),
+            ..
+        }))
+    );
 }

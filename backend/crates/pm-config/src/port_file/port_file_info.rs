@@ -100,7 +100,11 @@ impl PortFileInfo {
     }
 
     /// Write to a specific config directory (for tests).
-    pub fn write_in(config_dir: &std::path::Path, port: u16, host: &str) -> ConfigErrorResult<PathBuf> {
+    pub fn write_in(
+        config_dir: &std::path::Path,
+        port: u16,
+        host: &str,
+    ) -> ConfigErrorResult<PathBuf> {
         let path = config_dir.join(PORT_FILENAME);
 
         Self::ensure_parent_dir(&path)?;

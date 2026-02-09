@@ -1,7 +1,7 @@
 use crate::{
-    admin, create_comment, create_work_item, delete_comment, delete_work_item, get_project,
-    get_work_item, health, list_comments, list_projects, list_work_items, update_comment,
-    update_work_item,
+    admin, create_comment, create_project, create_work_item, delete_comment, delete_project,
+    delete_work_item, get_project, get_work_item, health, list_comments, list_projects,
+    list_work_items, update_comment, update_project, update_work_item,
 };
 
 use pm_ws::AppState;
@@ -26,7 +26,10 @@ pub fn build_router(state: AppState) -> Router {
         .route("/admin/shutdown", post(admin::shutdown_handler))
         // REST API v1 - Projects
         .route("/api/v1/projects", get(list_projects))
+        .route("/api/v1/projects", post(create_project))
         .route("/api/v1/projects/{id}", get(get_project))
+        .route("/api/v1/projects/{id}", put(update_project))
+        .route("/api/v1/projects/{id}", delete(delete_project))
         // REST API v1 - Work Items
         .route(
             "/api/v1/projects/{project_id}/work-items",

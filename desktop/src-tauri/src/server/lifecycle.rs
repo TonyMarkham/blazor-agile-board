@@ -198,7 +198,10 @@ impl ServerManager {
         _app: &tauri::AppHandle,
         port: u16,
     ) -> ServerResult<tokio::sync::oneshot::Receiver<()>> {
-        info!("Spawning standalone pm-server from {}", self.server_dir.display());
+        info!(
+            "Spawning standalone pm-server from {}",
+            self.server_dir.display()
+        );
 
         // Find pm-server binary
         let server_binary = self.find_server_binary()?;
@@ -221,9 +224,9 @@ impl ServerManager {
 
         // Spawn as detached process
         let mut cmd = std::process::Command::new(&server_binary);
-            // Set cwd to repo root so pm-server's git-based config_dir() works.
-            // self.server_dir is <repo>/.pm/, so parent is the repo root.
-            cmd.current_dir(self.server_dir.parent().unwrap_or(&self.server_dir))
+        // Set cwd to repo root so pm-server's git-based config_dir() works.
+        // self.server_dir is <repo>/.pm/, so parent is the repo root.
+        cmd.current_dir(self.server_dir.parent().unwrap_or(&self.server_dir))
             .env("PM_SERVER_PORT", port.to_string())
             .env("PM_SERVER_HOST", &self.config.server.host)
             .env("PM_LOG_LEVEL", &self.config.logging.level)

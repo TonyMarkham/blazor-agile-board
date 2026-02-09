@@ -78,10 +78,7 @@ fn given_env_var_and_toml_when_load_then_env_var_overrides_toml() {
     // Given
     let temp = setup_config_dir();
     std::env::set_current_dir(temp.path()).unwrap();
-    std::fs::write(
-        temp.path().join(".pm/config.toml"),
-        "[server]\nport = 9000"
-    ).unwrap();
+    std::fs::write(temp.path().join(".pm/config.toml"), "[server]\nport = 9000").unwrap();
     let _port_guard = EnvGuard::set("PM_SERVER_PORT", "8888");
 
     // When

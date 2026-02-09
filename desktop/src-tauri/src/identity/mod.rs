@@ -21,10 +21,9 @@ const USER_IDENTITY_FILENAME: &str = "user.json";
 
 /// Gets the user identity file path from the resolved .pm/ directory.
 fn get_identity_path(app: &tauri::AppHandle) -> IdentityResult<PathBuf> {
-    let pm_dir = app.try_state::<crate::PmDir>()
-        .ok_or_else(|| IdentityError::app_data_dir(
-            "PmDir state not initialized - this is a bug".to_string()
-        ))?;
+    let pm_dir = app.try_state::<crate::PmDir>().ok_or_else(|| {
+        IdentityError::app_data_dir("PmDir state not initialized - this is a bug".to_string())
+    })?;
     Ok(pm_dir.0.join(USER_IDENTITY_FILENAME))
 }
 
@@ -78,15 +77,18 @@ pub fn load(app: &tauri::AppHandle) -> IdentityResult<LoadResult> {
 /// This prevents corruption if the app crashes mid-write.
 pub fn save(app: &tauri::AppHandle, user: &UserIdentity) -> IdentityResult<()> {
     let final_path = get_identity_path(app)?;
-    let pm_dir = final_path.parent()
-        .ok_or_else(|| IdentityError::app_data_dir(
-            "Invalid identity path - no parent directory".to_string()
-        ))?;
+    let pm_dir = final_path.parent().ok_or_else(|| {
+        IdentityError::app_data_dir("Invalid identity path - no parent directory".to_string())
+    })?;
 
     // Ensure directory exists
     fs::create_dir_all(pm_dir).map_err(|e| IdentityError::dir_creation(pm_dir.to_path_buf(), e))?;
 
-    let temp_path = pm_dir.join(format!("{}.tmp.{}", USER_IDENTITY_FILENAME, std::process::id()));
+    let temp_path = pm_dir.join(format!(
+        "{}.tmp.{}",
+        USER_IDENTITY_FILENAME,
+        std::process::id()
+    ));
 
     // Serialize with pretty printing for debuggability
     let json = serde_json::to_string_pretty(user)?;
