@@ -74,7 +74,7 @@ impl ServerManager {
         if let Ok(exe) = std::env::current_exe()
             && let Some(exe_dir) = exe.parent()
         {
-            let sibling = exe_dir.join("pm-server");
+            let sibling = exe_dir.join(format!("pm-server{}", std::env::consts::EXE_SUFFIX));
             if sibling.exists() {
                 info!("Using pm-server (sibling): {}", sibling.display());
                 return Ok(sibling);
@@ -82,7 +82,7 @@ impl ServerManager {
         }
 
         // 2. Installed location: <repo>/.pm/bin/pm-server
-        let installed = self.server_dir.join("bin").join("pm-server");
+        let installed = self.server_dir.join("bin").join(format!("pm-server{}", std::env::consts::EXE_SUFFIX));
         if installed.exists() {
             info!("Using pm-server (installed): {}", installed.display());
             return Ok(installed);
@@ -247,6 +247,14 @@ impl ServerManager {
                     Ok(())
                 });
             }
+        }
+
+        // Hide console window on Windows
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            const CREATE_NO_WINDOW: u32 = 0x08000000;
+            cmd.creation_flags(CREATE_NO_WINDOW);
         }
 
         // Close stdio - server logs to file via PM_LOG_FILE

@@ -138,7 +138,7 @@ impl LockFile {
 
         unsafe {
             let handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid);
-            if handle == 0 {
+            if handle.is_null() {
                 return false;
             }
 
@@ -146,7 +146,7 @@ impl LockFile {
             let result = GetExitCodeProcess(handle, &mut exit_code);
             CloseHandle(handle);
 
-            result != 0 && exit_code == STILL_ACTIVE
+            result != 0 && exit_code == (STILL_ACTIVE as u32)
         }
     }
 

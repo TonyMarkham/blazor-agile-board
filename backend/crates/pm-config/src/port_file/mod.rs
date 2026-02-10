@@ -17,7 +17,7 @@ pub fn is_process_running(pid: u32) -> bool {
     const PROCESS_QUERY_LIMITED_INFORMATION: u32 = 0x1000;
     const STILL_ACTIVE: u32 = 259;
 
-    extern "system" {
+    unsafe extern "system" {
         fn OpenProcess(access: u32, inherit: i32, pid: u32) -> *mut c_void;
         fn GetExitCodeProcess(process: *mut c_void, exit_code: *mut u32) -> i32;
         fn CloseHandle(handle: *mut c_void) -> i32;

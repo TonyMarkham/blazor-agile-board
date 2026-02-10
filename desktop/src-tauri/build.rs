@@ -19,7 +19,7 @@ fn main() {
     let source_binary = workspace_root
         .join("target")
         .join(&profile)
-        .join("pm-server");
+        .join(format!("pm-server{}", env::consts::EXE_SUFFIX));
 
     // Destination path for the sidecar
     let binaries_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join("binaries");

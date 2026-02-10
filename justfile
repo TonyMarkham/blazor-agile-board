@@ -1,5 +1,9 @@
 # justfile - task runner for Blazor Agile Board
 
+# === Shell Configuration ===
+# Configure PowerShell for Windows backtick evaluation
+set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
+
 # === Directory Structure ===
 frontend_dir := "frontend"
 backend_dir := "backend"
@@ -13,10 +17,11 @@ dist_dir := "dist"
 version := if os_family() == "unix" {
 `cargo pkgid -p pm-cli | cut -d'#' -f2`
 } else {
-`powershell -NoProfile -Command "(cargo pkgid -p pm-cli).Split('#')[1]"`
+`(cargo pkgid -p pm-cli).Split('#')[1]`
 }
 target_triple := `rustc --print host-tuple`
 archive_name := "pm-" + version + "-" + target_triple
+archive_ext := if os_family() == "unix" { "tar.gz" } else { "zip" }
 
 # === Solution File ===
 frontend_solution := frontend_dir + "/ProjectManagement.slnx"
@@ -102,8 +107,17 @@ test-frontend-coverage:
 
 # Clean all frontend projects
 clean-frontend:
+    @just _clean-frontend-impl
+
+[unix]
+_clean-frontend-impl:
     dotnet clean {{frontend_solution}}
     rm -rf {{frontend_bin_pattern}} {{frontend_obj_pattern}}
+
+[windows]
+_clean-frontend-impl:
+    dotnet clean {{frontend_solution}}
+    @if (Test-Path "{{frontend_dir}}") { Get-ChildItem -Path "{{frontend_dir}}" -Include bin,obj -Recurse -Directory | Remove-Item -Recurse -Force }
 
 # Full frontend workflow: restore -> build -> test
 check-frontend:
@@ -495,6 +509,17 @@ build:
 
 # Build all binaries in release mode for distribution
 build-portable:
+    @just _build-portable-impl
+
+[unix]
+_build-portable-impl:
+    @echo "Building portable release ({{target_triple}})..."
+    cargo build -p pm-cli {{cargo_release}}
+    cargo build -p pm-server {{cargo_release}}
+    cargo tauri build
+
+[windows]
+_build-portable-impl:
     @echo "Building portable release ({{target_triple}})..."
     cargo build -p pm-cli {{cargo_release}}
     cargo build -p pm-server {{cargo_release}}
@@ -502,17 +527,19 @@ build-portable:
 
 # Create distribution archive from release binaries
 archive: build-portable
+    @just _archive-impl
+
+[unix]
+_archive-impl:
     @echo "Creating archive: {{dist_dir}}/{{archive_name}}.tar.gz"
     @test -f target/release/pm || (echo "ERROR: pm binary not found in target/release/"; exit 1)
     @test -f target/release/pm-server || (echo "ERROR: pm-server binary not found in target/release/"; exit 1)
     mkdir -p {{dist_dir}}/{{archive_name}}/bin
     cp target/release/pm {{dist_dir}}/{{archive_name}}/bin/
     cp target/release/pm-server {{dist_dir}}/{{archive_name}}/bin/
-    @# macOS: copy .app bundle if it exists
     @if [ -d "target/release/bundle/macos/Project Manager.app" ]; then \
         cp -r "target/release/bundle/macos/Project Manager.app" {{dist_dir}}/{{archive_name}}/bin/; \
     fi
-    @# Linux: copy AppImage if it exists
     @if ls target/release/bundle/appimage/*.AppImage 1>/dev/null 2>&1; then \
         cp target/release/bundle/appimage/*.AppImage {{dist_dir}}/{{archive_name}}/bin/project-manager; \
     fi
@@ -522,22 +549,43 @@ archive: build-portable
     @echo "Contents:"
     @tar tzf {{dist_dir}}/{{archive_name}}.tar.gz
 
+[windows]
+_archive-impl:
+    @echo "Creating archive: {{dist_dir}}/{{archive_name}}.zip"
+    @if (-not (Test-Path "target/release/pm.exe")) { Write-Error "ERROR: pm.exe not found in target/release/"; exit 1 }
+    @if (-not (Test-Path "target/release/pm-server.exe")) { Write-Error "ERROR: pm-server.exe not found in target/release/"; exit 1 }
+    @New-Item -ItemType Directory -Force -Path "{{dist_dir}}/{{archive_name}}/bin" | Out-Null
+    @Copy-Item "target/release/pm.exe" "{{dist_dir}}/{{archive_name}}/bin/"
+    @Copy-Item "target/release/pm-server.exe" "{{dist_dir}}/{{archive_name}}/bin/"
+    @if (Test-Path "target/release/project-manager.exe") { Copy-Item "target/release/project-manager.exe" "{{dist_dir}}/{{archive_name}}/bin/" }
+    @Compress-Archive -Path "{{dist_dir}}/{{archive_name}}" -DestinationPath "{{dist_dir}}/{{archive_name}}.zip" -Force
+    @echo ""
+    @echo "Archive created: {{dist_dir}}/{{archive_name}}.zip"
+    @echo "Contents:"
+    @Get-ChildItem -Recurse "{{dist_dir}}/{{archive_name}}" | Select-Object -ExpandProperty FullName
+
 # Build + archive in one step
 release-build: archive
 
 # Clean distribution artifacts
 clean-dist:
+    @just _clean-dist-impl
+
+[unix]
+_clean-dist-impl:
     rm -rf {{dist_dir}}
+
+[windows]
+_clean-dist-impl:
+    @if (Test-Path "{{dist_dir}}") { Remove-Item -Recurse -Force "{{dist_dir}}" }
 
 # Upload archive to an existing GitHub release (requires gh CLI)
 release-upload tag:
-    gh release upload {{tag}} {{dist_dir}}/{{archive_name}}.tar.gz --clobber
+    gh release upload {{tag}} {{dist_dir}}/{{archive_name}}.{{archive_ext}} --clobber
 
 # Create a new GitHub release and upload the archive
 release tag:
-    gh release create {{tag}} {{dist_dir}}/{{archive_name}}.tar.gz \
-        --title "v{{version}}" \
-        --notes "Release v{{version}} for {{target_triple}}"
+    gh release create {{tag}} {{dist_dir}}/{{archive_name}}.{{archive_ext}} --title "v{{version}}" --notes "Release v{{version}} for {{target_triple}}"
 
 # ============================================================================
 # Utility Commands
@@ -558,7 +606,8 @@ _setup-config-impl:
 
 [windows]
 _setup-config-impl:
-  @if not exist "{{config_file}}" ( mkdir "{{config_dir}}" 2>NUL & copy "{{config_example}}" "{{config_file}}" & echo {{msg_config_created}} ) else ( echo {{msg_config_exists}} )
+  @if (-not (Test-Path "{{config_dir}}")) { New-Item -ItemType Directory -Force -Path "{{config_dir}}" | Out-Null }
+  @if (-not (Test-Path "{{config_file}}")) { Copy-Item "{{config_example}}" "{{config_file}}"; Write-Host "{{msg_config_created}}" } else { Write-Host "{{msg_config_exists}}" }
 
 # Show this help message
 @help:

@@ -45,7 +45,7 @@ impl TrayManager {
         )?;
 
         // Create tray icon
-        let _tray = TrayIconBuilder::new()
+        let _tray = TrayIconBuilder::with_id("main")
             .icon(app.default_window_icon().unwrap().clone())
             .menu(&menu)
             .tooltip("Project Manager")

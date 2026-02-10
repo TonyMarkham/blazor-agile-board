@@ -19,6 +19,7 @@ After completing this setup, you should have:
 - ✅ Microsoft C++ Build Tools
 - ✅ WebView2 Runtime (usually pre-installed on Windows 11)
 - ✅ Rust 1.93.0+ and Cargo
+- ✅ Protocol Buffers Compiler (protoc)
 - ✅ .NET SDK 10.0
 - ✅ Tauri CLI
 - ✅ SQLx CLI (for database migrations)
@@ -125,7 +126,76 @@ rustc --version
 
 ---
 
-## 4. .NET SDK 10.0
+## 4. Protocol Buffers Compiler (protoc)
+
+**Required for**: Compiling `.proto` files in the `pm-proto` crate (WebSocket message definitions)
+
+**What it does**: The Protocol Buffers compiler (`protoc`) generates Rust code from `.proto` schema files. This project uses protobuf for efficient binary serialization of WebSocket messages.
+
+**Installation** (Choose one method):
+
+**Option A: Using winget (Recommended - Windows 10 1809+/Windows 11)**
+
+```powershell
+winget install Google.Protobuf
+```
+
+After installation, **close and reopen your terminal** to refresh PATH.
+
+**Option B: Using Chocolatey (if installed)**
+
+```powershell
+choco install protoc
+```
+
+**Option C: Manual Installation**
+
+1. Visit: https://github.com/protocolbuffers/protobuf/releases
+2. Download **`protoc-XX.X-win64.zip`** (e.g., `protoc-28.3-win64.zip`)
+3. Extract to `C:\protoc\`
+4. Add `C:\protoc\bin` to your PATH:
+   - Open **System Properties** → **Environment Variables**
+   - Under **User variables**, select **Path** → **Edit**
+   - Click **New** → Add `C:\protoc\bin`
+   - Click **OK** on all dialogs
+5. **Restart PowerShell**
+
+**Verification**:
+```powershell
+protoc --version
+```
+**Expected output**: `libprotoc 28.x` or later (any 3.x+ or 28.x+ version works)
+
+**Troubleshooting**:
+- `protoc: command not found` → Restart PowerShell after installation
+- Manual install: Ensure `C:\protoc\bin` is in PATH
+- Check PATH: `$env:PATH -split ';' | Select-String protoc`
+
+**If protoc still not found after restart**:
+
+Set the `PROTOC` environment variable to the protoc.exe location:
+
+```powershell
+# Find where winget installed protoc
+$protoc_path = Get-ChildItem -Path "$env:LOCALAPPDATA\Microsoft\WinGet\Packages" -Recurse -Filter "protoc.exe" | Select-Object -First 1 -ExpandProperty FullName
+
+# Set PROTOC environment variable (User-level, persists across sessions)
+[Environment]::SetEnvironmentVariable("PROTOC", $protoc_path, "User")
+
+# Verify
+protoc --version
+```
+
+Or set it manually for your user:
+1. Open **System Properties** → **Environment Variables**
+2. Under **User variables**, click **New**
+3. Variable name: `PROTOC`
+4. Variable value: `C:\Users\YourUsername\AppData\Local\Microsoft\WinGet\Packages\Google.Protobuf_Microsoft.Winget.Source_8wekyb3d8bbwe\bin\protoc.exe`
+5. Click **OK**, restart terminal
+
+---
+
+## 5. .NET SDK 10.0
 
 **Required for**: Blazor frontend compilation
 
@@ -149,7 +219,7 @@ dotnet --version
 
 ---
 
-## 5. Tauri CLI
+## 6. Tauri CLI
 
 **Required for**: Building and running the desktop application
 
@@ -173,7 +243,7 @@ cargo tauri --version
 
 ---
 
-## 6. SQLx CLI
+## 7. SQLx CLI
 
 **Required for**: Database migrations and compile-time SQL verification
 
@@ -211,7 +281,7 @@ sqlx migrate revert --database-url sqlite:.pm\data.db
 
 ---
 
-## 7. Just (Task Runner)
+## 8. Just (Task Runner)
 
 **Required for**: Build automation and development workflows
 
@@ -278,6 +348,10 @@ Get-ItemProperty -Path "HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\
 Write-Host "`n=== Rust & Cargo ===" -ForegroundColor Green
 rustc --version
 cargo --version
+
+Write-Host "`n=== Protocol Buffers Compiler ===" -ForegroundColor Green
+protoc --version
+Write-Host "PROTOC env var: $env:PROTOC" -ForegroundColor Gray
 
 Write-Host "`n=== .NET SDK ===" -ForegroundColor Green
 dotnet --version
