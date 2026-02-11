@@ -534,14 +534,13 @@ _archive-impl:
     @echo "Creating archive: {{dist_dir}}/{{archive_name}}.tar.gz"
     @test -f target/release/pm || (echo "ERROR: pm binary not found in target/release/"; exit 1)
     @test -f target/release/pm-server || (echo "ERROR: pm-server binary not found in target/release/"; exit 1)
+    @test -f target/release/project-manager || (echo "ERROR: project-manager binary not found in target/release/"; exit 1)
     mkdir -p {{dist_dir}}/{{archive_name}}/bin
     cp target/release/pm {{dist_dir}}/{{archive_name}}/bin/
     cp target/release/pm-server {{dist_dir}}/{{archive_name}}/bin/
+    cp target/release/project-manager {{dist_dir}}/{{archive_name}}/bin/
     @if [ -d "target/release/bundle/macos/Project Manager.app" ]; then \
         cp -r "target/release/bundle/macos/Project Manager.app" {{dist_dir}}/{{archive_name}}/bin/; \
-    fi
-    @if ls target/release/bundle/appimage/*.AppImage 1>/dev/null 2>&1; then \
-        cp target/release/bundle/appimage/*.AppImage {{dist_dir}}/{{archive_name}}/bin/project-manager; \
     fi
     cd {{dist_dir}} && tar czf {{archive_name}}.tar.gz {{archive_name}}/
     @echo ""

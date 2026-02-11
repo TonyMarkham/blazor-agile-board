@@ -53,6 +53,20 @@ fn find_server_dir_from_binary() -> Option<std::path::PathBuf> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Fix WebKitGTK rendering issues on Linux (blank window until resize)
+    // WebKitGTK's GPU-accelerated rendering causes display corruption on many systems,
+    // especially ARM64/Raspberry Pi. Disabling compositing forces simpler, compatible rendering.
+    // See: https://github.com/tauri-apps/tauri/issues/9289
+    // See: https://github.com/tauri-apps/tauri/issues/10626
+    #[cfg(target_os = "linux")]
+    {
+        // SAFETY: Called at program startup before any threads spawn, so no race conditions
+        unsafe {
+            std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
+            std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+        }
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
@@ -66,19 +80,29 @@ pub fn run() {
             let app_data_dir = app.path().app_data_dir()?;
 
             // Find .pm/ directory:
-            // 1. Git repo root (terminal launch, pm desktop, just dev)
-            // 2. config.json next to binary (double-click after install)
-            // 3. Global app data dir (standalone, no CLI integration)
-            let server_dir = match Config::config_dir() {
-                Ok(dir) => {
-                    info!("Repo mode: {}", dir.display());
-                    dir
+            // 1. If running from .pm/bin/, use parent directory
+            // 2. Git repo root (development mode)
+            // 3. Global app data dir (standalone fallback)
+            let server_dir = if let Ok(exe) = std::env::current_exe()
+                && let Some(exe_dir) = exe.parent()
+                && exe_dir.file_name().and_then(|n| n.to_str()) == Some("bin")
+                && let Some(pm_dir) = exe_dir.parent()
+                && pm_dir.file_name().and_then(|n| n.to_str()) == Some(".pm")
+            {
+                info!("Binary mode: {}", pm_dir.display());
+                pm_dir.to_path_buf()
+            } else {
+                match Config::config_dir() {
+                    Ok(dir) => {
+                        info!("Repo mode: {}", dir.display());
+                        dir
+                    }
+                    Err(_) => {
+                        let dir = app_data_dir.join(PM_DIR_NAME);
+                        info!("Standalone mode: {}", dir.display());
+                        dir
+                    }
                 }
-                Err(_) => find_server_dir_from_binary().unwrap_or_else(|| {
-                    let dir = app_data_dir.join(PM_DIR_NAME);
-                    info!("Standalone mode: {}", dir.display());
-                    dir
-                }),
             };
             std::fs::create_dir_all(&server_dir)?;
 
@@ -240,12 +264,16 @@ pub fn run() {
 
             Ok(())
         })
-        .on_window_event(|window, event| {
+        .on_window_event(|_window, event| {
+            #[cfg(not(target_os = "linux"))]
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                // Hide to tray instead of closing
-                window.hide().ok();
+                // On macOS/Windows: hide to tray instead of closing
+                _window.hide().ok();
                 api.prevent_close();
             }
+            // On Linux: close = quit (system tray often not visible on Raspberry Pi)
+            #[cfg(target_os = "linux")]
+            let _ = event; // Suppress unused warning
         })
         .invoke_handler(tauri::generate_handler![
             commands::get_server_status,

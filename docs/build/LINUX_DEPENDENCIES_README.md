@@ -25,6 +25,7 @@ After completing this setup, you should have:
 - ✅ Tauri CLI
 - ✅ SQLx CLI (for database migrations)
 - ✅ Just (task runner for build automation)
+- ✅ Protocol Buffers compiler (protoc)
 
 ---
 
@@ -362,6 +363,98 @@ just clean
 
 ---
 
+## 7. Protocol Buffers (protoc)
+
+**Required for**: Compiling `.proto` files into Rust code for WebSocket communication
+
+**What it does**: Protocol Buffers (protobuf) is a binary serialization format used for efficient real-time communication. The `pm-proto` crate compiles `proto/messages.proto` into Rust code during build.
+
+**Installation**:
+
+### Ubuntu / Debian
+```bash
+sudo apt install -y protobuf-compiler
+```
+
+### Fedora / RHEL
+```bash
+sudo dnf install -y protobuf-compiler
+```
+
+### Arch Linux
+```bash
+sudo pacman -S protobuf
+```
+
+### Manual Install (All Distributions)
+If package manager version is too old:
+```bash
+# Download latest release from GitHub
+PROTOC_VERSION=21.12  # Check https://github.com/protocolbuffers/protobuf/releases
+curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip
+unzip protoc-${PROTOC_VERSION}-linux-x86_64.zip -d $HOME/.local
+rm protoc-${PROTOC_VERSION}-linux-x86_64.zip
+
+# Add to PATH in ~/.bashrc or ~/.zshrc
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+**Verification**:
+```bash
+protoc --version
+```
+**Expected output**: `libprotoc 3.x.x` or later
+
+**CRITICAL First-Time Setup**:
+
+The `pm-proto` crate outputs generated Rust code to `src/generated/`. **This directory must exist before the first build**, otherwise you'll encounter:
+```
+Failed to compile protobuf definitions: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+```
+
+Create it with:
+```bash
+# From repository root
+mkdir -p backend/crates/pm-proto/src/generated
+```
+
+**Why?** The build script (`build.rs`) uses `prost_build` to compile `.proto` files, but it doesn't create the output directory automatically.
+
+**This is a one-time setup** - once created, the directory persists and future builds work automatically.
+
+**ARM64 Linux (Raspberry Pi) Configuration**:
+
+On ARM64 Linux systems (Raspberry Pi), the bundled protoc binary in the `Grpc.Tools` NuGet package may crash with exit code 139 (segmentation fault). To use the system-installed protoc instead, set the `PROTOBUF_PROTOC` environment variable:
+
+```bash
+# Add to ~/.bashrc or ~/.zshrc for permanent configuration
+export PROTOBUF_PROTOC=/usr/bin/protoc
+
+# Or set temporarily for a single build
+PROTOBUF_PROTOC=/usr/bin/protoc dotnet build
+```
+
+**To make this permanent**, add it to your shell configuration:
+```bash
+# For bash
+echo 'export PROTOBUF_PROTOC=/usr/bin/protoc' >> ~/.bashrc
+source ~/.bashrc
+
+# For zsh
+echo 'export PROTOBUF_PROTOC=/usr/bin/protoc' >> ~/.zshrc
+source ~/.zshrc
+```
+
+**Why this works**: The `Grpc.Tools` package checks the `PROTOBUF_PROTOC` environment variable before using its bundled protoc binary. This allows you to override with the system version on platforms where the bundled binary is incompatible.
+
+**Troubleshooting**:
+- `protoc: command not found` → Install protobuf-compiler or add to PATH
+- Build fails with "No such file or directory" (Rust) → Create `backend/crates/pm-proto/src/generated/`
+- `.NET build error: "protoc exited with code 139"` (ARM64) → Set `PROTOBUF_PROTOC=/usr/bin/protoc` environment variable (see ARM64 section above)
+- Proto syntax errors → Check `proto/messages.proto` for valid protobuf3 syntax
+
+---
+
 ## Complete Environment Verification
 
 Run all verification commands together:
@@ -390,6 +483,9 @@ sqlx --version
 
 echo -e "\n=== Just Task Runner ==="
 just --version
+
+echo -e "\n=== Protocol Buffers Compiler ==="
+protoc --version
 ```
 
 **All commands should succeed** with version numbers matching the requirements above.
@@ -454,6 +550,11 @@ sudo apt install --only-upgrade dotnet-sdk-10.0
 cargo install tauri-cli --force
 cargo install sqlx-cli --force --no-default-features --features sqlite
 cargo install just --force
+
+# Update protoc (if installed via package manager)
+sudo apt install --only-upgrade protobuf-compiler  # Ubuntu/Debian
+sudo dnf update protobuf-compiler  # Fedora
+sudo pacman -S protobuf  # Arch (auto-updates with system)
 ```
 
 **Checking for updates**:

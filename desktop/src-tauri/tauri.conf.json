@@ -44,7 +44,7 @@
     ],
     "externalBin": [],
     "resources": [],
-    "targets": ["app", "nsis", "deb", "rpm"],
+    "targets": ["app", "nsis", "appimage"],
     "category": "Productivity",
     "shortDescription": "Agile project management",
     "longDescription": "A desktop application for agile project management with real-time collaboration.",
@@ -65,11 +65,8 @@
       }
     },
     "linux": {
-      "deb": {
-        "depends": []
-      },
-      "rpm": {
-        "depends": []
+      "appimage": {
+        "bundleMediaFramework": false
       }
     }
   },
