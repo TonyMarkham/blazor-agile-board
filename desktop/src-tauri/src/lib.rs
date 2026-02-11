@@ -80,18 +80,50 @@ pub fn run() {
             let app_data_dir = app.path().app_data_dir()?;
 
             // Find .pm/ directory:
-            // 1. If running from .pm/bin/, use parent directory
-            // 2. Git repo root (development mode)
-            // 3. Global app data dir (standalone fallback)
+            // 1. macOS .app bundle: .pm/bin/Foo.app/Contents/MacOS/exe
+            // 2. Direct binary: .pm/bin/exe (Linux, Windows, macOS)
+            // 3. Git repo root (development mode)
+            // 4. Global app data dir (standalone fallback)
             let server_dir = if let Ok(exe) = std::env::current_exe()
                 && let Some(exe_dir) = exe.parent()
-                && exe_dir.file_name().and_then(|n| n.to_str()) == Some("bin")
-                && let Some(pm_dir) = exe_dir.parent()
-                && pm_dir.file_name().and_then(|n| n.to_str()) == Some(".pm")
             {
-                info!("Binary mode: {}", pm_dir.display());
-                pm_dir.to_path_buf()
+                // macOS .app bundle detection
+                if let Some(contents_dir) = exe_dir.parent()
+                    && contents_dir.file_name().and_then(|n| n.to_str()) == Some("Contents")
+                    && let Some(app_bundle) = contents_dir.parent()
+                    && app_bundle.extension().and_then(|e| e.to_str()) == Some("app")
+                    && let Some(bin_dir) = app_bundle.parent()
+                    && bin_dir.file_name().and_then(|n| n.to_str()) == Some("bin")
+                    && let Some(pm_dir) = bin_dir.parent()
+                    && pm_dir.file_name().and_then(|n| n.to_str()) == Some(".pm")
+                {
+                    info!("App bundle mode: {}", pm_dir.display());
+                    pm_dir.to_path_buf()
+                }
+                // Direct binary in .pm/bin/ (all platforms)
+                else if exe_dir.file_name().and_then(|n| n.to_str()) == Some("bin")
+                    && let Some(pm_dir) = exe_dir.parent()
+                    && pm_dir.file_name().and_then(|n| n.to_str()) == Some(".pm")
+                {
+                    info!("Binary mode: {}", pm_dir.display());
+                    pm_dir.to_path_buf()
+                }
+                // Fallback to config-based detection
+                else {
+                    match Config::config_dir() {
+                        Ok(dir) => {
+                            info!("Repo mode: {}", dir.display());
+                            dir
+                        }
+                        Err(_) => {
+                            let dir = app_data_dir.join(PM_DIR_NAME);
+                            info!("Standalone mode: {}", dir.display());
+                            dir
+                        }
+                    }
+                }
             } else {
+                // Can't determine exe path, use config-based detection
                 match Config::config_dir() {
                     Ok(dir) => {
                         info!("Repo mode: {}", dir.display());
