@@ -15,12 +15,6 @@ pub fn setup_logging(data_dir: &Path) -> Result<(), Box<dyn std::error::Error>> 
     let logs_dir = data_dir.join("logs");
     std::fs::create_dir_all(&logs_dir)?;
 
-    // Console layer - human readable for development
-    let console_layer = fmt::layer()
-        .with_target(true)
-        .with_level(true)
-        .with_ansi(true);
-
     // File layer - JSON for easier parsing
     let file_appender = RollingFileAppender::builder()
         .rotation(Rotation::DAILY)
@@ -39,9 +33,10 @@ pub fn setup_logging(data_dir: &Path) -> Result<(), Box<dyn std::error::Error>> 
     let filter = EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| EnvFilter::new("info,pm_server=debug"));
 
+    // File logging only (no console spam)
+    // All logs are saved to .pm/tauri/logs/pm-desktop.*.log
     tracing_subscriber::registry()
         .with(filter)
-        .with(console_layer)
         .with(file_layer)
         .init();
 

@@ -382,10 +382,34 @@ fn launch_desktop() -> ExitCode {
     eprintln!("Launching desktop app: {}", binary.display());
     eprintln!("Repository: {}", repo_root.display());
 
-    // Spawn Tauri — no env vars needed.
-    // Tauri finds .pm/ via git (inherits cwd from this process).
+    // On macOS, use `open` for .app bundles to properly detach from terminal
+    #[cfg(target_os = "macos")]
+    {
+        if let Some(app_bundle) = binary
+            .ancestors()
+            .find(|p| p.extension().and_then(|e| e.to_str()) == Some("app"))
+        {
+            match std::process::Command::new("open")
+                .arg(app_bundle)
+                .arg("--args") // Separator for app arguments (none currently)
+                .current_dir(&repo_root)
+                .spawn()
+            {
+                Ok(_) => return ExitCode::SUCCESS,
+                Err(e) => {
+                    eprintln!("Error: failed to launch via open: {}", e);
+                    return ExitCode::FAILURE;
+                }
+            }
+        }
+    }
+
+    // Direct spawn for non-.app bundles or non-macOS
     match std::process::Command::new(&binary)
         .current_dir(&repo_root)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
         .spawn()
     {
         Ok(_) => ExitCode::SUCCESS,

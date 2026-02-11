@@ -208,7 +208,8 @@ pub fn run() {
                     let state = state_rx.borrow().clone();
                     info!("New state: {:?}", state);
 
-                    // Update tray via TrayManager
+                    // Update tray via TrayManager (skip on macOS due to event handler bug)
+                    #[cfg(not(target_os = "macos"))]
                     if let Some(tray_mgr) = app_handle.try_state::<Arc<TrayManager>>() {
                         tray_mgr.update_status(&app_handle, &state);
                     }

@@ -249,36 +249,56 @@ async fn main() -> Result<(), Box<dyn Error>> {
     if config.server.idle_shutdown_secs > 0 {
         let idle_timeout = config.server.idle_shutdown_secs;
         let shutdown_for_idle = shutdown.clone();
+        let mut shutdown_monitor = shutdown.subscribe_guard();
 
         info!("Idle shutdown enabled: {}s timeout", idle_timeout);
 
         tokio::spawn(async move {
             let grace_period = idle_timeout.min(60);
             info!("Idle shutdown grace period: {}s", grace_period);
-            tokio::time::sleep(std::time::Duration::from_secs(grace_period)).await;
+
+            tokio::select! {
+                _ = tokio::time::sleep(std::time::Duration::from_secs(grace_period)) => {},
+                _ = shutdown_monitor.wait() => {
+                    info!("Idle monitor: shutdown signal received during grace period");
+                    return;
+                }
+            }
 
             let check_interval = (idle_timeout / 2).max(10);
 
             loop {
-                tokio::time::sleep(std::time::Duration::from_secs(check_interval)).await;
+                tokio::select! {
+                    _ = tokio::time::sleep(std::time::Duration::from_secs(check_interval)) => {
+                        if registry_for_idle.total_count().await == 0 {
+                            info!(
+                                "No active connections, checking again in {}s...",
+                                check_interval
+                            );
 
-                if registry_for_idle.total_count().await == 0 {
-                    info!(
-                        "No active connections, checking again in {}s...",
-                        check_interval
-                    );
-
-                    tokio::time::sleep(std::time::Duration::from_secs(check_interval)).await;
-
-                    if registry_for_idle.total_count().await == 0 {
-                        warn!(
-                            "No connections for {}s, initiating auto-shutdown",
-                            idle_timeout
-                        );
-                        shutdown_for_idle.shutdown();
-                        break;
-                    } else {
-                        info!("Connection established, continuing...");
+                            tokio::select! {
+                                _ = tokio::time::sleep(std::time::Duration::from_secs(check_interval)) => {
+                                    if registry_for_idle.total_count().await == 0 {
+                                        warn!(
+                                            "No connections for {}s, initiating auto-shutdown",
+                                            idle_timeout
+                                        );
+                                        shutdown_for_idle.shutdown();
+                                        return;
+                                    } else {
+                                        info!("Connection established, continuing...");
+                                    }
+                                },
+                                _ = shutdown_monitor.wait() => {
+                                    info!("Idle monitor: shutdown signal received");
+                                    return;
+                                }
+                            }
+                        }
+                    },
+                    _ = shutdown_monitor.wait() => {
+                        info!("Idle monitor: shutdown signal received");
+                        return;
                     }
                 }
             }

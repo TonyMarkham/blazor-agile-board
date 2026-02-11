@@ -38,15 +38,14 @@ pub async fn checkpoint_handler(
 
 /// Graceful shutdown endpoint.
 ///
-/// **Note**: This is a placeholder. Actual shutdown coordination requires
-/// access to the shutdown signal which is managed in main.rs.
-/// For Session 40.2, we'll implement this as a simple acknowledgment.
-/// Session 40.3 will wire the actual shutdown trigger.
-pub async fn shutdown_handler() -> Result<StatusCode, (StatusCode, String)> {
+/// Triggers immediate graceful shutdown of the server.
+pub async fn shutdown_handler(
+    State(state): State<AppState>,
+) -> Result<StatusCode, (StatusCode, String)> {
     info!("Graceful shutdown requested via HTTP");
 
-    // For now, just acknowledge the request
-    // Session 40.3 will add the actual shutdown coordination
+    // Trigger shutdown via coordinator
+    state.shutdown.shutdown();
 
     Ok(StatusCode::ACCEPTED)
 }
