@@ -353,6 +353,32 @@ See `docs/llm-integration-guide.md` for LLM query patterns and examples.
 
 ## Code Conventions
 
+**Logging:**
+- **Always use `tracing` for all logging** - Never import from `log` crate in new code
+- **Structured logging**: Use field syntax for context: `tracing::info!(user_id = %id, "User logged in")`
+- **Instrument functions**: Use `#[tracing::instrument]` for automatic span tracking
+- **Span hierarchy**: Wrap related operations in `info_span!()` / `debug_span!()` for context
+- **Log levels**:
+  - `error!`: Unrecoverable errors, system failures
+  - `warn!`: Recoverable errors, suspicious behavior
+  - `info!`: High-level user actions, lifecycle events
+  - `debug!`: Detailed request/response, state changes
+  - `trace!`: Very verbose, performance-sensitive paths (not in production)
+- **Legacy code**: Existing `log::` imports will be migrated to `tracing` over time via `tracing-log` bridge
+
+**Example:**
+```rust
+use tracing::{info, debug, instrument};
+
+#[instrument(skip(db), fields(user_id = %user.id))]
+async fn create_work_item(user: &User, db: &Database) -> Result<WorkItem> {
+    debug!("Creating work item");
+    let item = db.insert(...).await?;
+    info!(item_id = %item.id, "Work item created");
+    Ok(item)
+}
+```
+
 **Rust:**
 - **CRITICAL: Use workspace dependencies** - All dependencies defined in root `Cargo.toml` `[workspace.dependencies]`, member crates reference with `{ workspace = true }` syntax. NEVER add version numbers to member crates.
 - Use `sqlx::query_as!` macro for compile-time SQL validation
