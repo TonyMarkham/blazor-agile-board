@@ -53,7 +53,8 @@
       "Bash(.pm/bin/pm work-item update:*)",
       "Bash(.pm/bin/pm work-item list:*)",
       "Bash(.pm/bin/pm comment list:*)",
-      "Bash(.pm/bin/pm comment create:*)"
+      "Bash(.pm/bin/pm comment create:*)",
+      "Bash(.pm/bin/pm work-item delete:*)"
     ]
   }
 }

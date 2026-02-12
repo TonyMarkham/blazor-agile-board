@@ -40,7 +40,7 @@ max_connections = 10000
 
 # Auto-shutdown when no connections for N seconds (0 = disabled, default: 0)
 # Desktop mode sets this via PM_IDLE_SHUTDOWN_SECS env var
-idle_shutdown_secs = 0
+idle_shutdown_secs = 2
 
 # =============================================================================
 # Database Configuration
@@ -115,7 +115,7 @@ heartbeat_interval_secs = 30
 # Heartbeat timeout in seconds (range: 10-600, default: 60)
 # Must be greater than heartbeat_interval_secs
 # Connection closed if no pong received within this time
-heartbeat_timeout_secs = 60
+heartbeat_timeout_secs = 31
 
 # =============================================================================
 # Rate Limiting Configuration

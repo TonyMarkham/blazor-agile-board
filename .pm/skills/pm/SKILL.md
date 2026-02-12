@@ -120,7 +120,7 @@ Tasks should contain **concrete implementation details** that make them actionab
 
 **Example task with implementation details:**
 
-```bash
+````bash
 # Example: Create a task with code snippets
 pm work-item create \
   --project-id "$PROJECT_ID" \
@@ -162,7 +162,7 @@ EOF
 )" \
   --priority high \
   --pretty
-```
+````
 
 **Benefits of detailed task descriptions:**
 - ✅ Implementation context preserved across sessions
@@ -220,7 +220,7 @@ When working with AI assistants (like Claude), structure your work items to maxi
 
 Here's a complete workflow for organizing a feature implementation:
 
-```bash
+````bash
 # 1. Create the epic for the feature
 EPIC=$(pm work-item create \
   --project-id "$PROJECT_ID" \
@@ -301,7 +301,7 @@ pm comment create \
   --work-item-id "$TASK_ID" \
   --content "Implemented base models, now adding validation logic" \
   --pretty
-```
+````
 
 ## Available Commands
 
@@ -731,6 +731,63 @@ All commands return JSON responses with consistent structure:
 - `1` - Error (check stderr and JSON response)
 
 ## Important Notes
+
+### Multi-line Descriptions with Special Characters
+
+Descriptions containing backticks, quotes, or markdown code blocks require proper shell quoting. **Double quotes will break** because bash interprets backticks as command substitution.
+
+**Simple descriptions (no backticks)** - double quotes are fine:
+```bash
+.pm/bin/pm work-item create \
+  --project-id "$PROJECT_ID" \
+  --type task \
+  --title "My task" \
+  --description "A simple multi-line
+description works fine in double quotes
+as long as there are no backticks" \
+  --pretty
+```
+
+**Descriptions with backticks/code blocks** - use single quotes:
+````bash
+.pm/bin/pm work-item create \
+  --project-id "$PROJECT_ID" \
+  --type task \
+  --title "My task" \
+  --description 'Implement the handler:
+
+```rust
+pub fn handle_request(req: Request) -> Response {
+    Response::ok()
+}
+```
+
+See `README.md` for details.' \
+  --pretty
+````
+
+**Descriptions with backticks AND shell variables** - use heredoc with single-quoted delimiter:
+````bash
+.pm/bin/pm work-item create \
+  --project-id "$PROJECT_ID" \
+  --type task \
+  --title "My task" \
+  --description "$(cat <<'EOF'
+Implement the handler in `src/api.rs`:
+
+```rust
+pub fn handle_request(req: Request) -> Response {
+    Response::ok()
+}
+```
+
+Must pass all existing tests.
+EOF
+)" \
+  --pretty
+````
+
+The `<<'EOF'` (single-quoted) delimiter prevents bash from interpreting backticks, `$variables`, and other special characters inside the heredoc. The `$(cat ...)` wrapper captures the heredoc content as a string for the `--description` argument.
 
 ### Known Issues
 
