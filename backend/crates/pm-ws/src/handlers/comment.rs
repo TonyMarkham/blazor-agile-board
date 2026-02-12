@@ -43,7 +43,7 @@ pub async fn handle_create_comment(
     debug!("{} CreateComment starting", ctx.log_prefix());
 
     // 1. Validate content
-    MessageValidator::validate_comment_create(&req.content)?;
+    MessageValidator::validate_comment_create(&req.content, &ctx.validation)?;
 
     // 2. Check idempotency
     let cached = db_read(&ctx, "check_idempotency", || async {
@@ -165,7 +165,7 @@ pub async fn handle_update_comment(
     debug!("{} UpdateComment starting", ctx.log_prefix());
 
     // 1. Validate content
-    MessageValidator::validate_comment_create(&req.content)?;
+    MessageValidator::validate_comment_create(&req.content, &ctx.validation)?;
 
     // 2. Parse comment ID
     let comment_id = parse_uuid(&req.comment_id, "comment_id")?;

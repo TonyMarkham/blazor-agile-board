@@ -2,7 +2,7 @@ use crate::{Result as WsErrorResult, WsError};
 
 use pm_config::{
     MAX_FUTURE_TIMESTAMP_TOLERANCE_SECONDS, MAX_TIME_ENTRY_DESCRIPTION_LENGTH,
-    MAX_TIME_ENTRY_DURATION_SECONDS,
+    MAX_TIME_ENTRY_DURATION_SECONDS, MIN_COMMENT_CONTENT_LENGTH, ValidationConfig,
 };
 use pm_core::DependencyType;
 use pm_proto::DependencyType as ProtoDependencyType;
@@ -74,14 +74,16 @@ impl MessageValidator {
         min_length: usize,
         max_length: usize,
     ) -> WsErrorResult<()> {
-        if value.len() < min_length {
+        let char_count = value.chars().count();
+
+        if char_count < min_length {
             return Err(WsError::InvalidMessage {
                 message: format!("{} must be at least {} characters", field_name, min_length),
                 location: ErrorLocation::from(Location::caller()),
             });
         }
 
-        if value.len() > max_length {
+        if char_count > max_length {
             return Err(WsError::InvalidMessage {
                 message: format!("{} must not exceed {} characters", field_name, max_length),
                 location: ErrorLocation::from(Location::caller()),
@@ -97,16 +99,20 @@ impl MessageValidator {
         title: &str,
         description: Option<&str>,
         item_type: &str,
+        config: &ValidationConfig,
     ) -> WsErrorResult<()> {
         // Validate title
-        Self::validate_string(title, "title", 1, 200)?;
+        Self::validate_string(title, "title", 1, config.max_title_length)?;
 
         // Validate description if present
         if let Some(desc) = description
-            && desc.len() > 10000
+            && desc.chars().count() > config.max_description_length
         {
             return Err(WsError::InvalidMessage {
-                message: "description exceeds maximum length (10000)".to_string(),
+                message: format!(
+                    "description exceeds maximum length ({} characters)",
+                    config.max_description_length
+                ),
                 location: ErrorLocation::from(Location::caller()),
             });
         }
@@ -123,15 +129,25 @@ impl MessageValidator {
 
     /// Validate comment creation request                                                                                                                                        
     #[track_caller]
-    pub fn validate_comment_create(content: &str) -> WsErrorResult<()> {
-        Self::validate_string(content, "content", 1, 5000)
+    pub fn validate_comment_create(content: &str, config: &ValidationConfig) -> WsErrorResult<()> {
+        Self::validate_string(
+            content,
+            "content",
+            MIN_COMMENT_CONTENT_LENGTH,
+            config.max_comment_length,
+        )
     }
 
     /// Validate sprint creation request                                                                                                                                         
     #[track_caller]
-    pub fn validate_sprint_create(name: &str, start_date: i64, end_date: i64) -> WsErrorResult<()> {
+    pub fn validate_sprint_create(
+        name: &str,
+        start_date: i64,
+        end_date: i64,
+        config: &ValidationConfig,
+    ) -> WsErrorResult<()> {
         // Validate name
-        Self::validate_string(name, "name", 1, 100)?;
+        Self::validate_string(name, "name", 1, config.max_sprint_name_length)?;
 
         // Validate dates
         if start_date >= end_date {
@@ -169,16 +185,20 @@ impl MessageValidator {
         title: &str,
         description: Option<&str>,
         key: &str,
+        config: &ValidationConfig,
     ) -> WsErrorResult<()> {
         // Validate title (same limits as work items)
-        Self::validate_string(title, "title", 1, 200)?;
+        Self::validate_string(title, "title", 1, config.max_title_length)?;
 
         // Validate description if present (same limit as work items)
         if let Some(desc) = description
-            && desc.len() > 10000
+            && desc.chars().count() > config.max_description_length
         {
             return Err(WsError::InvalidMessage {
-                message: "description exceeds maximum length (10000)".to_string(),
+                message: format!(
+                    "description exceeds maximum length ({} characters)",
+                    config.max_description_length
+                ),
                 location: ErrorLocation::from(Location::caller()),
             });
         }

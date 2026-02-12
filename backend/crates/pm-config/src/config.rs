@@ -59,7 +59,7 @@ impl Config {
             Config::default()
         };
 
-        config.apply_env_overrides();
+        config.apply_env_overrides()?;
 
         Ok(config)
     }
@@ -244,22 +244,24 @@ impl Config {
         info!("  handler: timeout={}s", self.handler.timeout_secs);
 
         info!(
-            "  validation: title={}, desc={}, points={}",
+            "  validation: title={}, desc={}, comment={}, sprint_name={}, points={}",
             self.validation.max_title_length,
             self.validation.max_description_length,
+            self.validation.max_comment_length,
+            self.validation.max_sprint_name_length,
             self.validation.max_story_points
         );
     }
 
-    fn apply_env_overrides(&mut self) {
+    fn apply_env_overrides(&mut self) -> ConfigErrorResult<()> {
         // Server
         Self::apply_env_string("PM_SERVER_HOST", &mut self.server.host);
-        Self::apply_env_parse("PM_SERVER_PORT", &mut self.server.port);
+        Self::apply_env_parse("PM_SERVER_PORT", &mut self.server.port)?;
         Self::apply_env_parse(
             "PM_SERVER_MAX_CONNECTIONS",
             &mut self.server.max_connections,
-        );
-        Self::apply_env_parse("PM_IDLE_SHUTDOWN_SECS", &mut self.server.idle_shutdown_secs);
+        )?;
+        Self::apply_env_parse("PM_IDLE_SHUTDOWN_SECS", &mut self.server.idle_shutdown_secs)?;
 
         // Database
         Self::apply_env_string("PM_DATABASE_PATH", &mut self.database.path);
@@ -274,7 +276,7 @@ impl Config {
         Self::apply_env_option_string("PM_AUTH_DESKTOP_USER_ID", &mut self.auth.desktop_user_id);
 
         // Logging
-        Self::apply_env_parse("PM_LOG_LEVEL", &mut self.logging.level);
+        Self::apply_env_parse("PM_LOG_LEVEL", &mut self.logging.level)?;
         Self::apply_env_bool("PM_LOG_COLORED", &mut self.logging.colored);
         Self::apply_env_option_string("PM_LOG_FILE", &mut self.logging.file);
 
@@ -282,35 +284,35 @@ impl Config {
         Self::apply_env_parse(
             "PM_ACTIVITY_LOG_RETENTION_DAYS",
             &mut self.activity_log.retention_days,
-        );
+        )?;
         Self::apply_env_parse(
             "PM_ACTIVITY_LOG_CLEANUP_INTERVAL_HOURS",
             &mut self.activity_log.cleanup_interval_hours,
-        );
+        )?;
 
         // WebSocket
         Self::apply_env_parse(
             "PM_WS_SEND_BUFFER_SIZE",
             &mut self.websocket.send_buffer_size,
-        );
+        )?;
         Self::apply_env_parse(
             "PM_WS_HEARTBEAT_INTERVAL_SECS",
             &mut self.websocket.heartbeat_interval_secs,
-        );
+        )?;
         Self::apply_env_parse(
             "PM_WS_HEARTBEAT_TIMEOUT_SECS",
             &mut self.websocket.heartbeat_timeout_secs,
-        );
+        )?;
 
         // Rate limit
         Self::apply_env_parse(
             "PM_RATE_LIMIT_MAX_REQUESTS",
             &mut self.rate_limit.max_requests,
-        );
+        )?;
         Self::apply_env_parse(
             "PM_RATE_LIMIT_WINDOW_SECS",
             &mut self.rate_limit.window_secs,
-        );
+        )?;
 
         // NEW OVERRIDES BELOW
 
@@ -318,53 +320,63 @@ impl Config {
         Self::apply_env_parse(
             "PM_CB_FAILURE_THRESHOLD",
             &mut self.circuit_breaker.failure_threshold,
-        );
+        )?;
         Self::apply_env_parse(
             "PM_CB_OPEN_DURATION_SECS",
             &mut self.circuit_breaker.open_duration_secs,
-        );
+        )?;
         Self::apply_env_parse(
             "PM_CB_HALF_OPEN_SUCCESS_THRESHOLD",
             &mut self.circuit_breaker.half_open_success_threshold,
-        );
+        )?;
         Self::apply_env_parse(
             "PM_CB_FAILURE_WINDOW_SECS",
             &mut self.circuit_breaker.failure_window_secs,
-        );
+        )?;
 
         // Retry
-        Self::apply_env_parse("PM_RETRY_MAX_ATTEMPTS", &mut self.retry.max_attempts);
+        Self::apply_env_parse("PM_RETRY_MAX_ATTEMPTS", &mut self.retry.max_attempts)?;
         Self::apply_env_parse(
             "PM_RETRY_INITIAL_DELAY_MS",
             &mut self.retry.initial_delay_ms,
-        );
-        Self::apply_env_parse("PM_RETRY_MAX_DELAY_SECS", &mut self.retry.max_delay_secs);
+        )?;
+        Self::apply_env_parse("PM_RETRY_MAX_DELAY_SECS", &mut self.retry.max_delay_secs)?;
         Self::apply_env_parse(
             "PM_RETRY_BACKOFF_MULTIPLIER",
             &mut self.retry.backoff_multiplier,
-        );
+        )?;
         Self::apply_env_bool("PM_RETRY_JITTER", &mut self.retry.jitter);
 
         // Handler
-        Self::apply_env_parse("PM_HANDLER_TIMEOUT_SECS", &mut self.handler.timeout_secs);
+        Self::apply_env_parse("PM_HANDLER_TIMEOUT_SECS", &mut self.handler.timeout_secs)?;
 
         // Validation
         Self::apply_env_parse(
             "PM_VALIDATION_MAX_TITLE_LENGTH",
             &mut self.validation.max_title_length,
-        );
+        )?;
         Self::apply_env_parse(
             "PM_VALIDATION_MAX_DESCRIPTION_LENGTH",
             &mut self.validation.max_description_length,
-        );
+        )?;
         Self::apply_env_parse(
             "PM_VALIDATION_MAX_STORY_POINTS",
             &mut self.validation.max_story_points,
-        );
+        )?;
         Self::apply_env_parse(
             "PM_VALIDATION_MAX_ERROR_MESSAGE_LENGTH",
             &mut self.validation.max_error_message_length,
-        );
+        )?;
+        Self::apply_env_parse(
+            "PM_VALIDATION_MAX_COMMENT_LENGTH",
+            &mut self.validation.max_comment_length,
+        )?;
+        Self::apply_env_parse(
+            "PM_VALIDATION_MAX_SPRINT_NAME_LENGTH",
+            &mut self.validation.max_sprint_name_length,
+        )?;
+
+        Ok(())
     }
 
     /// Helper: Apply environment variable override for String values
@@ -382,12 +394,22 @@ impl Config {
     }
 
     /// Helper: Apply environment variable override for parseable values
-    fn apply_env_parse<T: std::str::FromStr>(var_name: &str, target: &mut T) {
-        if let Ok(val) = std::env::var(var_name)
-            && let Ok(parsed) = val.parse()
-        {
-            *target = parsed;
+    /// Helper: Apply environment variable override for parseable values
+    fn apply_env_parse<T: std::str::FromStr>(
+        var_name: &str,
+        target: &mut T,
+    ) -> ConfigErrorResult<()> {
+        if let Ok(val) = std::env::var(var_name) {
+            *target = val.parse().map_err(|_| {
+                ConfigError::config(format!(
+                    "Invalid value for {}: '{}' (expected valid {})",
+                    var_name,
+                    val,
+                    std::any::type_name::<T>()
+                ))
+            })?;
         }
+        Ok(())
     }
 
     /// Helper: Apply environment variable override for Option<String> values

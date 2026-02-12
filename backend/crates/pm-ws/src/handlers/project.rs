@@ -40,7 +40,12 @@ pub async fn handle_create(
     log_handler_entry!(ctx.request_ctx, "CreateProject");
 
     // 1. Validate input
-    MessageValidator::validate_project_create(&req.title, req.description.as_deref(), &req.key)?;
+    MessageValidator::validate_project_create(
+        &req.title,
+        req.description.as_deref(),
+        &req.key,
+        &ctx.validation,
+    )?;
 
     // 2. Check idempotency
     let cached = db_read(&ctx, "check_idempotency", || async {
@@ -193,13 +198,16 @@ pub async fn handle_update(
 
     // 3. Validate updates
     if let Some(ref title) = req.title {
-        MessageValidator::validate_string(title, "title", 1, 200)?;
+        MessageValidator::validate_string(title, "title", 1, ctx.validation.max_title_length)?;
     }
     if let Some(ref desc) = req.description
-        && desc.len() > 10000
+        && desc.chars().count() > ctx.validation.max_description_length
     {
         return Err(WsError::ValidationError {
-            message: "description exceeds maximum length (10000)".to_string(),
+            message: format!(
+                "description exceeds maximum length ({} characters)",
+                ctx.validation.max_description_length
+            ),
             field: Some("description".to_string()),
             location: ErrorLocation::from(Location::caller()),
         });

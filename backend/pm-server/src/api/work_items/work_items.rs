@@ -184,6 +184,7 @@ pub async fn create_work_item(
         &req.title,
         req.description.as_deref(),
         item_type.as_str(),
+        &state.validation,
     )
     .map_err(|e| ApiError::Validation {
         message: e.to_string(),
@@ -359,14 +360,25 @@ pub async fn update_work_item(
 
     // 4. Apply updates with validation
     if let Some(ref title) = req.title {
-        MessageValidator::validate_string(title, "title", 1, 200).map_err(|e| {
-            ApiError::Validation {
+        MessageValidator::validate_string(title, "title", 1, state.validation.max_title_length)
+            .map_err(|e| ApiError::Validation {
                 message: e.to_string(),
                 field: Some("title".into()),
                 location: ErrorLocation::from(Location::caller()),
-            }
-        })?;
+            })?;
         work_item.title = sanitize_string(title);
+    }
+    if let Some(ref description) = req.description {
+        if description.chars().count() > state.validation.max_description_length {
+            return Err(ApiError::Validation {
+                message: format!(
+                    "Description exceeds maximum length ({} characters)",
+                    state.validation.max_description_length
+                ),
+                field: Some("description".into()),
+                location: ErrorLocation::from(Location::caller()),
+            });
+        }
     }
     if let Some(ref desc) = req.description {
         work_item.description = Some(sanitize_string(desc));

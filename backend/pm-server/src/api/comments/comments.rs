@@ -56,10 +56,12 @@ pub async fn create_comment(
     let work_item_uuid = Uuid::parse_str(&work_item_id)?;
 
     // 1. Validate content
-    MessageValidator::validate_comment_create(&req.content).map_err(|e| ApiError::Validation {
-        message: e.to_string(),
-        field: Some("content".into()),
-        location: ErrorLocation::from(Location::caller()),
+    MessageValidator::validate_comment_create(&req.content, &state.validation).map_err(|e| {
+        ApiError::Validation {
+            message: e.to_string(),
+            field: Some("content".into()),
+            location: ErrorLocation::from(Location::caller()),
+        }
     })?;
 
     // 2. Verify work item exists and get project_id for broadcast
@@ -137,10 +139,12 @@ pub async fn update_comment(
     let comment_uuid = Uuid::parse_str(&comment_id)?;
 
     // 1. Validate content
-    MessageValidator::validate_comment_create(&req.content).map_err(|e| ApiError::Validation {
-        message: e.to_string(),
-        field: Some("content".into()),
-        location: ErrorLocation::from(Location::caller()),
+    MessageValidator::validate_comment_create(&req.content, &state.validation).map_err(|e| {
+        ApiError::Validation {
+            message: e.to_string(),
+            field: Some("content".into()),
+            location: ErrorLocation::from(Location::caller()),
+        }
     })?;
 
     // 2. Fetch existing comment

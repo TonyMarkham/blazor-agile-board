@@ -151,6 +151,7 @@ async fn create_app(config: TestServerConfig) -> (Router, AppState) {
         shutdown,
         config: connection_config,
         api_config: ApiConfig::default(),
+        validation: pm_config::ValidationConfig::default(),
     };
 
     let router = Router::new()

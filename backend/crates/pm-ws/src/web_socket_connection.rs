@@ -4,6 +4,7 @@ use crate::{
 };
 
 use pm_auth::ConnectionRateLimiter;
+use pm_config::ValidationConfig;
 use pm_proto::WebSocketMessage;
 
 use std::panic::Location;
@@ -36,6 +37,7 @@ pub struct WebSocketConnection {
     registry: ConnectionRegistry,
     outgoing_rx: mpsc::Receiver<Message>,
     outgoing_tx: mpsc::Sender<Message>,
+    validation: ValidationConfig,
 }
 
 pub struct WebSocketConnectionParams {
@@ -49,6 +51,7 @@ pub struct WebSocketConnectionParams {
     pub registry: ConnectionRegistry,
     pub outgoing_rx: mpsc::Receiver<Message>,
     pub outgoing_tx: mpsc::Sender<Message>,
+    pub validation: ValidationConfig,
 }
 
 impl WebSocketConnection {
@@ -66,6 +69,7 @@ impl WebSocketConnection {
             registry: params.registry,
             outgoing_rx: params.outgoing_rx,
             outgoing_tx: params.outgoing_tx,
+            validation: params.validation,
         }
     }
 
@@ -276,6 +280,7 @@ impl WebSocketConnection {
             self.circuit_breaker.clone(),
             self.connection_id.to_string(),
             self.registry.clone(),
+            self.validation,
         );
 
         // Dispatch to appropriate handler

@@ -45,6 +45,7 @@ pub async fn create_test_app_state() -> AppState {
         shutdown,
         config: ConnectionConfig::default(),
         api_config: ApiConfig::default(),
+        validation: pm_config::ValidationConfig::default(),
     }
 }
 

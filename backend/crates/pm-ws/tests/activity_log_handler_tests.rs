@@ -102,6 +102,7 @@ impl TestFixture {
             self.circuit_breaker.clone(),
             "test-connection".to_string(),
             registry,
+            pm_config::ValidationConfig::default(),
         )
     }
 }

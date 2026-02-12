@@ -55,7 +55,12 @@ pub async fn handle_create_sprint(
     debug!("{} CreateSprint starting", ctx.log_prefix());
 
     // 1. Validate input
-    MessageValidator::validate_sprint_create(&req.name, req.start_date, req.end_date)?;
+    MessageValidator::validate_sprint_create(
+        &req.name,
+        req.start_date,
+        req.end_date,
+        &ctx.validation,
+    )?;
 
     // 2. Check idempotency
     let cached = db_read(&ctx, "check_idempotency", || async {
@@ -228,7 +233,7 @@ pub async fn handle_update_sprint(
     let mut changes = FieldChangeBuilder::new();
 
     if let Some(ref name) = req.name {
-        MessageValidator::validate_string(name, "name", 1, 100)?;
+        MessageValidator::validate_string(name, "name", 1, ctx.validation.max_sprint_name_length)?;
         changes.track("name", &sprint.name, name);
         sprint.name = sanitize_string(name);
     }

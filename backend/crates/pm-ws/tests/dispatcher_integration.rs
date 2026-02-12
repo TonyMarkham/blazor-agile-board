@@ -123,6 +123,7 @@ impl DispatcherTestFixture {
             self.circuit_breaker.arc(),
             "test-connection".to_string(),
             registry,
+            pm_config::ValidationConfig::default(),
         )
     }
 

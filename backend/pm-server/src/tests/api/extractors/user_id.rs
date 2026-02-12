@@ -38,6 +38,7 @@ async fn create_test_state() -> AppState {
         shutdown,
         config: ConnectionConfig::default(),
         api_config: ApiConfig::default(),
+        validation: pm_config::ValidationConfig::default(),
     }
 }
 
@@ -122,6 +123,7 @@ async fn test_extractor_preserves_custom_llm_user_id() {
         shutdown,
         config: ConnectionConfig::default(),
         api_config: custom_config,
+        validation: pm_config::ValidationConfig::default(),
     };
 
     let request = Request::builder().body(Body::empty()).unwrap();

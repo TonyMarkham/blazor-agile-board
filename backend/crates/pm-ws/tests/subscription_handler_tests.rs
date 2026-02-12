@@ -21,6 +21,7 @@ fn test_context(registry: ConnectionRegistry, connection_id: String) -> HandlerC
         circuit_breaker,
         connection_id,
         registry,
+        pm_config::ValidationConfig::default(),
     )
 }
 

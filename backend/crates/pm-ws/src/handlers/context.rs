@@ -1,5 +1,7 @@
 use crate::{CircuitBreaker, ConnectionRegistry, RequestContext, RetryConfig};
 
+use pm_config::ValidationConfig;
+
 use std::sync::Arc;
 
 use sqlx::SqlitePool;
@@ -22,6 +24,8 @@ pub struct HandlerContext {
     pub retry_config: RetryConfig,
     /// Connection registry for broadcasts
     pub registry: ConnectionRegistry,
+    /// Validation configuration for input validation
+    pub validation: ValidationConfig,
 }
 
 impl HandlerContext {
@@ -32,6 +36,7 @@ impl HandlerContext {
         circuit_breaker: Arc<CircuitBreaker>,
         connection_id: String,
         registry: ConnectionRegistry,
+        validation: ValidationConfig,
     ) -> Self {
         let request_ctx = RequestContext::new(user_id, connection_id, &message_id);
 
@@ -43,6 +48,7 @@ impl HandlerContext {
             request_ctx,
             retry_config: RetryConfig::default(),
             registry,
+            validation,
         }
     }
 

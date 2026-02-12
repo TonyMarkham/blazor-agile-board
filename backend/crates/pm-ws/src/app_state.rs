@@ -4,7 +4,7 @@ use crate::{
 };
 
 use pm_auth::{JwtValidator, RateLimiterFactory};
-use pm_config::ApiConfig;
+use pm_config::{ApiConfig, ValidationConfig};
 
 use std::sync::Arc;
 
@@ -33,6 +33,7 @@ pub struct AppState {
     pub shutdown: ShutdownCoordinator,
     pub config: ConnectionConfig,
     pub api_config: ApiConfig,
+    pub validation: ValidationConfig,
 }
 
 /// WebSocket upgrade handler
@@ -109,6 +110,7 @@ async fn handle_socket(
         registry: state.registry.clone(),
         outgoing_rx: rx,
         outgoing_tx: tx,
+        validation: state.validation,
     });
 
     // Handle connection lifecycle

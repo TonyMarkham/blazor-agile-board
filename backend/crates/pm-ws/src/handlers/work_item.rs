@@ -5,6 +5,7 @@ use crate::{
     check_permission, db_read, db_write, store_idempotency, track_changes, validate_hierarchy,
 };
 
+use pm_config::ValidationConfig;
 use pm_core::{ActivityLog, Permission, WorkItem, WorkItemType};
 use pm_db::{ActivityLogRepository, ProjectRepository, WorkItemRepository};
 use pm_proto::{
@@ -51,6 +52,7 @@ pub async fn handle_create(
         &req.title,
         req.description.as_deref(),
         item_type.as_str(),
+        &ctx.validation,
     )?;
 
     // 3. Check idempotency BEFORE any mutations (with circuit breaker)
@@ -299,7 +301,7 @@ pub async fn handle_update(
     }
 
     // 6. Apply updates with validation
-    apply_updates(&mut work_item, &req)?;
+    apply_updates(&mut work_item, &req, &ctx.validation)?;
 
     // 7. Update metadata
     let now = Utc::now();
@@ -472,15 +474,22 @@ fn parse_uuid(s: &str, field: &str) -> Result<Uuid, WsError> {
     })
 }
 
-fn apply_updates(work_item: &mut WorkItem, req: &UpdateWorkItemRequest) -> Result<(), WsError> {
+fn apply_updates(
+    work_item: &mut WorkItem,
+    req: &UpdateWorkItemRequest,
+    validation: &ValidationConfig,
+) -> Result<(), WsError> {
     if let Some(ref title) = req.title {
-        MessageValidator::validate_string(title, "title", 1, 200)?;
+        MessageValidator::validate_string(title, "title", 1, validation.max_title_length)?;
         work_item.title = sanitize_string(title);
     }
     if let Some(ref desc) = req.description {
-        if desc.len() > 10000 {
+        if desc.chars().count() > validation.max_description_length {
             return Err(WsError::ValidationError {
-                message: "Description exceeds 10000 characters".to_string(),
+                message: format!(
+                    "Description exceeds {} characters",
+                    validation.max_description_length
+                ),
                 field: Some("description".to_string()),
                 location: ErrorLocation::from(Location::caller()),
             });

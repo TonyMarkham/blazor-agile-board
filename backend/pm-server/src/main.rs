@@ -209,6 +209,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         shutdown: shutdown.clone(),
         config: connection_config,
         api_config: config.api.clone(),
+        validation: config.validation,
     };
 
     // Build router

@@ -42,6 +42,14 @@ before continuing, can I get you to perform a fresh-eyes review of the plan.
 Identify strengths/weaknesses/issues and re-grade x.x/10 for production-grade
 ```
 
+### pm
+```text
+- use the /pm skill to transfer the plan to the Agile Board.
+- Use proper Agile Techniques to organize Epics > Stories > Tasks 
+- Use the tasks to show a concrete implementation complete with production-grade code snippets
+- The tasks should also be written with well thought out explanations above each code block to give humans well structured context 
+```
+
 ### Sub-Process
 ```text
 - Read `docs/session-plans/121-Session-Plan-Initial.md`

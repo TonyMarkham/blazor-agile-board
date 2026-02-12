@@ -851,6 +851,32 @@ All commands return JSON responses with consistent structure:
 - `0` - Success
 - `1` - Error (check stderr and JSON response)
 
+## Critical Rules
+
+### NEVER Delete and Recreate Work Items — Always Update
+
+**NEVER use `work-item delete` followed by `work-item create` to fix a work item.** Always use `work-item update` instead.
+
+Deleting a work item destroys:
+- Dependency links (blocks/blocked-by relationships)
+- Comments and discussion history
+- Time entries and tracked effort
+- Sprint assignments
+- Activity log references
+
+It also leaves gaps in display key numbering (e.g., PROJ-124 disappears, replacement becomes PROJ-125).
+
+```bash
+# WRONG — destroys all associated data
+.pm/bin/pm work-item delete "$TASK_ID"
+.pm/bin/pm work-item create --project-id "$PROJECT_ID" --type task --title "Fixed title" ...
+
+# CORRECT — preserves all relationships and history
+.pm/bin/pm work-item update "$TASK_ID" --version "$VERSION" --title "Fixed title" --description "Fixed description"
+```
+
+Only delete a work item if it was created in error and has no dependencies, comments, or other references.
+
 ## Important Notes
 
 ### Done Items Excluded by Default
