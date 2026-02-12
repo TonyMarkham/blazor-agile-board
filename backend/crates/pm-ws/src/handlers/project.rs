@@ -346,7 +346,7 @@ pub async fn handle_delete(
     // 4. Check no work items exist
     let pool_clone = ctx.pool.clone();
     let items = db_read(&ctx, "check_work_items", || async {
-        WorkItemRepository::find_by_project(&pool_clone, project_id)
+        WorkItemRepository::find_by_project(&pool_clone, project_id, true)
             .await
             .map_err(WsError::from)
     })

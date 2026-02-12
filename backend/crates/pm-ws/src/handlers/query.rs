@@ -32,7 +32,7 @@ pub async fn handle_get_work_items(
 
     // 3. Fetch work items with circuit breaker
     let work_items = db_read(&ctx, "find_work_items", || async {
-        WorkItemRepository::find_by_project(&ctx.pool, project_id)
+        WorkItemRepository::find_by_project(&ctx.pool, project_id, true)
             .await
             .map_err(WsError::from)
     })

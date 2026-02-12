@@ -28,6 +28,31 @@ use std::str::FromStr;
 use uuid::Uuid;
 
 // =============================================================================
+// Helpers
+// =============================================================================
+
+/// Collect all descendant IDs of an ancestor by walking the parent chain (BFS).
+/// Returns IDs of children, grandchildren, etc. — does NOT include the ancestor itself.
+fn collect_descendant_ids(
+    work_items: &[WorkItem],
+    ancestor_id: Uuid,
+) -> std::collections::HashSet<Uuid> {
+    let mut descendants = std::collections::HashSet::new();
+    let mut frontier = vec![ancestor_id];
+
+    while let Some(current) = frontier.pop() {
+        for item in work_items {
+            if item.parent_id == Some(current) && !descendants.contains(&item.id) {
+                descendants.insert(item.id);
+                frontier.push(item.id);
+            }
+        }
+    }
+
+    descendants
+}
+
+// =============================================================================
 // Handlers
 // =============================================================================
 
@@ -83,12 +108,35 @@ pub async fn list_work_items(
             location: ErrorLocation::from(Location::caller()),
         })?;
 
-    let work_items = WorkItemRepository::find_by_project(&state.pool, project_uuid).await?;
+    let work_items =
+        WorkItemRepository::find_by_project(&state.pool, project_uuid, query.include_done).await?;
+
+    // Pre-compute descendant IDs if descendants_of is requested
+    let descendant_ids: Option<std::collections::HashSet<Uuid>> = query
+        .descendants_of
+        .as_ref()
+        .map(|ancestor_str| {
+            let ancestor_id = Uuid::parse_str(ancestor_str)?;
+            Ok::<_, uuid::Error>(collect_descendant_ids(&work_items, ancestor_id))
+        })
+        .transpose()
+        .map_err(|_| ApiError::Validation {
+            message: "Invalid UUID for descendants_of".into(),
+            field: Some("descendants_of".into()),
+            location: ErrorLocation::from(Location::caller()),
+        })?;
 
     // Apply filters and convert to DTOs
     let filtered: Vec<WorkItemDto> = work_items
         .into_iter()
         .filter(|w| {
+            // Descendants filter (applied first, before other filters)
+            if let Some(ref ids) = descendant_ids
+                && !ids.contains(&w.id)
+            {
+                return false;
+            }
+
             query
                 .item_type
                 .as_ref()
@@ -97,6 +145,13 @@ pub async fn list_work_items(
                 && query.sprint_id.as_ref().map_or(true, |sid| {
                     w.sprint_id.map_or(false, |ws| ws.to_string() == *sid)
                 })
+                && if query.orphaned {
+                    w.parent_id.is_none()
+                } else {
+                    query.parent_id.as_ref().map_or(true, |pid| {
+                        w.parent_id.map_or(false, |wp| wp.to_string() == *pid)
+                    })
+                }
         })
         .map(|w| WorkItemDto::from_work_item(w, &project.key))
         .collect();
@@ -356,6 +411,9 @@ pub async fn update_work_item(
             .filter(|s| !s.is_empty())
             .map(|s| Uuid::parse_str(s))
             .transpose()?;
+    }
+    if let Some(pos) = req.position {
+        work_item.position = pos;
     }
 
     // 5. Update metadata

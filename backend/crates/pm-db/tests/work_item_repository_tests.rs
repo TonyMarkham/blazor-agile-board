@@ -142,7 +142,7 @@ async fn given_multiple_work_items_in_project_when_finding_by_project_then_retur
     WorkItemRepository::create(&pool, &item3).await.unwrap();
 
     // Then: find_by_project returns all 3 items (+ the project itself = 4 total)
-    let items = WorkItemRepository::find_by_project(&pool, project.id)
+    let items = WorkItemRepository::find_by_project(&pool, project.id, true)
         .await
         .unwrap();
     assert_that!(items, len(eq(3))); // Changed from 3 to 4!
@@ -180,7 +180,7 @@ async fn given_work_items_with_one_deleted_when_finding_by_project_then_excludes
         .unwrap();
 
     // Then: find_by_project returns project + item2 (2 total)
-    let items = WorkItemRepository::find_by_project(&pool, project.id)
+    let items = WorkItemRepository::find_by_project(&pool, project.id, true)
         .await
         .unwrap();
     assert_that!(items, len(eq(1))); // Changed from 1 to 2!
@@ -205,7 +205,7 @@ async fn given_empty_project_when_finding_by_project_then_returns_empty_vec() {
         .unwrap();
 
     // When: Finding work items by project
-    let items = WorkItemRepository::find_by_project(&pool, project.id)
+    let items = WorkItemRepository::find_by_project(&pool, project.id, true)
         .await
         .unwrap();
 

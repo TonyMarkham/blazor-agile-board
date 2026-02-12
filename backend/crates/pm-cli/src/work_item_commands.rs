@@ -51,6 +51,22 @@ pub enum WorkItemCommands {
         /// Filter by status
         #[arg(long)]
         status: Option<String>,
+
+        /// Filter by parent work item ID (UUID)
+        #[arg(long, conflicts_with = "orphaned")]
+        parent_id: Option<String>,
+
+        /// Show only orphaned items (no parent)
+        #[arg(long, conflicts_with = "parent_id")]
+        orphaned: bool,
+
+        /// Show all descendants (children, grandchildren, etc.) of a work item ID
+        #[arg(long, conflicts_with_all = ["parent_id", "orphaned"])]
+        descendants_of: Option<String>,
+
+        /// Include work items with status 'done' (excluded by default)
+        #[arg(long)]
+        include_done: bool,
     },
 
     /// Update a work item
@@ -85,6 +101,18 @@ pub enum WorkItemCommands {
         /// Story points (0-100)
         #[arg(long)]
         story_points: Option<i32>,
+
+        /// Parent work item ID (UUID, or empty string to clear parent)
+        #[arg(long)]
+        parent_id: Option<String>,
+
+        /// Set this flag to update the parent (required to distinguish "don't change" from "clear parent")
+        #[arg(long)]
+        update_parent: bool,
+
+        /// Position for ordering (non-negative integer)
+        #[arg(long)]
+        position: Option<i32>,
 
         /// Expected version (required for optimistic locking)
         #[arg(long)]

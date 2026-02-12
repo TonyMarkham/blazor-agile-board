@@ -336,6 +336,7 @@ public sealed class WorkItemStore : IWorkItemStore
             SprintId = request.SprintId ?? current.SprintId,
             StoryPoints = request.StoryPoints ?? current.StoryPoints,
             Position = request.Position ?? current.Position,
+            ParentId = request.UpdateParent ? request.ParentId : current.ParentId,
             UpdatedAt = DateTime.UtcNow,
             Version = current.Version + 1
         };

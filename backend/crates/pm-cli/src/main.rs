@@ -166,9 +166,21 @@ async fn main() -> ExitCode {
                 project_id,
                 r#type,
                 status,
+                parent_id,
+                orphaned,
+                descendants_of,
+                include_done,
             } => {
                 client
-                    .list_work_items(&project_id, r#type.as_deref(), status.as_deref())
+                    .list_work_items(
+                        &project_id,
+                        r#type.as_deref(),
+                        status.as_deref(),
+                        parent_id.as_deref(),
+                        orphaned,
+                        descendants_of.as_deref(),
+                        include_done,
+                    )
                     .await
             }
             WorkItemCommands::Update {
@@ -180,6 +192,9 @@ async fn main() -> ExitCode {
                 assignee_id,
                 sprint_id,
                 story_points,
+                parent_id,
+                update_parent,
+                position,
                 version,
             } => {
                 client
@@ -192,6 +207,9 @@ async fn main() -> ExitCode {
                         assignee_id.as_deref(),
                         sprint_id.as_deref(),
                         story_points,
+                        parent_id.as_deref(),
+                        update_parent,
+                        position,
                         version,
                     )
                     .await
@@ -259,7 +277,33 @@ async fn main() -> ExitCode {
 
         // Sync commands (bulk export/import)
         Commands::Sync { action } => match action {
-            SyncCommands::Export { output } => client.export_data(output.as_deref()).await,
+            SyncCommands::Export { output, scope } => match scope {
+                Some(sync_commands::ExportScope::WorkItem {
+                    id,
+                    descendant_levels,
+                    comments,
+                    sprints,
+                    dependencies,
+                    time_entries,
+                }) => {
+                    client
+                        .export_data(
+                            output.as_deref(),
+                            Some(&id),
+                            descendant_levels,
+                            comments,
+                            sprints,
+                            dependencies,
+                            time_entries,
+                        )
+                        .await
+                }
+                None => {
+                    client
+                        .export_data(output.as_deref(), None, 0, false, false, false, false)
+                        .await
+                }
+            },
             SyncCommands::Import { file } => client.import_data(&file).await,
         },
     };

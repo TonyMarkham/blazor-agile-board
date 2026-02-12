@@ -258,11 +258,16 @@ impl Client {
     }
 
     /// List work items in a project
+    #[allow(clippy::too_many_arguments)]
     pub async fn list_work_items(
         &self,
         project_id: &str,
         item_type: Option<&str>,
         status: Option<&str>,
+        parent_id: Option<&str>,
+        orphaned: bool,
+        descendants_of: Option<&str>,
+        include_done: bool,
     ) -> CliClientResult<Value> {
         let mut url = format!("/api/v1/projects/{}/work-items", project_id);
 
@@ -273,6 +278,18 @@ impl Client {
         }
         if let Some(s) = status {
             params.push(format!("status={}", s));
+        }
+        if let Some(pid) = parent_id {
+            params.push(format!("parent_id={}", pid));
+        }
+        if orphaned {
+            params.push("orphaned=true".to_string());
+        }
+        if let Some(did) = descendants_of {
+            params.push(format!("descendants_of={}", did));
+        }
+        if include_done {
+            params.push("include_done=true".to_string());
         }
         if !params.is_empty() {
             url.push_str(&format!("?{}", params.join("&")));
@@ -335,6 +352,9 @@ impl Client {
         assignee_id: Option<&str>,
         sprint_id: Option<&str>,
         story_points: Option<i32>,
+        parent_id: Option<&str>,
+        update_parent: bool,
+        position: Option<i32>,
         expected_version: i32,
     ) -> CliClientResult<Value> {
         #[derive(Serialize)]
@@ -353,6 +373,11 @@ impl Client {
             sprint_id: Option<&'a str>,
             #[serde(skip_serializing_if = "Option::is_none")]
             story_points: Option<i32>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            parent_id: Option<&'a str>,
+            update_parent: bool,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            position: Option<i32>,
             expected_version: i32,
         }
 
@@ -364,6 +389,9 @@ impl Client {
             assignee_id,
             sprint_id,
             story_points,
+            parent_id,
+            update_parent,
+            position,
             expected_version,
         };
 
@@ -559,9 +587,41 @@ impl Client {
     // Import / Export Operations
     // =========================================================================
 
-    /// Export all data to JSON
-    pub async fn export_data(&self, output: Option<&str>) -> CliClientResult<Value> {
-        let req = self.request(Method::GET, "/api/v1/sync/export");
+    /// Export data to JSON (full database or scoped to a work item)
+    #[allow(clippy::too_many_arguments)]
+    pub async fn export_data(
+        &self,
+        output: Option<&str>,
+        work_item: Option<&str>,
+        descendant_levels: u32,
+        comments: bool,
+        sprints: bool,
+        dependencies: bool,
+        time_entries: bool,
+    ) -> CliClientResult<Value> {
+        let mut url = "/api/v1/sync/export".to_string();
+
+        if let Some(id) = work_item {
+            let mut params = vec![format!("work_item={}", id)];
+            if descendant_levels > 0 {
+                params.push(format!("descendant_levels={}", descendant_levels));
+            }
+            if comments {
+                params.push("comments=true".to_string());
+            }
+            if sprints {
+                params.push("sprints=true".to_string());
+            }
+            if dependencies {
+                params.push("dependencies=true".to_string());
+            }
+            if time_entries {
+                params.push("time_entries=true".to_string());
+            }
+            url.push_str(&format!("?{}", params.join("&")));
+        }
+
+        let req = self.request(Method::GET, &url);
         let result = self.execute(req).await?;
 
         // If output file specified, write to file

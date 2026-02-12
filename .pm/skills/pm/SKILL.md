@@ -339,7 +339,7 @@ pm comment create \
 
 ```bash
 # List work items in a project (with optional filters)
-.pm/bin/pm work-item list <project-id> [--type <epic|story|task>] [--status <status>] [--pretty]
+.pm/bin/pm work-item list <project-id> [--type <epic|story|task>] [--status <status>] [--parent-id <uuid>] [--orphaned] [--include-done] [--pretty]
 
 # Get a specific work item
 .pm/bin/pm work-item get <work-item-id> [--pretty]
@@ -365,6 +365,9 @@ pm comment create \
   [--assignee-id <uuid>] \
   [--sprint-id <uuid>] \
   [--story-points <0-100>] \
+  [--parent-id <uuid>] \
+  [--update-parent] \
+  [--position <int>] \
   [--pretty]
 
 # Delete a work item
@@ -488,9 +491,27 @@ pm comment create \
 # Export all data to JSON
 .pm/bin/pm sync export [--output <file>] [--pretty]
 
+# Export a specific work item (scoped export)
+.pm/bin/pm sync export [--output <file>] work-item <work-item-id> \
+  [--descendant-levels <0-2>] \
+  [--comments] \
+  [--sprints] \
+  [--dependencies] \
+  [--time-entries] \
+  [--pretty]
+
 # Import data from JSON file
 .pm/bin/pm sync import --file <json-file> [--pretty]
 ```
+
+**Scoped export flags:**
+- `--descendant-levels <N>` - Include N levels of children (0=just item, 1=children, 2=grandchildren)
+- `--comments` - Include comments for matched work items
+- `--sprints` - Include sprint data referenced by matched work items
+- `--dependencies` - Include dependency links involving matched work items
+- `--time-entries` - Include time entries for matched work items
+
+Without flags, scoped export returns only the work item itself. Each flag opts in additional related data. The response uses the same `ExportData` format as full export (compatible with `sync import`).
 
 ### Desktop Command
 
@@ -702,6 +723,106 @@ TASK_B_ID=$(echo "$TASK_B" | jq -r '.work_item.id')
 .pm/bin/pm dependency list "$TASK_B_ID" --pretty
 ```
 
+### Reparenting Work Items
+
+Move work items between parents or orphan them using `--parent-id` and `--update-parent`:
+
+```bash
+# Move an orphan task under a story
+.pm/bin/pm work-item update "$TASK_ID" \
+  --version "$VERSION" \
+  --parent-id "$STORY_ID" \
+  --update-parent \
+  --pretty
+
+# Move a task from one story to another
+.pm/bin/pm work-item update "$TASK_ID" \
+  --version "$VERSION" \
+  --parent-id "$NEW_STORY_ID" \
+  --update-parent \
+  --pretty
+
+# Orphan a task (remove its parent)
+.pm/bin/pm work-item update "$TASK_ID" \
+  --version "$VERSION" \
+  --parent-id "" \
+  --update-parent \
+  --pretty
+```
+
+**Why `--update-parent` is required:** Without the flag, omitting `--parent-id` means "don't change the parent." With the flag, omitting `--parent-id` (or passing empty string) means "clear the parent." The flag disambiguates intent.
+
+### Filtering by Parent and Finding Orphans
+
+```bash
+# List all children of a specific epic
+.pm/bin/pm work-item list "$PROJECT_ID" \
+  --parent-id "$EPIC_ID" \
+  --pretty
+
+# List only orphaned items (no parent) — useful for finding misplaced work items
+.pm/bin/pm work-item list "$PROJECT_ID" \
+  --orphaned \
+  --pretty
+
+# List orphaned stories specifically
+.pm/bin/pm work-item list "$PROJECT_ID" \
+  --orphaned \
+  --type story \
+  --pretty
+
+# Combine filters: children of an epic that are in_progress
+.pm/bin/pm work-item list "$PROJECT_ID" \
+  --parent-id "$EPIC_ID" \
+  --status in_progress \
+  --pretty
+```
+
+**Note:** `--parent-id`, `--orphaned`, and `--descendants-of` are mutually exclusive (enforced by the CLI).
+
+### Listing All Descendants (Recursive)
+
+```bash
+# All descendants of an epic (stories + their tasks)
+.pm/bin/pm work-item list "$PROJECT_ID" \
+  --descendants-of "$EPIC_ID" \
+  --pretty
+
+# Just the tasks in an epic's entire tree
+.pm/bin/pm work-item list "$PROJECT_ID" \
+  --descendants-of "$EPIC_ID" \
+  --type task \
+  --pretty
+
+# All in-progress items under an epic's tree
+.pm/bin/pm work-item list "$PROJECT_ID" \
+  --descendants-of "$EPIC_ID" \
+  --status in_progress \
+  --pretty
+```
+
+### Scoped Export (Work Item with Context)
+
+```bash
+# Export an epic with its full tree and all related data
+.pm/bin/pm sync export --output epic-export.json work-item "$EPIC_ID" \
+  --descendant-levels 2 \
+  --comments \
+  --sprints \
+  --dependencies \
+  --time-entries \
+  --pretty
+
+# Export just a single work item (no related data)
+.pm/bin/pm sync export work-item "$WORK_ITEM_ID" --pretty
+
+# Export a story with its child tasks and comments
+.pm/bin/pm sync export --output story.json work-item "$STORY_ID" \
+  --descendant-levels 1 \
+  --comments \
+  --pretty
+```
+
 ## Response Format
 
 All commands return JSON responses with consistent structure:
@@ -731,6 +852,17 @@ All commands return JSON responses with consistent structure:
 - `1` - Error (check stderr and JSON response)
 
 ## Important Notes
+
+### Done Items Excluded by Default
+
+`work-item list` excludes items with status `done` by default. Add `--include-done` to see them:
+```bash
+# Active items only (default)
+.pm/bin/pm work-item list "$PROJECT_ID" --pretty
+
+# Include completed items
+.pm/bin/pm work-item list "$PROJECT_ID" --include-done --pretty
+```
 
 ### Multi-line Descriptions with Special Characters
 

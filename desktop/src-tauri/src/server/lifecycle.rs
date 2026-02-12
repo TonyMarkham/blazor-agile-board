@@ -82,7 +82,10 @@ impl ServerManager {
         }
 
         // 2. Installed location: <repo>/.pm/bin/pm-server
-        let installed = self.server_dir.join("bin").join(format!("pm-server{}", std::env::consts::EXE_SUFFIX));
+        let installed = self
+            .server_dir
+            .join("bin")
+            .join(format!("pm-server{}", std::env::consts::EXE_SUFFIX));
         if installed.exists() {
             info!("Using pm-server (installed): {}", installed.display());
             return Ok(installed);

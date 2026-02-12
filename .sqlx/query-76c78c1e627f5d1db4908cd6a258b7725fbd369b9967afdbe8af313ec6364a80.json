@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n              SELECT\n                  id, item_type, parent_id, project_id, position,\n                  title, description, status, priority, assignee_id,\n                  story_points, sprint_id, item_number, version,\n                  created_at, updated_at, created_by, updated_by, deleted_at\n              FROM pm_work_items\n              WHERE deleted_at IS NULL\n              ORDER BY position\n          ",
+  "query": "\n              SELECT\n                  id, item_type, parent_id, project_id, position,\n                  title, description, status, priority, assignee_id,\n                  story_points, sprint_id, item_number, version,\n                  created_at, updated_at, created_by, updated_by, deleted_at\n              FROM pm_work_items\n              WHERE deleted_at IS NULL\n                AND (? = 1 OR status != 'done')\n              ORDER BY position\n          ",
   "describe": {
     "columns": [
       {
@@ -100,7 +100,7 @@
       }
     ],
     "parameters": {
-      "Right": 0
+      "Right": 1
     },
     "nullable": [
       true,
@@ -124,5 +124,5 @@
       true
     ]
   },
-  "hash": "28375350b4ba8b822db541167137c2db2e27250f17f15dac311e8337ffc8bb33"
+  "hash": "76c78c1e627f5d1db4908cd6a258b7725fbd369b9967afdbe8af313ec6364a80"
 }

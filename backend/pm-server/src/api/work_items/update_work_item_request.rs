@@ -22,6 +22,8 @@ pub struct UpdateWorkItemRequest {
     /// Set to true to update parent_id (allows clearing parent)
     #[serde(default)]
     pub update_parent: bool,
+    #[serde(default)]
+    pub position: Option<i32>,
     /// Required: current version for optimistic locking
     pub expected_version: i32,
 }

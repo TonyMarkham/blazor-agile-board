@@ -146,6 +146,9 @@ async fn test_update_work_item_conflict() {
             None,
             None,
             None,
+            None,
+            false,
+            None,
             999,
         )
         .await;
@@ -177,6 +180,10 @@ async fn test_list_work_items_with_filters() {
             "00000000-0000-0000-0000-000000000001",
             Some("task"),
             Some("in_progress"),
+            None,
+            false,
+            None,
+            false,
         )
         .await
         .unwrap();

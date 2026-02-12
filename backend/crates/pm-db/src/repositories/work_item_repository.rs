@@ -150,11 +150,13 @@ impl WorkItemRepository {
     pub async fn find_by_project<'e, E>(
         executor: E,
         project_id: Uuid,
+        include_done: bool,
     ) -> DbErrorResult<Vec<WorkItem>>
     where
         E: sqlx::Executor<'e, Database = sqlx::Sqlite>,
     {
         let project_id_str = project_id.to_string();
+        let include_done_param = include_done as i32;
 
         let rows = sqlx::query!(
             r#"
@@ -165,9 +167,11 @@ impl WorkItemRepository {
                     created_at, updated_at, created_by, updated_by, deleted_at
                 FROM pm_work_items
                 WHERE project_id = ? AND deleted_at IS NULL
+                  AND (? = 1 OR status != 'done')
                 ORDER BY position
             "#,
-            project_id_str
+            project_id_str,
+            include_done_param
         )
         .fetch_all(executor)
         .await?;
@@ -598,10 +602,11 @@ impl WorkItemRepository {
         .transpose()
     }
 
-    pub async fn find_all<'e, E>(executor: E) -> DbErrorResult<Vec<WorkItem>>
+    pub async fn find_all<'e, E>(executor: E, include_done: bool) -> DbErrorResult<Vec<WorkItem>>
     where
         E: sqlx::Executor<'e, Database = sqlx::Sqlite>,
     {
+        let include_done_param = include_done as i32;
         let rows = sqlx::query!(
             r#"
               SELECT
@@ -611,8 +616,10 @@ impl WorkItemRepository {
                   created_at, updated_at, created_by, updated_by, deleted_at
               FROM pm_work_items
               WHERE deleted_at IS NULL
+                AND (? = 1 OR status != 'done')
               ORDER BY position
-          "#
+          "#,
+            include_done_param
         )
         .fetch_all(executor)
         .await?;
