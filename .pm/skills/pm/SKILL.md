@@ -35,6 +35,274 @@ Use the pm-cli when you need to:
 - Modifying source code or configuration files
 - Tasks that are better suited for direct file manipulation
 
+## Organizing Development Work with Agile Methodology
+
+This section explains HOW to structure your development work using pm-cli, beyond just the command syntax.
+
+### Understanding the Work Item Hierarchy
+
+The pm-cli supports a three-level hierarchy for organizing work:
+
+**Epic** → **Story** → **Task**
+
+#### Epics (High-Level Features)
+- Represent major system components, feature areas, or large initiatives
+- Examples: "User Authentication System", "Payment Processing", "Mobile App", "API v2"
+- Typically span multiple sprints
+- Use `--type epic` when creating
+
+#### Stories (Implementation Groupings)
+- Represent user-facing capabilities or logical implementation units within an epic
+- Should be completable within a sprint
+- Include context about WHY this work matters and WHEN it should be done
+- Examples: "User Login Flow", "Credit Card Payment Integration", "Profile Management"
+- Use `--type story` and `--parent-id <epic-id>` when creating
+
+#### Tasks (Specific Work Items)
+- Represent concrete, actionable work items
+- Should be completable in days or less
+- Examples: "Implement password hashing", "Create login API endpoint", "Write integration tests"
+- Use `--type task` and `--parent-id <story-id>` when creating
+
+### Translating Implementation Plans into Work Items
+
+When you have a detailed implementation plan (architecture document, technical design, etc.), organize it systematically:
+
+#### 1. Create Epics for Major Components
+
+Identify the high-level system components or feature areas from your plan:
+
+```bash
+# Example: Create an epic for a major feature
+EPIC=$(pm work-item create \
+  --project-id "$PROJECT_ID" \
+  --type epic \
+  --title "Authentication System" \
+  --description "Complete user authentication with OAuth2, JWT, and session management" \
+  --priority high \
+  --pretty)
+
+EPIC_ID=$(echo "$EPIC" | jq -r '.work_item.id')
+```
+
+#### 2. Create Stories to Organize Implementation Order
+
+Break down each epic into stories that represent logical implementation phases. **Include implementation context in the story description**:
+
+```bash
+# Example: Create a story with context about sequencing
+STORY=$(pm work-item create \
+  --project-id "$PROJECT_ID" \
+  --type story \
+  --parent-id "$EPIC_ID" \
+  --title "Foundation - Error Handling & Security Setup" \
+  --description "Set up security infrastructure and error handling patterns. This MUST be done first as all auth components depend on proper error types and security utilities." \
+  --priority high \
+  --pretty)
+
+STORY_ID=$(echo "$STORY" | jq -r '.work_item.id')
+```
+
+**What to include in story descriptions:**
+- **Summary**: What capability this story delivers
+- **Why it matters**: The business or technical reason for this work
+- **Implementation order**: Dependencies on other stories, what must be done first
+- **Success criteria**: How to know when this story is complete
+
+#### 3. Create Tasks with Implementation Details
+
+Tasks should contain **concrete implementation details** that make them actionable. This is where you include:
+- Code snippets and examples
+- API contracts and schemas
+- Configuration requirements
+- File paths and module locations
+- Key patterns or conventions to follow
+
+**Example task with implementation details:**
+
+```bash
+# Example: Create a task with code snippets
+pm work-item create \
+  --project-id "$PROJECT_ID" \
+  --type task \
+  --parent-id "$STORY_ID" \
+  --title "Implement AuthError enum with structured logging" \
+  --description "$(cat <<'EOF'
+Create a comprehensive error type for authentication failures.
+
+**File**: `src/auth/error.rs`
+
+**Implementation**:
+```rust
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum AuthError {
+    #[error("Invalid credentials")]
+    InvalidCredentials,
+
+    #[error("Token expired at {expired_at}")]
+    TokenExpired { expired_at: String },
+
+    #[error("Database error: {0}")]
+    DatabaseError(#[from] sqlx::Error),
+}
+
+pub type Result<T> = std::result::Result<T, AuthError>;
+```
+
+**Requirements**:
+- Use thiserror for error derivation
+- Include context in error variants
+- Implement From traits for error conversion
+- Add structured logging fields
+
+**Testing**: Verify error messages are clear and include relevant context
+EOF
+)" \
+  --priority high \
+  --pretty
+```
+
+**Benefits of detailed task descriptions:**
+- ✅ Implementation context preserved across sessions
+- ✅ Reduces ambiguity and misunderstandings
+- ✅ Serves as documentation for future reference
+- ✅ Makes tasks immediately actionable
+- ✅ Enables better time estimation
+
+### Managing Dependencies
+
+Use dependencies to represent blocking relationships between work items:
+
+```bash
+# Example: Story B depends on Story A being complete
+pm dependency create \
+  --blocking "$STORY_A_ID" \
+  --blocked "$STORY_B_ID" \
+  --type blocks \
+  --pretty
+```
+
+**When to use dependencies:**
+- One work item cannot start until another is complete
+- Shared infrastructure or APIs need to be built first
+- Testing depends on implementation being finished
+- Integration work depends on component work
+
+**Best practices:**
+- Use story descriptions to indicate soft dependencies ("best done after X")
+- Use dependency links for hard blockers only
+- Create dependency links between stories, not individual tasks (cleaner graph)
+- Review dependencies regularly to ensure they're still accurate
+
+### Organizing Work by Phases
+
+For complex projects, organize work into logical implementation phases:
+
+1. **Identify dependency layers**: Group work items by what they depend on
+2. **Create stories for each phase**: Foundation → Core Components → Integration → Polish
+3. **Use sprint planning**: Assign stories to sprints based on phase order
+4. **Track progress**: Use sprint goals to align team on phase objectives
+
+### Best Practices for LLM Collaboration
+
+When working with AI assistants (like Claude), structure your work items to maximize effectiveness:
+
+1. **Include code examples**: Put actual code snippets in task descriptions (not "implement X", but "implement X like this: ```code```")
+2. **Be explicit about patterns**: Specify conventions, error handling patterns, logging standards
+3. **Preserve context**: Use comments on work items to capture decisions, blockers, or discoveries
+4. **Use time tracking**: Start timers when beginning work to provide visibility into effort
+5. **Update status proactively**: Set status to `in_progress` when starting, `blocked` when stuck, `done` when complete
+6. **Link related work**: Use comments to reference related tasks, documentation, or external resources
+
+### Workflow Example: From Plan to Execution
+
+Here's a complete workflow for organizing a feature implementation:
+
+```bash
+# 1. Create the epic for the feature
+EPIC=$(pm work-item create \
+  --project-id "$PROJECT_ID" \
+  --type epic \
+  --title "Payment Processing System" \
+  --description "Integrate Stripe payment processing with webhook handling and receipt generation" \
+  --pretty)
+EPIC_ID=$(echo "$EPIC" | jq -r '.work_item.id')
+
+# 2. Create stories for implementation phases
+# Story 1: Foundation
+STORY_1=$(pm work-item create \
+  --project-id "$PROJECT_ID" \
+  --type story \
+  --parent-id "$EPIC_ID" \
+  --title "Foundation - Payment Models & Error Handling" \
+  --description "Set up payment domain models and error types. Must be done first." \
+  --priority high \
+  --pretty)
+STORY_1_ID=$(echo "$STORY_1" | jq -r '.work_item.id')
+
+# Story 2: Integration
+STORY_2=$(pm work-item create \
+  --project-id "$PROJECT_ID" \
+  --type story \
+  --parent-id "$EPIC_ID" \
+  --title "Stripe API Integration" \
+  --description "Integrate with Stripe payment APIs. Depends on Story 1 completion." \
+  --priority high \
+  --pretty)
+STORY_2_ID=$(echo "$STORY_2" | jq -r '.work_item.id')
+
+# Create dependency link
+pm dependency create \
+  --blocking "$STORY_1_ID" \
+  --blocked "$STORY_2_ID" \
+  --type blocks \
+  --pretty
+
+# 3. Create detailed tasks under Story 1
+pm work-item create \
+  --project-id "$PROJECT_ID" \
+  --type task \
+  --parent-id "$STORY_1_ID" \
+  --title "Create Payment domain models" \
+  --description "$(cat <<'EOF'
+File: `src/payments/models.rs`
+
+```rust
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Payment {
+    pub id: Uuid,
+    pub amount: Decimal,
+    pub currency: Currency,
+    pub status: PaymentStatus,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum PaymentStatus {
+    Pending,
+    Processing,
+    Succeeded,
+    Failed { reason: String },
+}
+```
+EOF
+)" \
+  --priority high \
+  --pretty
+
+# 4. As work progresses, update status and add comments
+pm work-item update "$TASK_ID" \
+  --version "$VERSION" \
+  --status in_progress \
+  --pretty
+
+pm comment create \
+  --work-item-id "$TASK_ID" \
+  --content "Implemented base models, now adding validation logic" \
+  --pretty
+```
+
 ## Available Commands
 
 ### Project Commands
