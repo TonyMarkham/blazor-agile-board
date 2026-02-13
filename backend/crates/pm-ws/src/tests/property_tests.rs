@@ -6,19 +6,7 @@ use proptest::prelude::*;
 // Property-Based Tests - Sanitization
 // =========================================================================
 
-// Strategy for generating arbitrary strings that might be XSS attempts
-fn xss_string_strategy() -> impl Strategy<Value = String> {
-    prop::string::string_regex(r#"[a-zA-Z0-9<>"'&\s]{0,100}"#).unwrap()
-}
-
 proptest! {
-    #[test]
-    fn given_any_input_when_sanitized_then_no_html_tags(input in xss_string_strategy()) {
-        let sanitized = sanitize_string(&input);
-        prop_assert!(!sanitized.contains('<'));
-        prop_assert!(!sanitized.contains('>'));
-    }
-
     #[test]
     fn given_valid_status_when_validated_then_succeeds(status in prop_oneof![
         Just("backlog".to_string()),
@@ -72,35 +60,11 @@ proptest! {
         let sanitized = sanitize_string(&input);
         prop_assert_eq!(input, sanitized);
     }
-
-    #[test]
-    fn given_dangerous_chars_when_sanitized_then_escaped(input in r#"[<>"'&]{1,20}"#) {
-        let sanitized = sanitize_string(&input);
-        prop_assert!(!sanitized.contains('<'));
-        prop_assert!(!sanitized.contains('>'));
-        prop_assert!(!sanitized.contains('"'));
-        prop_assert!(!sanitized.contains('\''));
-    }
 }
 
 // =========================================================================
 // Unit Tests - Sanitization
 // =========================================================================
-
-#[test]
-fn given_xss_script_tag_when_sanitized_then_escaped() {
-    // Given
-    let input = "<script>alert('xss')</script>";
-
-    // When
-    let sanitized = sanitize_string(input);
-
-    // Then - characters are replaced (note: not idempotent due to replacement order)
-    assert!(!sanitized.contains('<'));
-    assert!(!sanitized.contains('>'));
-    assert!(sanitized.contains("&amp;lt;")); // & in &lt; gets escaped too
-    assert!(sanitized.contains("&amp;gt;")); // & in &gt; gets escaped too
-}
 
 #[test]
 fn given_normal_text_when_sanitized_then_preserved() {
@@ -154,6 +118,18 @@ fn given_empty_status_when_validated_then_fails() {
 fn given_uppercase_status_when_validated_then_fails() {
     // Status validation is case-sensitive
     assert!(validate_status("TODO").is_err());
+}
+
+#[test]
+fn given_code_with_special_chars_when_sanitized_then_preserved() {
+    // Given - Rust code with characters that were previously mangled
+    let input = r#"fn foo(x: &str) -> bool { x < "bar" && x > "baz" }"#;
+
+    // When
+    let sanitized = sanitize_string(input);
+
+    // Then - special characters pass through unchanged
+    assert_eq!(input, sanitized);
 }
 
 // =========================================================================

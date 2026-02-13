@@ -1,5 +1,60 @@
 # Efficient Prompt Workflow
 
+### Plan
+
+Use Cluade Code's Panning Mode and allow it to create and itterate on the original plan
+
+### Plan > PM
+```text
+- use the /pm skill to transfer the plan to the Agile Board.
+- Use proper Agile Techniques to organize Epics > Stories > Tasks 
+- Use the tasks to show a concrete implementation complete with production-grade code snippets
+- The tasks should also be written with well thought out explanations above each code block to give humans well structured context 
+```
+
+### Review
+```text
+- use the /pm skill to list all orphaned WorkItems
+- Find PONE-126
+- Review all descendant tasks.
+- Write the review as a comment on PONE-126
+```
+
+### Address Review
+```text
+- use the /pm skill to list all orphaned WorkItems
+- Find PONE-126
+- Address the review in the latest comment
+- use the /pro-rust skill to align with my preferred patterns
+```
+
+### Implement
+```text
+- use the /pm skill to list all orphaned WorkItems
+- Find PONE-126
+- Review all descendant tasks.
+- read `CRITICAL_OPERATING_CONSTRAINTS.md`
+- Teach me by presenting bite-sized chunks for me to write/edit keeping the commentary separate from the code snippets to make the code snippets easier for me to follow
+```
+
+---
+
+---
+
+---
+
+---
+
+---
+
+---
+
+---
+
+---
+
+---
+
 ### Init
 ```txt
 Read `docs/implementation-plan-v2.md.` We just finished impl'ing session 60
@@ -47,7 +102,8 @@ Identify strengths/weaknesses/issues and re-grade x.x/10 for production-grade
 - use the /pm skill to transfer the plan to the Agile Board.
 - Use proper Agile Techniques to organize Epics > Stories > Tasks 
 - Use the tasks to show a concrete implementation complete with production-grade code snippets
-- The tasks should also be written with well thought out explanations above each code block to give humans well structured context 
+- The tasks should also be written with well thought out explanations above each code block to give humans well structured context
+- Do not try to automate this, perform each interaction 1 at a time 
 ```
 
 ### Sub-Process

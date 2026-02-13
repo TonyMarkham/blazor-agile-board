@@ -583,13 +583,7 @@ pub fn validate_priority(priority: &str) -> Result<(), WsError> {
 }
 
 pub fn sanitize_string(s: &str) -> String {
-    s.replace('<', "&lt;")
-        .replace('>', "&gt;")
-        .replace('&', "&amp;")
-        .replace('"', "&quot;")
-        .replace('\'', "&#x27;")
-        .trim()
-        .to_string()
+    s.trim().to_string()
 }
 
 /// Check that new_parent is not a descendant of work_item (prevent cycles)

@@ -1,16 +1,10 @@
 //! WebSocket handlers for Project CRUD operations.
 
-use crate::handlers::{
-    context::HandlerContext,
-    db_ops::{db_read, db_write},
-    idempotency::{check_idempotency, store_idempotency},
-    response_builder::{
-        build_project_created_response, build_project_deleted_response,
-        build_project_list_response, build_project_updated_response,
-    },
+use crate::{
+    HandlerContext, MessageValidator, Result as WsResult, WsError, build_project_created_response,
+    build_project_deleted_response, build_project_list_response, build_project_updated_response,
+    check_idempotency, db_read, db_write, log_handler_entry, sanitize_string, store_idempotency,
 };
-use crate::{MessageValidator, log_handler_entry};
-use crate::{Result as WsResult, WsError};
 
 use pm_core::{ActivityLog, Project, ProjectMember, ProjectStatus};
 use pm_db::{
@@ -26,11 +20,6 @@ use std::panic::Location;
 use chrono::Utc;
 use error_location::ErrorLocation;
 use uuid::Uuid;
-
-/// Sanitize user input by trimming whitespace
-fn sanitize_string(s: &str) -> String {
-    s.trim().to_string()
-}
 
 /// Handle CreateProjectRequest
 pub async fn handle_create(
