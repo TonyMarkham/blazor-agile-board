@@ -14,27 +14,28 @@ Use Cluade Code's Panning Mode and allow it to create and itterate on the origin
 
 ### Review
 ```text
-- use the /pm skill to list all orphaned WorkItems
-- Find PONE-134
+- use /pm to find PONE-155
 - Review all descendant tasks.
-- Write the review as a comment on PONE-134
+- Write the review as a comment on PONE-155
 ```
 
 ### Address Review
 ```text
-- use the /pm skill to list all orphaned WorkItems
-- Find PONE-134
+- use /pm to find PONE-155
 - Address the review in the latest comment
 - use the /pro-rust skill to align with my preferred patterns
 ```
 
 ### Implement
 ```text
-- use /pm to find PONE-151
+- use /pm to find PONE-155
 - Review all descendant tasks.
+- Pick up at story PONE-160 / Task PONE-177
 - read `CRITICAL_OPERATING_CONSTRAINTS.md`
 - Teach me by presenting bite-sized chunks for me to write/edit keeping the commentary separate from the code snippets to make the code snippets easier for me to follow
 - As each `work-item` is finished, use `./pm` to move it to `review`
+
+**CRITICAL** MUST USE /pm !!!
 ```
 
 ### Commit

@@ -67,6 +67,12 @@ message WorkItem {
   optional int32 story_points = 17;
   int32 version = 18;
   int32 item_number = 19;
+
+  // Hierarchy — pre-computed by server for O(1) client lookups.
+  // ancestor_ids: parent chain from immediate parent up to root (project).
+  // descendant_ids: all children, grandchildren, etc. down to leaves.
+  repeated string ancestor_ids = 20;
+  repeated string descendant_ids = 21;
 }
 
 enum SprintStatus {

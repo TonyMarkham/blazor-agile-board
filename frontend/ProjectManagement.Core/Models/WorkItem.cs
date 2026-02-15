@@ -41,6 +41,18 @@ public sealed record WorkItem :
     public int ItemNumber { get; init; }
 
     /// <summary>
+    /// Pre-computed ancestor IDs from immediate parent up to root.
+    /// Empty if server does not provide hierarchy data (backward compat).
+    /// </summary>
+    public IReadOnlyList<Guid> AncestorIds { get; init; } = Array.Empty<Guid>();
+
+    /// <summary>
+    /// Pre-computed descendant IDs: all children, grandchildren, etc.
+    /// Empty if server does not provide hierarchy data (backward compat).
+    /// </summary>
+    public IReadOnlyList<Guid> DescendantIds { get; init; } = Array.Empty<Guid>();
+
+    /// <summary>
     /// Generate the JIRA-style display key (e.g., "PROJ-123").
     /// </summary>
     /// <param name="projectKey">The project key (must not be null or empty)</param>

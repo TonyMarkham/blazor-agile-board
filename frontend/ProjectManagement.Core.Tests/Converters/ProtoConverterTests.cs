@@ -343,4 +343,106 @@
           proto.UpdateParent.Should().BeTrue();
           proto.ParentId.Should().Be("");  // Empty string means "clear parent"
       }
+      
+      
+      [Fact]
+      public void ToDomain_WorkItem_WithAncestorAndDescendantIds_MapsCorrectly()
+      {
+          // Arrange: Proto work item with hierarchy data
+          var ancestorId = Guid.NewGuid();
+          var descendant1 = Guid.NewGuid();
+          var descendant2 = Guid.NewGuid();
+
+          var proto = new Pm.WorkItem
+          {
+              Id = Guid.NewGuid().ToString(),
+              ItemType = Pm.WorkItemType.Story,
+              ProjectId = Guid.NewGuid().ToString(),
+              Title = "Test Story",
+              Status = "backlog",
+              Priority = "medium",
+              Position = 1,
+              Version = 1,
+              CreatedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+              UpdatedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+              CreatedBy = Guid.NewGuid().ToString(),
+              UpdatedBy = Guid.NewGuid().ToString()
+          };
+          proto.AncestorIds.Add(ancestorId.ToString());
+          proto.DescendantIds.Add(descendant1.ToString());
+          proto.DescendantIds.Add(descendant2.ToString());
+
+          // Act: Converting to domain
+          var domain = ProtoConverter.ToDomain(proto);
+
+          // Assert: Hierarchy IDs are parsed to Guids
+          domain.AncestorIds.Should().ContainSingle()
+              .Which.Should().Be(ancestorId);
+          domain.DescendantIds.Should().HaveCount(2);
+          domain.DescendantIds.Should().Contain(descendant1);
+          domain.DescendantIds.Should().Contain(descendant2);
+      }
+
+      [Fact]
+      public void ToDomain_WorkItem_WithEmptyHierarchy_DefaultsToEmptyLists()
+      {
+          // Arrange: Proto work item with no hierarchy data
+          var proto = new Pm.WorkItem
+          {
+              Id = Guid.NewGuid().ToString(),
+              ItemType = Pm.WorkItemType.Task,
+              ProjectId = Guid.NewGuid().ToString(),
+              Title = "Test Task",
+              Status = "todo",
+              Priority = "low",
+              Position = 1,
+              Version = 1,
+              CreatedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+              UpdatedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+              CreatedBy = Guid.NewGuid().ToString(),
+              UpdatedBy = Guid.NewGuid().ToString()
+          };
+
+          // Act: Converting to domain
+          var domain = ProtoConverter.ToDomain(proto);
+
+          // Assert: Hierarchy lists are empty (not null)
+          domain.AncestorIds.Should().BeEmpty();
+          domain.DescendantIds.Should().BeEmpty();
+      }
+
+      [Fact]
+      public void ToProto_WorkItem_WithHierarchyData_RoundTrips()
+      {
+          // Arrange: Domain work item with hierarchy data
+          var ancestorId = Guid.NewGuid();
+          var descendantId = Guid.NewGuid();
+          var domain = new WorkItem
+          {
+              Id = Guid.NewGuid(),
+              ItemType = WorkItemType.Epic,
+              ProjectId = Guid.NewGuid(),
+              Title = "Test Epic",
+              Status = "in_progress",
+              Priority = "high",
+              Position = 1,
+              Version = 1,
+              CreatedAt = DateTime.UtcNow,
+              UpdatedAt = DateTime.UtcNow,
+              CreatedBy = Guid.NewGuid(),
+              UpdatedBy = Guid.NewGuid(),
+              AncestorIds = new[] { ancestorId },
+              DescendantIds = new[] { descendantId }
+          };
+
+          // Act: Converting to proto and back
+          var proto = ProtoConverter.ToProto(domain);
+          var roundTripped = ProtoConverter.ToDomain(proto);
+
+          // Assert: Hierarchy data survives the round-trip
+          roundTripped.AncestorIds.Should().ContainSingle()
+              .Which.Should().Be(ancestorId);
+          roundTripped.DescendantIds.Should().ContainSingle()
+              .Which.Should().Be(descendantId);
+      }
   }

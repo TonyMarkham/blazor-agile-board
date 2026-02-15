@@ -1,3 +1,5 @@
+use crate::compute_hierarchy_maps;
+
 use pm_core::{
     ActivityLog, Comment, Dependency, DependencyType, LlmContext, Project, ProjectStatus, Sprint,
     SprintStatus, TimeEntry, WorkItem,
@@ -33,6 +35,9 @@ use pm_proto::{
     },
 };
 
+#[cfg(debug_assertions)]
+use std::collections::HashSet;
+
 use chrono::Utc;
 use uuid::Uuid;
 
@@ -41,12 +46,14 @@ pub fn build_work_item_created_response(
     message_id: &str,
     work_item: &WorkItem,
     actor_id: Uuid,
+    ancestor_ids: Vec<String>,
+    descendant_ids: Vec<String>,
 ) -> WebSocketMessage {
     WebSocketMessage {
         message_id: message_id.to_string(),
         timestamp: Utc::now().timestamp(),
         payload: Some(ProtoWorkItemCreated(WorkItemCreated {
-            work_item: Some(work_item_to_proto(work_item)),
+            work_item: Some(work_item_to_proto(work_item, ancestor_ids, descendant_ids)),
             user_id: actor_id.to_string(),
         })),
     }
@@ -58,12 +65,14 @@ pub fn build_work_item_updated_response(
     work_item: &WorkItem,
     changes: &[FieldChange],
     actor_id: Uuid,
+    ancestor_ids: Vec<String>,
+    descendant_ids: Vec<String>,
 ) -> WebSocketMessage {
     WebSocketMessage {
         message_id: message_id.to_string(),
         timestamp: Utc::now().timestamp(),
         payload: Some(ProtoWorkItemUpdated(WorkItemUpdated {
-            work_item: Some(work_item_to_proto(work_item)),
+            work_item: Some(work_item_to_proto(work_item, ancestor_ids, descendant_ids)),
             changes: changes.to_vec(),
             user_id: actor_id.to_string(),
         })),
@@ -86,17 +95,50 @@ pub fn build_work_item_deleted_response(
     }
 }
 
-/// Build WorkItemsList response
+/// Build WorkItemsList response with pre-computed hierarchy data.
+///
+/// **Contract:** `all_project_items` MUST be the full unfiltered item set
+/// from `find_by_project(pool, project_id, true)`. Hierarchy is computed
+/// from this full set. `work_items` controls which items appear in the
+/// response — they may be a filtered subset.
+///
+/// A debug assertion validates that every item in `work_items` exists in
+/// `all_project_items`, catching contract violations during development.
 pub fn build_work_items_list_response(
     message_id: &str,
-    work_items: Vec<WorkItem>,
+    work_items: &[WorkItem],
+    all_project_items: &[WorkItem],
     as_of_timestamp: i64,
 ) -> WebSocketMessage {
+    // Validate subset contract in debug builds
+    #[cfg(debug_assertions)]
+    {
+        let all_ids: HashSet<_> = all_project_items.iter().map(|i| i.id).collect();
+        debug_assert!(
+            work_items.iter().all(|wi| all_ids.contains(&wi.id)),
+            "build_work_items_list_response: work_items must be a subset of all_project_items"
+        );
+    }
+
+    // Compute hierarchy from the FULL project set — O(N)
+    let hierarchy = compute_hierarchy_maps(all_project_items);
+
+    let proto_items = work_items
+        .iter()
+        .map(|item| {
+            let (ancestors, descendants) = hierarchy
+                .get(&item.id)
+                .map(|h| (h.ancestor_ids.clone(), h.descendant_ids.clone()))
+                .unwrap_or_default();
+            work_item_to_proto(item, ancestors, descendants)
+        })
+        .collect();
+
     WebSocketMessage {
         message_id: message_id.to_string(),
         timestamp: Utc::now().timestamp(),
         payload: Some(ProtoWorkItemsList(WorkItemsList {
-            work_items: work_items.iter().map(work_item_to_proto).collect(),
+            work_items: proto_items,
             as_of_timestamp,
         })),
     }
@@ -111,8 +153,12 @@ pub fn build_error_response(message_id: &str, error: PmProtoError) -> WebSocketM
     }
 }
 
-/// Convert domain WorkItem to proto WorkItem
-fn work_item_to_proto(item: &WorkItem) -> PmProtoWorkItem {
+/// Convert domain WorkItem to proto WorkItem with hierarchy data.
+fn work_item_to_proto(
+    item: &WorkItem,
+    ancestor_ids: Vec<String>,
+    descendant_ids: Vec<String>,
+) -> PmProtoWorkItem {
     PmProtoWorkItem {
         id: item.id.to_string(),
         item_type: item.item_type.clone() as i32,
@@ -133,6 +179,8 @@ fn work_item_to_proto(item: &WorkItem) -> PmProtoWorkItem {
         updated_by: item.updated_by.to_string(),
         deleted_at: item.deleted_at.map(|dt| dt.timestamp()),
         item_number: item.item_number,
+        ancestor_ids,
+        descendant_ids,
     }
 }
 

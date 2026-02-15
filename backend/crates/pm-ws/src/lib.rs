@@ -45,6 +45,7 @@ pub use handlers::{
         UNAUTHORIZED, VALIDATION_ERROR,
     },
     field_change_builder::FieldChangeBuilder,
+    hierarchy::{HierarchyData, compute_hierarchy_for_item, compute_hierarchy_maps},
     hierarchy_validator::validate_hierarchy,
     idempotency::{
         check_idempotency, decode_cached_response, store_idempotency, store_idempotency_non_fatal,

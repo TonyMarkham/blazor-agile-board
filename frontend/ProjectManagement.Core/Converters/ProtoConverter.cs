@@ -135,7 +135,15 @@ public static class ProtoConverter
             UpdatedAt = FromUnixTimestamp(proto.UpdatedAt),
             CreatedBy = ParseGuid(proto.CreatedBy, "WorkItem.CreatedBy"),
             UpdatedBy = ParseGuid(proto.UpdatedBy, "WorkItem.UpdatedBy"),
-            DeletedAt = proto.DeletedAt == 0 ? null : FromUnixTimestamp(proto.DeletedAt)
+            DeletedAt = proto.DeletedAt == 0 ? null : FromUnixTimestamp(proto.DeletedAt),
+            AncestorIds = proto.AncestorIds
+                .Where(s => !string.IsNullOrEmpty(s))
+                .Select(s => ParseGuid(s, "WorkItem.AncestorIds"))
+                .ToList(),
+            DescendantIds = proto.DescendantIds
+                .Where(s => !string.IsNullOrEmpty(s))
+                .Select(s => ParseGuid(s, "WorkItem.DescendantIds"))
+                .ToList()
         };
     }
 
@@ -172,6 +180,10 @@ public static class ProtoConverter
             proto.SprintId = domain.SprintId.Value.ToString();
         if (domain.DeletedAt.HasValue)
             proto.DeletedAt = ToUnixTimestamp(domain.DeletedAt.Value);
+
+        // Map hierarchy fields
+        proto.AncestorIds.AddRange(domain.AncestorIds.Select(id => id.ToString()));
+        proto.DescendantIds.AddRange(domain.DescendantIds.Select(id => id.ToString()));
 
         return proto;
     }

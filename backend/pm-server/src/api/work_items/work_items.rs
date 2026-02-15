@@ -13,8 +13,8 @@ use pm_core::{ActivityLog, WorkItem, WorkItemDto, WorkItemType};
 use pm_db::{ActivityLogRepository, ProjectRepository, WorkItemRepository};
 use pm_ws::{
     AppState, MessageValidator, build_activity_log_created_event, build_work_item_created_response,
-    build_work_item_deleted_response, build_work_item_updated_response, sanitize_string,
-    validate_hierarchy, validate_priority, validate_status,
+    build_work_item_deleted_response, build_work_item_updated_response, compute_hierarchy_for_item,
+    sanitize_string, validate_hierarchy, validate_priority, validate_status,
 };
 
 use std::{panic::Location, str::FromStr};
@@ -301,6 +301,15 @@ pub async fn create_work_item(
     ActivityLogRepository::create(&mut *tx, &activity_clone).await?;
     tx.commit().await?;
 
+    // Compute hierarchy for the newly created item
+    let all_items = WorkItemRepository::find_by_project(&state.pool, project_id, true)
+        .await
+        .unwrap_or_else(|e| {
+            log::warn!("Failed to fetch items for hierarchy computation: {}", e);
+            vec![]
+        });
+    let hierarchy = compute_hierarchy_for_item(&all_items, work_item.id);
+
     // 9. Broadcast to WebSocket clients
     let event = build_activity_log_created_event(&activity);
     let bytes = event.encode_to_vec();
@@ -323,8 +332,13 @@ pub async fn create_work_item(
     }
 
     // 9b. Broadcast WorkItemCreated to all project subscribers
-    let broadcast =
-        build_work_item_created_response(&Uuid::new_v4().to_string(), &work_item, user_id);
+    let broadcast = build_work_item_created_response(
+        &Uuid::new_v4().to_string(),
+        &work_item,
+        user_id,
+        hierarchy.ancestor_ids,
+        hierarchy.descendant_ids,
+    );
     let broadcast_bytes = broadcast.encode_to_vec();
     if let Err(e) = state
         .registry
@@ -464,6 +478,15 @@ pub async fn update_work_item(
     ActivityLogRepository::create(&mut *tx, &activity_clone).await?;
     tx.commit().await?;
 
+    // Compute hierarchy for the updated item
+    let all_items = WorkItemRepository::find_by_project(&state.pool, work_item.project_id, true)
+        .await
+        .unwrap_or_else(|e| {
+            log::warn!("Failed to fetch items for hierarchy computation: {}", e);
+            vec![]
+        });
+    let hierarchy = compute_hierarchy_for_item(&all_items, work_item.id);
+
     // 7. Broadcast to WebSocket clients
     let event = build_activity_log_created_event(&activity);
     let bytes = event.encode_to_vec();
@@ -491,6 +514,8 @@ pub async fn update_work_item(
         &work_item,
         &[], // REST API doesn't track field changes currently
         user_id,
+        hierarchy.ancestor_ids,
+        hierarchy.descendant_ids,
     );
     let broadcast_bytes = broadcast.encode_to_vec();
     if let Err(e) = state

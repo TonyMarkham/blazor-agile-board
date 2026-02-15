@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using ProjectManagement.Core.Interfaces;
 using ProjectManagement.Core.Models;
 
@@ -12,26 +13,33 @@ public sealed class ViewModelFactory
     private readonly IWorkItemStore _workItemStore;
     private readonly ISprintStore _sprintStore;
     private readonly IProjectStore _projectStore;
+    private readonly ILogger<ViewModelFactory> _logger;
 
-    public ViewModelFactory(IWorkItemStore workItemStore, ISprintStore sprintStore, IProjectStore projectStore)
+    public ViewModelFactory(
+        IWorkItemStore workItemStore,
+        ISprintStore sprintStore,
+        IProjectStore projectStore,
+        ILogger<ViewModelFactory> logger)
     {
         ArgumentNullException.ThrowIfNull(workItemStore);
         ArgumentNullException.ThrowIfNull(sprintStore);
         ArgumentNullException.ThrowIfNull(projectStore);
+        ArgumentNullException.ThrowIfNull(logger);
         _workItemStore = workItemStore;
         _sprintStore = sprintStore;
         _projectStore = projectStore;
+        _logger = logger;
     }
 
     /// <summary>
-  /// Create a WorkItemViewModel from a WorkItem, checking pending state.
-  /// </summary>
-  public WorkItemViewModel Create(WorkItem item)
-  {
-      ArgumentNullException.ThrowIfNull(item);
-      var isPending = _workItemStore.IsPending(item.Id);
-      return new WorkItemViewModel(item, isPending);
-  }
+    /// Create a WorkItemViewModel from a WorkItem, checking pending state.
+    /// </summary>
+    public WorkItemViewModel Create(WorkItem item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        var isPending = _workItemStore.IsPending(item.Id);
+        return new WorkItemViewModel(item, isPending);
+    }
 
     /// <summary>
     /// Create a WorkItemViewModel with progress computed from all project items.
@@ -85,6 +93,93 @@ public sealed class ViewModelFactory
     }
 
     /// <summary>
+    /// Create a WorkItemViewModel with progress computed via O(1) dictionary lookups.
+    /// Uses server-provided DescendantIds instead of scanning all items.
+    /// </summary>
+    /// <remarks>
+    /// <paramref name="itemLookup"/> should contain the full unfiltered item set
+    /// for accurate progress counts. If items are filtered before building the
+    /// lookup, descendants computed by the backend may be missing, and progress
+    /// bars will only reflect items present in the lookup.
+    /// </remarks>
+    public WorkItemViewModel Create(WorkItem workItem, IReadOnlyDictionary<Guid, WorkItem> itemLookup)
+    {
+        ArgumentNullException.ThrowIfNull(workItem);
+        ArgumentNullException.ThrowIfNull(itemLookup);
+
+        var isPending = _workItemStore.IsPending(workItem.Id);
+        ChildProgress? taskProgress = null;
+        ChildProgress? storyProgress = null;
+
+        if (workItem.ItemType == WorkItemType.Epic)
+        {
+            // Collect stories and tasks from pre-computed descendants
+            var stories = new List<WorkItem>();
+            var allTasks = new List<WorkItem>();
+            var missingCount = 0;
+
+            foreach (var descId in workItem.DescendantIds)
+            {
+                if (!itemLookup.TryGetValue(descId, out var desc))
+                {
+                    missingCount++;
+                    continue;
+                }
+
+                if (desc.DeletedAt is not null) continue;
+
+                if (desc.ItemType == WorkItemType.Story) stories.Add(desc);
+                else if (desc.ItemType == WorkItemType.Task) allTasks.Add(desc);
+            }
+
+            if (missingCount > 0)
+            {
+                _logger.LogDebug(
+                    "Epic {EpicId}: {MissingCount} descendants not in lookup (likely filtered)",
+                    workItem.Id, missingCount);
+            }
+
+            storyProgress = ComputeProgress(stories);
+            taskProgress = ComputeProgress(allTasks);
+        }
+        else if (workItem.ItemType == WorkItemType.Story)
+        {
+            // Collect child tasks from pre-computed descendants
+            var tasks = new List<WorkItem>();
+            var missingCount = 0;
+
+            foreach (var descId in workItem.DescendantIds)
+            {
+                if (!itemLookup.TryGetValue(descId, out var desc))
+                {
+                    missingCount++;
+                    continue;
+                }
+
+                if (desc.ItemType != WorkItemType.Task || desc.DeletedAt is not null)
+                    continue;
+
+                tasks.Add(desc);
+            }
+
+            if (missingCount > 0)
+            {
+                _logger.LogDebug(
+                    "Story {StoryId}: {MissingCount} descendants not in lookup (likely filtered)",
+                    workItem.Id, missingCount);
+            }
+
+            taskProgress = ComputeProgress(tasks);
+        }
+
+        return new WorkItemViewModel(workItem, isPending)
+        {
+            TaskProgress = taskProgress,
+            StoryProgress = storyProgress,
+        };
+    }
+
+    /// <summary>
     /// Create a SprintViewModel from a Sprint, checking pending state.
     /// </summary>
     public SprintViewModel Create(Sprint sprint)
@@ -95,15 +190,34 @@ public sealed class ViewModelFactory
     }
 
     /// <summary>
-    /// Create ViewModels for multiple work items, computing progress for each.
+    /// Create ViewModels for multiple work items.
+    /// Uses O(N) dictionary lookup when DescendantIds are populated,
+    /// falls back to legacy O(N squared) scan for backward compatibility.
     /// </summary>
+    /// <remarks>
+    /// For accurate progress counts with the optimized path, pass the full
+    /// unfiltered item set. Filtering before this call means descendants
+    /// computed by the backend may be missing from the dictionary.
+    /// </remarks>
     public IReadOnlyList<WorkItemViewModel> CreateMany(IEnumerable<WorkItem> items)
     {
         ArgumentNullException.ThrowIfNull(items);
         var itemList = items.ToList();
+
+        // Check if hierarchy data is available from the server
+        var hasHierarchy = itemList.Any(i => i.DescendantIds.Count > 0);
+
+        if (hasHierarchy)
+        {
+            // O(N) path: build lookup table once, use DescendantIds for progress
+            var lookup = itemList.ToDictionary(i => i.Id);
+            return itemList.Select(item => Create(item, lookup)).ToList();
+        }
+
+        // Legacy O(N squared) fallback for older servers
         return itemList.Select(item => Create(item, itemList)).ToList();
     }
-    
+
     /// <summary>
     /// Compute progress from a list of items.
     /// </summary>
@@ -151,7 +265,7 @@ public sealed class ViewModelFactory
         ArgumentNullException.ThrowIfNull(sprint);
         return new SprintViewModel(sprint, isPending);
     }
-    
+
     /// <summary>
     /// Create a ProjectViewModel from a Project, checking pending state.
     /// </summary>

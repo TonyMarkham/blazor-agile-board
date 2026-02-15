@@ -1,5 +1,7 @@
-use crate::{HandlerContext, build_work_items_list_response, check_permission, db_read};
-use crate::{Result as WsErrorResult, WsError};
+use crate::{
+    HandlerContext, Result as WsErrorResult, WsError, build_work_items_list_response,
+    check_permission, db_read,
+};
 
 use error_location::ErrorLocation;
 use pm_core::Permission;
@@ -8,14 +10,16 @@ use pm_proto::{GetWorkItemsRequest, WebSocketMessage};
 
 use std::panic::Location;
 
+use tracing::{debug, info, instrument};
 use uuid::Uuid;
 
 /// Handle GetWorkItemsRequest
+#[instrument(skip(ctx), fields(project_id))]
 pub async fn handle_get_work_items(
     req: GetWorkItemsRequest,
     ctx: HandlerContext,
 ) -> WsErrorResult<WebSocketMessage> {
-    log::debug!("{} GetWorkItems starting", ctx.log_prefix());
+    debug!("{} GetWorkItems starting", ctx.log_prefix());
 
     // 1. Parse project ID
     let project_id = Uuid::parse_str(&req.project_id).map_err(|_| WsError::ValidationError {
@@ -38,16 +42,21 @@ pub async fn handle_get_work_items(
     })
     .await?;
 
-    log::info!(
-        "{} Found {} work items for project {}",
+    info!(
+        count = work_items.len(),
+        project_id = %project_id,
+        "{} Found work items",
         ctx.log_prefix(),
-        work_items.len(),
-        project_id
     );
 
+    // Pass &work_items twice: this handler fetches ALL project items via
+    // find_by_project(pool, project_id, true) — no filtering applied.
+    // The response set and the hierarchy computation set are identical.
+    // PONE-172's debug_assert validates this subset contract at dev time.
     Ok(build_work_items_list_response(
         &ctx.message_id,
-        work_items,
+        &work_items,
+        &work_items,
         chrono::Utc::now().timestamp(),
     ))
 }

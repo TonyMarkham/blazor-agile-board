@@ -54,7 +54,17 @@
       "Bash(.pm/bin/pm work-item list:*)",
       "Bash(.pm/bin/pm comment list:*)",
       "Bash(.pm/bin/pm comment create:*)",
-      "Bash(.pm/bin/pm work-item delete:*)"
+      "Bash(.pm/bin/pm work-item delete:*)",
+      "Bash(./pm work-item create:*)",
+      "Bash(./pm project list:*)",
+      "Bash(./pm work-item get:*)",
+      "Bash(./pm work-item list:*)",
+      "Bash(./pm project get:*)",
+      "Bash(./pm work-item update:*)",
+      "Bash(./pm dependency create:*)",
+      "Bash(./pm comment list:*)",
+      "Bash(just check-frontend:*)",
+      "Bash(./pm work-item show:*)"
     ]
   }
 }

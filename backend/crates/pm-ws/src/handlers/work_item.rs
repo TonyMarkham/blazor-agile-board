@@ -2,7 +2,8 @@ use crate::{
     HandlerContext, MessageValidator, Result as WsErrorResult, WsError,
     build_activity_log_created_event, build_work_item_created_response,
     build_work_item_deleted_response, build_work_item_updated_response, check_idempotency,
-    check_permission, db_read, db_write, store_idempotency, track_changes, validate_hierarchy,
+    check_permission, compute_hierarchy_for_item, db_read, db_write, store_idempotency,
+    track_changes, validate_hierarchy,
 };
 
 use pm_config::ValidationConfig;
@@ -161,6 +162,23 @@ pub async fn handle_create(
     // Update our local copy with the assigned number
     work_item.item_number = item_number;
 
+    // Compute hierarchy for the newly created item.
+    // Graceful degradation: if fetch fails, send empty hierarchy
+    // rather than failing the entire create operation.
+    let all_items = WorkItemRepository::find_by_project(&ctx.pool, project_id, true)
+        .await
+        .unwrap_or_else(|e| {
+            warn!(
+                "{} Failed to fetch items for hierarchy computation: {}",
+                ctx.log_prefix(),
+                e
+            );
+            vec![]
+        });
+    let hierarchy = compute_hierarchy_for_item(&all_items, work_item.id);
+
+    // 10. Broadcast ActivityLogCreated
+
     // 10. Broadcast ActivityLogCreated
     let event = build_activity_log_created_event(&activity);
     let bytes = event.encode_to_vec();
@@ -172,8 +190,13 @@ pub async fn handle_create(
         .await?;
 
     // 10b. Broadcast WorkItemCreated to all project subscribers
-    let broadcast =
-        build_work_item_created_response(&Uuid::new_v4().to_string(), &work_item, ctx.user_id);
+    let broadcast = build_work_item_created_response(
+        &Uuid::new_v4().to_string(),
+        &work_item,
+        ctx.user_id,
+        hierarchy.ancestor_ids.clone(),
+        hierarchy.descendant_ids.clone(),
+    );
     let broadcast_bytes = broadcast.encode_to_vec();
     if let Err(e) = ctx
         .registry
@@ -188,7 +211,13 @@ pub async fn handle_create(
     }
 
     // 11. Build response
-    let response = build_work_item_created_response(&ctx.message_id, &work_item, ctx.user_id);
+    let response = build_work_item_created_response(
+        &ctx.message_id,
+        &work_item,
+        ctx.user_id,
+        hierarchy.ancestor_ids,
+        hierarchy.descendant_ids,
+    );
 
     // 12. Store idempotency (after commit, failure here is non-fatal)
     let response_bytes = response.encode_to_vec();
@@ -292,11 +321,26 @@ pub async fn handle_update(
     let changes = track_changes(&work_item, &req);
 
     if changes.is_empty() {
+        // No changes — current DB state IS the correct state
+        let all_items = WorkItemRepository::find_by_project(&ctx.pool, work_item.project_id, true)
+            .await
+            .unwrap_or_else(|e| {
+                warn!(
+                    "{} Failed to fetch items for hierarchy computation: {}",
+                    ctx.log_prefix(),
+                    e
+                );
+                vec![]
+            });
+        let hierarchy = compute_hierarchy_for_item(&all_items, work_item.id);
+
         return Ok(build_work_item_updated_response(
             &ctx.message_id,
             &work_item,
             &changes,
             ctx.user_id,
+            hierarchy.ancestor_ids,
+            hierarchy.descendant_ids,
         ));
     }
 
@@ -324,6 +368,20 @@ pub async fn handle_update(
     })
     .await?;
 
+    // 8b. Compute hierarchy AFTER tx.commit()
+    // At this point, find_by_project returns the item with its NEW parent_id
+    let all_items = WorkItemRepository::find_by_project(&ctx.pool, work_item.project_id, true)
+        .await
+        .unwrap_or_else(|e| {
+            warn!(
+                "{} Failed to fetch items for hierarchy computation: {}",
+                ctx.log_prefix(),
+                e
+            );
+            vec![]
+        });
+    let hierarchy = compute_hierarchy_for_item(&all_items, work_item.id);
+
     // 9. Broadcast ActivityLogCreated
     let event = build_activity_log_created_event(&activity);
     let bytes = event.encode_to_vec();
@@ -340,6 +398,8 @@ pub async fn handle_update(
         &work_item,
         &changes,
         ctx.user_id,
+        hierarchy.ancestor_ids.clone(),
+        hierarchy.descendant_ids.clone(),
     );
     let broadcast_bytes = broadcast.encode_to_vec();
     if let Err(e) = ctx
@@ -366,6 +426,8 @@ pub async fn handle_update(
         &work_item,
         &changes,
         ctx.user_id,
+        hierarchy.ancestor_ids,
+        hierarchy.descendant_ids,
     ))
 }
 

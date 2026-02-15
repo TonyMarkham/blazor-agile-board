@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Moq;
 using ProjectManagement.Core.Interfaces;
 using ProjectManagement.Core.Models;
@@ -12,6 +13,7 @@ public class ViewModelFactoryTests
     private readonly Mock<IWorkItemStore> _workItemStore;
     private readonly Mock<ISprintStore> _sprintStore;
     private readonly Mock<IProjectStore> _projectStore;
+    private readonly Mock<ILogger<ViewModelFactory>> _logger;
     private readonly ViewModelFactory _factory;
 
     public ViewModelFactoryTests()
@@ -19,7 +21,9 @@ public class ViewModelFactoryTests
         _workItemStore = new Mock<IWorkItemStore>();
         _sprintStore = new Mock<ISprintStore>();
         _projectStore = new Mock<IProjectStore>();
-        _factory = new ViewModelFactory(_workItemStore.Object, _sprintStore.Object, _projectStore.Object);
+        _logger = new Mock<ILogger<ViewModelFactory>>();
+        _factory = new ViewModelFactory(_workItemStore.Object, _sprintStore.Object, _projectStore.Object,
+            _logger.Object);
     }
 
     #region Constructor Tests
@@ -28,7 +32,7 @@ public class ViewModelFactoryTests
     public void Constructor_ThrowsArgumentNullException_WhenWorkItemStoreIsNull()
     {
         // Act
-        var act = () => new ViewModelFactory(null!, _sprintStore.Object, _projectStore.Object);
+        var act = () => new ViewModelFactory(null!, _sprintStore.Object, _projectStore.Object, _logger.Object);
 
         // Assert
         act.Should().Throw<ArgumentNullException>()
@@ -39,22 +43,33 @@ public class ViewModelFactoryTests
     public void Constructor_ThrowsArgumentNullException_WhenSprintStoreIsNull()
     {
         // Act
-        var act = () => new ViewModelFactory(_workItemStore.Object, null!, _projectStore.Object);
+        var act = () => new ViewModelFactory(_workItemStore.Object, null!, _projectStore.Object, _logger.Object);
 
         // Assert
         act.Should().Throw<ArgumentNullException>()
             .WithParameterName("sprintStore");
     }
-    
+
     [Fact]
     public void Constructor_ThrowsArgumentNullException_WhenProjectStoreIsNull()
     {
         // Act
-        var act = () => new ViewModelFactory(_workItemStore.Object, _sprintStore.Object, null!);
+        var act = () => new ViewModelFactory(_workItemStore.Object, _sprintStore.Object, null!, _logger.Object);
 
         // Assert
         act.Should().Throw<ArgumentNullException>()
             .WithParameterName("projectStore");
+    }
+
+    [Fact]
+    public void Constructor_ThrowsArgumentNullException_WhenLoggerIsNull()
+    {
+        // Act
+        var act = () => new ViewModelFactory(_workItemStore.Object, _sprintStore.Object, _projectStore.Object, null!);
+
+        // Assert
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("logger");
     }
 
     #endregion
@@ -275,6 +290,80 @@ public class ViewModelFactoryTests
         viewModels.Should().HaveCount(2);
     }
 
+    [Fact]
+    public void CreateMany_WithDescendantIds_ProducesCorrectEpicProgress()
+    {
+        // Arrange: Epic with 2 stories, 3 tasks (1 done, 2 not)
+        var epicId = Guid.NewGuid();
+        var story1Id = Guid.NewGuid();
+        var story2Id = Guid.NewGuid();
+        var task1Id = Guid.NewGuid();
+        var task2Id = Guid.NewGuid();
+        var task3Id = Guid.NewGuid();
+
+        var items = new[]
+        {
+            CreateTestWorkItem(epicId, WorkItemType.Epic) with
+            {
+                DescendantIds = new[] { story1Id, story2Id, task1Id, task2Id, task3Id },
+            },
+            CreateTestWorkItem(story1Id, WorkItemType.Story, epicId) with
+            {
+                Status = "done",
+                DescendantIds = new[] { task1Id },
+            },
+            CreateTestWorkItem(story2Id, WorkItemType.Story, epicId) with
+            {
+                Status = "in_progress",
+                DescendantIds = new[] { task2Id, task3Id },
+            },
+            CreateTestWorkItem(task1Id, WorkItemType.Task, story1Id) with { Status = "done" },
+            CreateTestWorkItem(task2Id, WorkItemType.Task, story2Id) with { Status = "in_progress" },
+            CreateTestWorkItem(task3Id, WorkItemType.Task, story2Id) with { Status = "todo" },
+        };
+
+        _workItemStore.Setup(s => s.IsPending(It.IsAny<Guid>())).Returns(false);
+
+        // Act
+        var viewModels = _factory.CreateMany(items);
+
+        // Assert: Epic has correct story and task progress
+        var epicVm = viewModels.First(vm => vm.Id == epicId);
+        epicVm.StoryProgress.Should().NotBeNull();
+        epicVm.StoryProgress!.Total.Should().Be(2);
+        epicVm.StoryProgress!.Completed.Should().Be(1);
+        epicVm.TaskProgress.Should().NotBeNull();
+        epicVm.TaskProgress!.Total.Should().Be(3);
+        epicVm.TaskProgress!.Completed.Should().Be(1);
+    }
+
+    [Fact]
+    public void CreateMany_WithoutDescendantIds_FallsBackToLegacyScan()
+    {
+        // Arrange: Items WITHOUT DescendantIds (simulating old server)
+        var epicId = Guid.NewGuid();
+        var storyId = Guid.NewGuid();
+        var taskId = Guid.NewGuid();
+
+        var items = new[]
+        {
+            CreateTestWorkItem(epicId, WorkItemType.Epic),
+            CreateTestWorkItem(storyId, WorkItemType.Story, epicId) with { Status = "done" },
+            CreateTestWorkItem(taskId, WorkItemType.Task, storyId) with { Status = "done" },
+        };
+
+        _workItemStore.Setup(s => s.IsPending(It.IsAny<Guid>())).Returns(false);
+
+        // Act: Creating ViewModels (should use legacy path)
+        var viewModels = _factory.CreateMany(items);
+
+        // Assert: Progress still computed correctly via legacy scan
+        var epicVm = viewModels.First(vm => vm.Id == epicId);
+        epicVm.StoryProgress.Should().NotBeNull();
+        epicVm.StoryProgress!.Total.Should().Be(1);
+        epicVm.StoryProgress!.Completed.Should().Be(1);
+    }
+
     #endregion
 
     #region CreateWithPendingState Tests
@@ -316,6 +405,23 @@ public class ViewModelFactoryTests
         Id = Guid.NewGuid(),
         Title = "Test Work Item",
         ItemType = WorkItemType.Story,
+        ProjectId = Guid.NewGuid(),
+        Status = "backlog",
+        Priority = "medium",
+        Position = 1,
+        Version = 1,
+        CreatedAt = DateTime.UtcNow,
+        UpdatedAt = DateTime.UtcNow,
+        CreatedBy = Guid.NewGuid(),
+        UpdatedBy = Guid.NewGuid()
+    };
+
+    private static WorkItem CreateTestWorkItem(Guid id, WorkItemType itemType, Guid? parentId = null) => new()
+    {
+        Id = id,
+        Title = $"Test {itemType}",
+        ItemType = itemType,
+        ParentId = parentId,
         ProjectId = Guid.NewGuid(),
         Status = "backlog",
         Priority = "medium",

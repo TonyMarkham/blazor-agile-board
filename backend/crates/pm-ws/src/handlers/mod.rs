@@ -10,6 +10,7 @@ pub(crate) mod dispatcher;
 pub(crate) mod error_boundary;
 pub(crate) mod error_codes;
 pub(crate) mod field_change_builder;
+pub(crate) mod hierarchy;
 pub(crate) mod hierarchy_validator;
 pub(crate) mod idempotency;
 pub(crate) mod llm_context;
