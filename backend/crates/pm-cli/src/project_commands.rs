@@ -7,7 +7,7 @@ pub enum ProjectCommands {
 
     /// Get a project by ID
     Get {
-        /// Project ID (UUID)
+        /// Project ID (UUID or project key like "PONE")
         id: String,
     },
 
@@ -28,7 +28,7 @@ pub enum ProjectCommands {
 
     /// Update a project
     Update {
-        /// Project ID (UUID)
+        /// Project ID (UUID or project key like "PONE")
         id: String,
 
         #[arg(long)]
@@ -48,7 +48,7 @@ pub enum ProjectCommands {
 
     /// Delete a project
     Delete {
-        /// Project ID (UUID)
+        /// Project ID (UUID or project key like "PONE")
         id: String,
     },
 }

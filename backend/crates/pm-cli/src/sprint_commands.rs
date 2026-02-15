@@ -4,7 +4,7 @@ use clap::Subcommand;
 pub enum SprintCommands {
     /// List sprints in a project
     List {
-        /// Project ID (UUID)
+        /// Project ID (UUID or project key like "PONE")
         project_id: String,
     },
 
@@ -16,7 +16,7 @@ pub enum SprintCommands {
 
     /// Create a new sprint
     Create {
-        /// Project ID (UUID)
+        /// Project ID (UUID or project key like "PONE")
         #[arg(long)]
         project_id: String,
 

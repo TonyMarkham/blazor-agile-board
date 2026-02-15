@@ -4,7 +4,7 @@
 
 use crate::{
     ApiError, ApiResult, CreateProjectRequest, DeleteResponse, ProjectListResponse,
-    ProjectResponse, UpdateProjectRequest, UserId,
+    ProjectResponse, UpdateProjectRequest, UserId, api::resolve::resolve_project,
 };
 
 use pm_core::{ActivityLog, Project, ProjectDto, ProjectStatus};
@@ -14,8 +14,7 @@ use pm_ws::{
     build_project_deleted_response, build_project_updated_response, sanitize_string,
 };
 
-use std::panic::Location;
-use std::str::FromStr;
+use std::{panic::Location, str::FromStr};
 
 use axum::{
     Json,
@@ -25,6 +24,7 @@ use chrono::Utc;
 use error_location::ErrorLocation;
 use prost::Message as ProstMessage;
 use uuid::Uuid;
+
 // =============================================================================
 // Handlers
 // =============================================================================
@@ -48,16 +48,7 @@ pub async fn get_project(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> ApiResult<Json<ProjectResponse>> {
-    let project_id = Uuid::parse_str(&id)?;
-
-    let repo = ProjectRepository::new(state.pool.clone());
-    let project = repo
-        .find_by_id(project_id)
-        .await?
-        .ok_or_else(|| ApiError::NotFound {
-            message: format!("Project {} not found", id),
-            location: ErrorLocation::from(Location::caller()),
-        })?;
+    let project = resolve_project(&state.pool, &id).await?;
 
     Ok(Json(ProjectResponse {
         project: project.into(),
@@ -171,18 +162,11 @@ pub async fn update_project(
     Path(id): Path<String>,
     Json(req): Json<UpdateProjectRequest>,
 ) -> ApiResult<Json<ProjectResponse>> {
-    // 1. Parse project ID
-    let project_id = Uuid::parse_str(&id)?;
-
-    // 2. Load existing project
+    // 1. Load existing project
+    let mut project = resolve_project(&state.pool, &id).await?;
     let repo = ProjectRepository::new(state.pool.clone());
-    let mut project = repo
-        .find_by_id(project_id)
-        .await?
-        .ok_or_else(|| ApiError::NotFound {
-            message: format!("Project {} not found", id),
-            location: ErrorLocation::from(Location::caller()),
-        })?;
+
+    // 2. refactored out
 
     // 3. Check optimistic locking
     if project.version != req.expected_version {
@@ -317,18 +301,12 @@ pub async fn delete_project(
     UserId(user_id): UserId,
     Path(id): Path<String>,
 ) -> ApiResult<Json<DeleteResponse>> {
-    // 1. Parse project ID
-    let project_id = Uuid::parse_str(&id)?;
-
-    // 2. Load existing project
+    // 1. Load existing project
+    let project = resolve_project(&state.pool, &id).await?;
+    let project_id = project.id;
     let repo = ProjectRepository::new(state.pool.clone());
-    let project = repo
-        .find_by_id(project_id)
-        .await?
-        .ok_or_else(|| ApiError::NotFound {
-            message: format!("Project {} not found", id),
-            location: ErrorLocation::from(Location::caller()),
-        })?;
+
+    // 2. refactored out
 
     // 3. Execute transaction
     let now = Utc::now();

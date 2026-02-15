@@ -30,11 +30,11 @@ Use Cluade Code's Panning Mode and allow it to create and itterate on the origin
 
 ### Implement
 ```text
-- use the /pm skill to list all orphaned WorkItems
-- Find PONE-134
+- use /pm to find PONE-151
 - Review all descendant tasks.
 - read `CRITICAL_OPERATING_CONSTRAINTS.md`
 - Teach me by presenting bite-sized chunks for me to write/edit keeping the commentary separate from the code snippets to make the code snippets easier for me to follow
+- As each `work-item` is finished, use `./pm` to move it to `review`
 ```
 
 ---

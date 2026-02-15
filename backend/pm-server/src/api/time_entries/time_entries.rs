@@ -5,7 +5,7 @@
 
 use crate::{
     ApiError, ApiResult, CreateTimeEntryRequest, DeleteResponse, TimeEntryListResponse,
-    TimeEntryResponse, UpdateTimeEntryRequest, UserId,
+    TimeEntryResponse, UpdateTimeEntryRequest, UserId, api::resolve::resolve_work_item,
 };
 
 use pm_core::{ActivityLog, TimeEntry, TimeEntryDto};
@@ -37,7 +37,8 @@ pub async fn list_time_entries(
     State(state): State<AppState>,
     Path(work_item_id): Path<String>,
 ) -> ApiResult<Json<TimeEntryListResponse>> {
-    let work_item_uuid = Uuid::parse_str(&work_item_id)?;
+    let work_item = resolve_work_item(&state.pool, &work_item_id).await?;
+    let work_item_uuid = work_item.id;
 
     let repo = TimeEntryRepository::new(state.pool.clone());
     let entries = repo.find_by_work_item(work_item_uuid).await?;

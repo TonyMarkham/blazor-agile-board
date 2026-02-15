@@ -131,10 +131,10 @@ async fn test_get_project_invalid_uuid() {
 
     let response = app.oneshot(request).await.unwrap();
 
-    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
 
     let body = response.into_body().collect().await.unwrap().to_bytes();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
 
-    assert_eq!(json["error"]["code"], "VALIDATION_ERROR");
+    assert_eq!(json["error"]["code"], "NOT_FOUND");
 }

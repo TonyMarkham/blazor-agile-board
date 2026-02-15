@@ -25,10 +25,10 @@ pub enum SyncCommands {
 pub enum ExportScope {
     /// Export a specific work item and optionally its related data
     WorkItem {
-        /// Work item ID (UUID)
+        /// Work item ID (UUID or display key like "PONE-123")
         id: String,
 
-        /// Include N levels of descendants (0=just item, 1=children, 2=grandchildren, etc.)
+        /// Include 0-2 levels of descendants (0=just item, 1=children, 2=grandchildren)
         #[arg(long, default_value = "0", value_parser = clap::value_parser!(u32).range(0..=2))]
         descendant_levels: u32,
 

@@ -4,7 +4,7 @@ use clap::Subcommand;
 pub enum TimeEntryCommands {
     /// List time entries for a work item
     List {
-        /// Work item ID (UUID)
+        /// Work item ID (UUID or display key like "PONE-123")
         work_item_id: String,
     },
 
@@ -16,7 +16,7 @@ pub enum TimeEntryCommands {
 
     /// Start a new timer on a work item
     Create {
-        /// Work item ID (UUID)
+        /// Work item ID (UUID or display key like "PONE-123")
         #[arg(long)]
         work_item_id: String,
         /// What you're working on

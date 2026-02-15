@@ -4,7 +4,7 @@ use clap::Subcommand;
 pub enum WorkItemCommands {
     /// Create a new work item
     Create {
-        /// Project ID (UUID)
+        /// Project ID (UUID or project key like "PONE")
         #[arg(long)]
         project_id: String,
 
@@ -20,7 +20,7 @@ pub enum WorkItemCommands {
         #[arg(long)]
         description: Option<String>,
 
-        /// Parent work item ID (UUID)
+        /// Parent work item ID (UUID or display key like "PONE-123")
         #[arg(long)]
         parent_id: Option<String>,
 
@@ -35,13 +35,13 @@ pub enum WorkItemCommands {
 
     /// Get a work item by ID
     Get {
-        /// Work item ID (UUID)
+        /// Work item ID (UUID or display key like "PONE-123")
         id: String,
     },
 
     /// List work items in a project
     List {
-        /// Project ID (UUID)
+        /// Project ID (UUID or project key like "PONE")
         project_id: String,
 
         /// Filter by type: epic, story, or task
@@ -52,7 +52,7 @@ pub enum WorkItemCommands {
         #[arg(long)]
         status: Option<String>,
 
-        /// Filter by parent work item ID (UUID)
+        /// Filter by parent work item ID (UUID or display key like "PONE-123")
         #[arg(long, conflicts_with = "orphaned")]
         parent_id: Option<String>,
 
@@ -71,7 +71,7 @@ pub enum WorkItemCommands {
 
     /// Update a work item
     Update {
-        /// Work item ID (UUID)
+        /// Work item ID (UUID or display key like "PONE-123")
         id: String,
 
         /// New title
@@ -102,7 +102,7 @@ pub enum WorkItemCommands {
         #[arg(long)]
         story_points: Option<i32>,
 
-        /// Parent work item ID (UUID, or empty string to clear parent)
+        /// Parent work item ID (UUID or display key like "PONE-123", or empty string to clear parent)
         #[arg(long)]
         parent_id: Option<String>,
 
@@ -121,7 +121,7 @@ pub enum WorkItemCommands {
 
     /// Delete a work item
     Delete {
-        /// Work item ID (UUID)
+        /// Work item ID (UUID or display key like "PONE-123")
         id: String,
     },
 }

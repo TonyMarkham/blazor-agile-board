@@ -6,6 +6,7 @@
 use crate::{
     ApiError, ApiResult, CreateWorkItemRequest, DeleteResponse, ListWorkItemsQuery,
     UpdateWorkItemRequest, UserId, WorkItemListResponse, WorkItemResponse,
+    api::resolve::{resolve_project, resolve_work_item},
 };
 
 use pm_core::{ActivityLog, WorkItem, WorkItemDto, WorkItemType};
@@ -16,6 +17,8 @@ use pm_ws::{
     validate_hierarchy, validate_priority, validate_status,
 };
 
+use std::{panic::Location, str::FromStr};
+
 use axum::{
     Json,
     extract::{Path, Query, State, ws::Message},
@@ -23,8 +26,6 @@ use axum::{
 use chrono::Utc;
 use error_location::ErrorLocation;
 use prost::Message as ProstMessage;
-use std::panic::Location;
-use std::str::FromStr;
 use uuid::Uuid;
 
 // =============================================================================
@@ -63,14 +64,7 @@ pub async fn get_work_item(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> ApiResult<Json<WorkItemResponse>> {
-    let work_item_id = Uuid::parse_str(&id)?;
-
-    let work_item = WorkItemRepository::find_by_id(&state.pool, work_item_id)
-        .await?
-        .ok_or_else(|| ApiError::NotFound {
-            message: format!("Work item {} not found", id),
-            location: ErrorLocation::from(Location::caller()),
-        })?;
+    let work_item = resolve_work_item(&state.pool, &id).await?;
 
     // Get project key for display_key
     let repo = ProjectRepository::new(state.pool.clone());
@@ -96,7 +90,8 @@ pub async fn list_work_items(
     Path(project_id): Path<String>,
     Query(query): Query<ListWorkItemsQuery>,
 ) -> ApiResult<Json<WorkItemListResponse>> {
-    let project_uuid = Uuid::parse_str(&project_id)?;
+    let project = resolve_project(&state.pool, &project_id).await?;
+    let project_uuid = project.id;
 
     // Get project for key
     let repo = ProjectRepository::new(state.pool.clone());
@@ -112,19 +107,13 @@ pub async fn list_work_items(
         WorkItemRepository::find_by_project(&state.pool, project_uuid, query.include_done).await?;
 
     // Pre-compute descendant IDs if descendants_of is requested
-    let descendant_ids: Option<std::collections::HashSet<Uuid>> = query
-        .descendants_of
-        .as_ref()
-        .map(|ancestor_str| {
-            let ancestor_id = Uuid::parse_str(ancestor_str)?;
-            Ok::<_, uuid::Error>(collect_descendant_ids(&work_items, ancestor_id))
-        })
-        .transpose()
-        .map_err(|_| ApiError::Validation {
-            message: "Invalid UUID for descendants_of".into(),
-            field: Some("descendants_of".into()),
-            location: ErrorLocation::from(Location::caller()),
-        })?;
+    let descendant_ids: Option<std::collections::HashSet<Uuid>> =
+        if let Some(ancestor_str) = &query.descendants_of {
+            let ancestor = resolve_work_item(&state.pool, ancestor_str).await?;
+            Some(collect_descendant_ids(&work_items, ancestor.id))
+        } else {
+            None
+        };
 
     // Apply filters and convert to DTOs
     let filtered: Vec<WorkItemDto> = work_items
@@ -329,15 +318,8 @@ pub async fn update_work_item(
     Path(id): Path<String>,
     Json(req): Json<UpdateWorkItemRequest>,
 ) -> ApiResult<Json<WorkItemResponse>> {
-    let work_item_id = Uuid::parse_str(&id)?;
-
     // 1. Fetch existing work item
-    let mut work_item = WorkItemRepository::find_by_id(&state.pool, work_item_id)
-        .await?
-        .ok_or_else(|| ApiError::NotFound {
-            message: format!("Work item {} not found", id),
-            location: ErrorLocation::from(Location::caller()),
-        })?;
+    let mut work_item = resolve_work_item(&state.pool, &id).await?;
 
     // 2. Check version (optimistic locking)
     if work_item.version != req.expected_version {
@@ -368,17 +350,17 @@ pub async fn update_work_item(
             })?;
         work_item.title = sanitize_string(title);
     }
-    if let Some(ref description) = req.description {
-        if description.chars().count() > state.validation.max_description_length {
-            return Err(ApiError::Validation {
-                message: format!(
-                    "Description exceeds maximum length ({} characters)",
-                    state.validation.max_description_length
-                ),
-                field: Some("description".into()),
-                location: ErrorLocation::from(Location::caller()),
-            });
-        }
+    if let Some(ref description) = req.description
+        && description.chars().count() > state.validation.max_description_length
+    {
+        return Err(ApiError::Validation {
+            message: format!(
+                "Description exceeds maximum length ({} characters)",
+                state.validation.max_description_length
+            ),
+            field: Some("description".into()),
+            location: ErrorLocation::from(Location::caller()),
+        });
     }
     if let Some(ref desc) = req.description {
         work_item.description = Some(sanitize_string(desc));
@@ -502,15 +484,9 @@ pub async fn delete_work_item(
     UserId(user_id): UserId,
     Path(id): Path<String>,
 ) -> ApiResult<Json<DeleteResponse>> {
-    let work_item_id = Uuid::parse_str(&id)?;
-
     // 1. Fetch existing work item
-    let work_item = WorkItemRepository::find_by_id(&state.pool, work_item_id)
-        .await?
-        .ok_or_else(|| ApiError::NotFound {
-            message: format!("Work item {} not found", id),
-            location: ErrorLocation::from(Location::caller()),
-        })?;
+    let work_item = resolve_work_item(&state.pool, &id).await?;
+    let work_item_id = work_item.id;
 
     // 2. Check for children
     let children = WorkItemRepository::find_children(&state.pool, work_item_id).await?;

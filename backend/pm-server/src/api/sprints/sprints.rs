@@ -5,7 +5,7 @@
 
 use crate::{
     ApiError, ApiResult, CreateSprintRequest, DeleteResponse, SprintListResponse, SprintResponse,
-    UpdateSprintRequest, UserId,
+    UpdateSprintRequest, UserId, api::resolve::resolve_project,
 };
 
 use pm_core::{ActivityLog, Sprint, SprintDto, SprintStatus};
@@ -15,8 +15,7 @@ use pm_ws::{
     build_sprint_deleted_response, build_sprint_updated_response, sanitize_string,
 };
 
-use std::panic::Location;
-use std::str::FromStr;
+use std::{panic::Location, str::FromStr};
 
 use axum::{
     Json,
@@ -38,7 +37,8 @@ pub async fn list_sprints(
     State(state): State<AppState>,
     Path(project_id): Path<String>,
 ) -> ApiResult<Json<SprintListResponse>> {
-    let project_uuid = Uuid::parse_str(&project_id)?;
+    let project = resolve_project(&state.pool, &project_id).await?;
+    let project_uuid = project.id;
 
     let repo = SprintRepository::new(state.pool.clone());
     let sprints = repo.find_by_project(project_uuid).await?;

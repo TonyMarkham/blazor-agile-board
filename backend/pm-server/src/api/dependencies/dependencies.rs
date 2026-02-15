@@ -5,6 +5,7 @@
 
 use crate::{
     ApiError, ApiResult, CreateDependencyRequest, DeleteResponse, DependencyListResponse, UserId,
+    api::resolve::resolve_work_item,
 };
 
 use pm_core::{ActivityLog, Dependency, DependencyDto, DependencyType};
@@ -14,8 +15,7 @@ use pm_ws::{
     build_dependency_deleted_response,
 };
 
-use std::panic::Location;
-use std::str::FromStr;
+use std::{panic::Location, str::FromStr};
 
 use axum::{
     Json,
@@ -37,7 +37,8 @@ pub async fn list_dependencies(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> ApiResult<Json<DependencyListResponse>> {
-    let work_item_id = Uuid::parse_str(&id)?;
+    let work_item = resolve_work_item(&state.pool, &id).await?;
+    let work_item_id = work_item.id;
 
     let repo = DependencyRepository::new(state.pool.clone());
 

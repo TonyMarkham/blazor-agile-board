@@ -2,7 +2,7 @@
 
 use crate::{
     ApiError, ApiResult, CommentListResponse, CommentResponse, CreateCommentRequest,
-    DeleteResponse, UpdateCommentRequest, UserId,
+    DeleteResponse, UpdateCommentRequest, UserId, api::resolve::resolve_work_item,
 };
 
 use pm_core::{ActivityLog, Comment, CommentDto};
@@ -28,15 +28,8 @@ pub async fn list_comments(
     State(state): State<AppState>,
     Path(work_item_id): Path<String>,
 ) -> ApiResult<Json<CommentListResponse>> {
-    let work_item_uuid = Uuid::parse_str(&work_item_id)?;
-
-    // Verify work item exists
-    WorkItemRepository::find_by_id(&state.pool, work_item_uuid)
-        .await?
-        .ok_or_else(|| ApiError::NotFound {
-            message: format!("Work item {} not found", work_item_id),
-            location: ErrorLocation::from(Location::caller()),
-        })?;
+    let work_item = resolve_work_item(&state.pool, &work_item_id).await?;
+    let work_item_uuid = work_item.id;
 
     let repo = CommentRepository::new(state.pool.clone());
     let comments = repo.find_by_work_item(work_item_uuid).await?;
@@ -53,8 +46,6 @@ pub async fn create_comment(
     Path(work_item_id): Path<String>,
     Json(req): Json<CreateCommentRequest>,
 ) -> ApiResult<Json<CommentResponse>> {
-    let work_item_uuid = Uuid::parse_str(&work_item_id)?;
-
     // 1. Validate content
     MessageValidator::validate_comment_create(&req.content, &state.validation).map_err(|e| {
         ApiError::Validation {
@@ -65,12 +56,8 @@ pub async fn create_comment(
     })?;
 
     // 2. Verify work item exists and get project_id for broadcast
-    let work_item = WorkItemRepository::find_by_id(&state.pool, work_item_uuid)
-        .await?
-        .ok_or_else(|| ApiError::NotFound {
-            message: format!("Work item {} not found", work_item_id),
-            location: ErrorLocation::from(Location::caller()),
-        })?;
+    let work_item = resolve_work_item(&state.pool, &work_item_id).await?;
+    let work_item_uuid = work_item.id;
 
     // 3. Create comment
     let comment = Comment::new(work_item_uuid, sanitize_string(&req.content), user_id);

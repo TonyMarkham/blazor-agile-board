@@ -1,4 +1,4 @@
-use crate::api::error::Result as ApiResult;
+use crate::{ApiResult, resolve_work_item};
 
 use pm_core::ExportData;
 use pm_core::{
@@ -15,9 +15,7 @@ use axum::{
     extract::{Query, State},
 };
 use chrono::Utc;
-use error_location::ErrorLocation;
 use serde::Deserialize;
-use std::panic::Location;
 use uuid::Uuid;
 
 // ============================================================================
@@ -100,11 +98,8 @@ pub async fn sync_export(
 
     // Scoped export: filter to a specific work item (+ optional descendants/related data)
     let work_item_id_str = query.work_item.as_ref().unwrap();
-    let root_id = Uuid::parse_str(work_item_id_str).map_err(|_| crate::ApiError::Validation {
-        message: format!("Invalid work_item UUID: {}", work_item_id_str),
-        field: Some("work_item".to_string()),
-        location: ErrorLocation::from(Location::caller()),
-    })?;
+    let root_work_item = resolve_work_item(pool, work_item_id_str).await?;
+    let root_id = root_work_item.id;
 
     // Load all work items to support descendant traversal
     let all_work_items = WorkItemRepository::find_all(pool, true).await?;

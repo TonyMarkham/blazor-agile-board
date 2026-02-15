@@ -3,7 +3,7 @@
 //! Swim lanes are fixed configuration created by migrations.
 //! This module provides read-only access via GET endpoint.
 
-use crate::{ApiResult, SwimLaneListResponse};
+use crate::{ApiResult, SwimLaneListResponse, api::resolve::resolve_project};
 
 use pm_core::SwimLaneDto;
 use pm_db::SwimLaneRepository;
@@ -13,7 +13,6 @@ use axum::{
     Json,
     extract::{Path, State},
 };
-use uuid::Uuid;
 
 // =============================================================================
 // Handlers
@@ -26,7 +25,8 @@ pub async fn list_swim_lanes(
     State(state): State<AppState>,
     Path(project_id): Path<String>,
 ) -> ApiResult<Json<SwimLaneListResponse>> {
-    let project_uuid = Uuid::parse_str(&project_id)?;
+    let project = resolve_project(&state.pool, &project_id).await?;
+    let project_uuid = project.id;
 
     let repo = SwimLaneRepository::new(state.pool.clone());
     let swim_lanes = repo.find_by_project(project_uuid).await?;

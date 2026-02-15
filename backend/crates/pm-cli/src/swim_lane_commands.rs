@@ -4,7 +4,7 @@ use clap::Subcommand;
 pub enum SwimLaneCommands {
     /// List swim lanes for a project (ordered by position)
     List {
-        /// Project ID (UUID)
+        /// Project ID (UUID or project key like "PONE")
         project_id: String,
     },
 }

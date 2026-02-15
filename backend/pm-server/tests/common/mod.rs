@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 //! Test infrastructure for pm-server API tests
 
 use pm_auth::RateLimiterFactory;
@@ -85,4 +87,45 @@ pub async fn create_test_project(pool: &SqlitePool, user_id: &str) -> uuid::Uuid
         .expect("Failed to create test project");
 
     project_id
+}
+
+/// Create a test work item
+pub async fn create_test_work_item(
+    pool: &SqlitePool,
+    project_id: uuid::Uuid,
+    item_number: i32,
+    user_id: &str,
+) -> uuid::Uuid {
+    let work_item_id = uuid::Uuid::new_v4();
+    let now = chrono::Utc::now().timestamp();
+
+    sqlx::query(
+        r#"
+          INSERT INTO pm_work_items (
+              id, item_type, item_number, project_id, parent_id,
+              title, description, status, priority, position,
+              created_at, updated_at, created_by, updated_by, version
+          )
+          VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          "#,
+    )
+    .bind(work_item_id.to_string())
+    .bind("task") // item_type
+    .bind(item_number)
+    .bind(project_id.to_string())
+    .bind(format!("Test Work Item {}", item_number)) // title
+    .bind("A test work item") // description
+    .bind("todo") // status
+    .bind("medium") // priority
+    .bind(1000) // position
+    .bind(now)
+    .bind(now)
+    .bind(user_id)
+    .bind(user_id)
+    .bind(1) // version
+    .execute(pool)
+    .await
+    .expect("Failed to create test work item");
+
+    work_item_id
 }

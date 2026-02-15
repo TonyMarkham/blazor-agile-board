@@ -32,6 +32,7 @@ pub use api::{
         projects::{create_project, delete_project, get_project, list_projects, update_project},
         update_project_request::UpdateProjectRequest,
     },
+    resolve::{parse_display_key, resolve_project, resolve_work_item},
     sprints::{
         create_sprint_request::CreateSprintRequest,
         sprint_list_response::SprintListResponse,
