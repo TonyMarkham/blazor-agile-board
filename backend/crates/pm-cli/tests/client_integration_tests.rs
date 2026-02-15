@@ -183,6 +183,7 @@ async fn test_list_work_items_with_filters() {
             None,
             false,
             None,
+            None,
             false,
         )
         .await

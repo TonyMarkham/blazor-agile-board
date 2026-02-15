@@ -53,6 +53,29 @@ fn collect_descendant_ids(
     descendants
 }
 
+/// Collect all ancestor IDs by walking up the parent chain.
+/// Returns IDs of parent, grandparent, etc. — does NOT include the item itself.
+fn collect_ancestor_ids(work_items: &[WorkItem], item_id: Uuid) -> std::collections::HashSet<Uuid> {
+    let by_id: std::collections::HashMap<Uuid, &WorkItem> =
+        work_items.iter().map(|w| (w.id, w)).collect();
+
+    let mut ancestors = std::collections::HashSet::new();
+    let mut current_id = item_id;
+
+    while let Some(item) = by_id.get(&current_id) {
+        if let Some(pid) = item.parent_id {
+            if !ancestors.insert(pid) {
+                break; // cycle guard
+            }
+            current_id = pid;
+        } else {
+            break;
+        }
+    }
+
+    ancestors
+}
+
 // =============================================================================
 // Handlers
 // =============================================================================
@@ -115,12 +138,28 @@ pub async fn list_work_items(
             None
         };
 
+    // Pre-compute ancestor IDs if ancestors_of is requested
+    let ancestor_ids: Option<std::collections::HashSet<Uuid>> =
+        if let Some(item_str) = &query.ancestors_of {
+            let item = resolve_work_item(&state.pool, item_str).await?;
+            Some(collect_ancestor_ids(&work_items, item.id))
+        } else {
+            None
+        };
+
     // Apply filters and convert to DTOs
     let filtered: Vec<WorkItemDto> = work_items
         .into_iter()
         .filter(|w| {
             // Descendants filter (applied first, before other filters)
             if let Some(ref ids) = descendant_ids
+                && !ids.contains(&w.id)
+            {
+                return false;
+            }
+
+            // Ancestors filter
+            if let Some(ref ids) = ancestor_ids
                 && !ids.contains(&w.id)
             {
                 return false;

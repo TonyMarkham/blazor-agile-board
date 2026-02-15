@@ -160,7 +160,16 @@ public sealed class WorkItemStore : IWorkItemStore
 
         if (!_workItems.TryGetValue(id, out var current)) throw new KeyNotFoundException($"Work item not found: {id}");
 
-        // Build optimistic update                                                                                    
+        // Always use the store's current version — callers may hold stale ViewModels
+        if (request.ExpectedVersion != current.Version)
+        {
+            _logger.LogDebug(
+                "Correcting stale ExpectedVersion for {Id}: caller sent {Stale}, store has {Current}",
+                id, request.ExpectedVersion, current.Version);
+            request = request with { ExpectedVersion = current.Version };
+        }
+
+        // Build optimistic update
         var optimistic = ApplyUpdate(current, request);
 
         // Apply optimistically                                                                                       

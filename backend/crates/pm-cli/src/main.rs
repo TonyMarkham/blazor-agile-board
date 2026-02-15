@@ -169,6 +169,7 @@ async fn main() -> ExitCode {
                 parent_id,
                 orphaned,
                 descendants_of,
+                ancestors_of,
                 include_done,
             } => {
                 client
@@ -179,6 +180,7 @@ async fn main() -> ExitCode {
                         parent_id.as_deref(),
                         orphaned,
                         descendants_of.as_deref(),
+                        ancestors_of.as_deref(),
                         include_done,
                     )
                     .await

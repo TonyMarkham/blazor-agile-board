@@ -267,6 +267,7 @@ impl Client {
         parent_id: Option<&str>,
         orphaned: bool,
         descendants_of: Option<&str>,
+        ancestors_of: Option<&str>,
         include_done: bool,
     ) -> CliClientResult<Value> {
         let mut url = format!("/api/v1/projects/{}/work-items", project_id);
@@ -287,6 +288,9 @@ impl Client {
         }
         if let Some(did) = descendants_of {
             params.push(format!("descendants_of={}", did));
+        }
+        if let Some(aid) = ancestors_of {
+            params.push(format!("ancestors_of={}", aid));
         }
         if include_done {
             params.push("include_done=true".to_string());

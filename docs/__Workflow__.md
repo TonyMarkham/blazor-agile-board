@@ -37,6 +37,11 @@ Use Cluade Code's Panning Mode and allow it to create and itterate on the origin
 - As each `work-item` is finished, use `./pm` to move it to `review`
 ```
 
+### Commit
+```text
+I have staged all files, please commit without a byline.
+```
+
 ---
 
 ---

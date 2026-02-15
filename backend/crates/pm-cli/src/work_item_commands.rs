@@ -64,6 +64,10 @@ pub enum WorkItemCommands {
         #[arg(long, conflicts_with_all = ["parent_id", "orphaned"])]
         descendants_of: Option<String>,
 
+        /// Show all ancestors (parent, grandparent, etc.) of a work item ID
+        #[arg(long, conflicts_with_all = ["parent_id", "orphaned", "descendants_of"])]
+        ancestors_of: Option<String>,
+
         /// Include work items with status 'done' (excluded by default)
         #[arg(long)]
         include_done: bool,
