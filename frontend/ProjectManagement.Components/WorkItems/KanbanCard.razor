@@ -1,9 +1,8 @@
-@using ProjectManagement.Components.Dependencies
 @using ProjectManagement.Core.ViewModels
 @using ProjectManagement.Core.Models
-@inject IDependencyStore DependencyStore
 
 <div class="kanban-card @CardCssClass"
+     style="border: 2px solid @TypeColor;"
      role="listitem"
      tabindex="0"
      aria-label="@AriaLabel"
@@ -11,83 +10,18 @@
      @onclick:stopPropagation="true"
      @onkeydown="HandleKeyDown">
 
-    <RadzenStack Gap="0.5rem">
-        @* Header: Type + Title with ID *@
-        <RadzenStack Orientation="Orientation.Horizontal"
-                     AlignItems="AlignItems.Start"
-                     Gap="0.5rem">
-            <WorkItemTypeIcon Type="@Item.ItemType" Size="1rem" />
-            <RadzenStack Gap="0">
-                @if (!string.IsNullOrEmpty(ProjectKey))
-                {
-                    <span class="kanban-card-id">@Item.GetDisplayKey(ProjectKey)</span>
-                }
-                <span class="kanban-card-title">@Item.Title</span>
-            </RadzenStack>
-        </RadzenStack>
-
-        @* Footer: Priority, Points, Edit *@
-        <RadzenStack Orientation="Orientation.Horizontal"
-                     Gap="0.5rem"
-                     AlignItems="AlignItems.Center"
-                     JustifyContent="JustifyContent.SpaceBetween">
-            <RadzenStack Orientation="Orientation.Horizontal"
-                         Gap="0.25rem"
-                         AlignItems="AlignItems.Center">
-                <PriorityBadge Priority="@Item.Priority" ShowLabel="false" />
-                @if (Item.StoryPoints.HasValue)
-                {
-                    <RadzenBadge BadgeStyle="BadgeStyle.Info"
-                                 Text="@Item.StoryPoints.Value.ToString()"
-                                 title="Story Points" />
-                }
-                <BlockedIndicator WorkItemId="@Item.Id" />
-            </RadzenStack>
-
-            @if (Item.IsPendingSync)
-            {
-                <RadzenProgressBarCircular ShowValue="false"
-                                           Mode="ProgressBarMode.Indeterminate"
-                                           Size="ProgressBarCircularSize.ExtraSmall"
-                                           title="Saving..." />
-            }
-            else
-            {
-                <RadzenButton Icon="edit"
-                              ButtonStyle="ButtonStyle.Light"
-                              Variant="Variant.Text"
-                              Size="ButtonSize.ExtraSmall"
-                              Click="@HandleEditClick"
-                              Click:stopPropagation="true"
-                              Disabled="@(!IsConnected)"
-                              title="Edit"
-                              aria-label="@($"Edit {Item.Title}")" />
-            }
-        </RadzenStack>
-        
-        @* Progress section for Epic/Story cards *@
-        @if (Item.ShowProgress)
+    @* Row 1: Type icon + Key + Priority icon *@
+    <div class="kanban-card-header">
+        <WorkItemTypeIcon Type="@Item.ItemType" Size="1.1rem" />
+        @if (!string.IsNullOrEmpty(ProjectKey))
         {
-            @if (Item.ItemType == WorkItemType.Epic)
-            {
-                @if (Item.StoryProgress?.HasChildren == true)
-                {
-                    <ChildProgressBar Progress="@Item.StoryProgress" Label="Stories" />
-                }
-                @if (Item.TaskProgress?.HasChildren == true)
-                {
-                    <ChildProgressBar Progress="@Item.TaskProgress" Label="Tasks" />
-                }
-            }
-            else if (Item.ItemType == WorkItemType.Story)
-            {
-                @if (Item.TaskProgress?.HasChildren == true)
-                {
-                    <ChildProgressBar Progress="@Item.TaskProgress" Label="Tasks" />
-                }
-            }
+            <span class="kanban-card-key">@Item.GetDisplayKey(ProjectKey)</span>
         }
-    </RadzenStack>
+        <PriorityBadge Priority="@Item.Priority" ShowLabel="false" Size="1.1rem" />
+    </div>
+
+    @* Row 2: Title (single line, truncated) *@
+    <div class="kanban-card-title">@Item.Title</div>
 </div>
 
 @code {
@@ -102,11 +36,19 @@
 
     [Parameter]
     public EventCallback<WorkItemViewModel> OnEdit { get; set; }
-    
+
     [Parameter]
     public string? ProjectKey { get; set; }
 
     private string CardCssClass => Item.IsPendingSync ? "pending-sync" : "";
+
+    private string TypeColor => Item.ItemType switch
+    {
+        WorkItemType.Epic => "#9c27b0",
+        WorkItemType.Story => "#2196f3",
+        WorkItemType.Task => "#4caf50",
+        _ => "var(--rz-border-color)"
+    };
 
     private string AriaLabel
     {
@@ -134,14 +76,6 @@
         if (OnClick.HasDelegate)
         {
             await OnClick.InvokeAsync(Item);
-        }
-    }
-
-    private async Task HandleEditClick(MouseEventArgs e)
-    {
-        if (IsConnected && !Item.IsPendingSync && OnEdit.HasDelegate)
-        {
-            await OnEdit.InvokeAsync(Item);
         }
     }
 

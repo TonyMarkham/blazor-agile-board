@@ -294,6 +294,12 @@ pub fn run() {
                 }
             });
 
+            // Open devtools in debug builds only
+            #[cfg(debug_assertions)]
+            if let Some(window) = app.get_webview_window("main") {
+                window.open_devtools();
+            }
+
             Ok(())
         })
         .on_window_event(|_window, event| {

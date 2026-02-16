@@ -303,8 +303,12 @@ public sealed class WorkItemStore : IWorkItemStore
 
     private void HandleWorkItemUpdated(WorkItem item, IReadOnlyList<FieldChange> changes)
     {
-        // Don't overwrite pending updates                                                                            
+        // Don't overwrite pending updates
         if (_pendingUpdates.ContainsKey(item.Id))
+            return;
+
+        // Skip broadcast echo — we already have this version from the server confirmation
+        if (_workItems.TryGetValue(item.Id, out var existing) && existing.Version >= item.Version)
             return;
 
         _workItems[item.Id] = item;

@@ -81,22 +81,22 @@ public class KanbanCardTests : BunitContext
     }
 
     [Fact]
-    public void KanbanCard_RendersStoryPoints_WhenPresent()
+    public void KanbanCard_RendersDisplayKey_WhenProjectKeyProvided()
     {
         // Arrange
-        var workItem = CreateTestWorkItem() with { StoryPoints = 5 };
-        var viewModel = new WorkItemViewModel(workItem);
+        var viewModel = CreateTestViewModel();
 
         // Act
         var cut = Render<KanbanCard>(parameters => parameters
-            .Add(p => p.Item, viewModel));
+            .Add(p => p.Item, viewModel)
+            .Add(p => p.ProjectKey, "PONE"));
 
         // Assert
-        cut.Markup.Should().Contain("5");
+        cut.Markup.Should().Contain("kanban-card-key");
     }
 
     [Fact]
-    public void KanbanCard_ShowsPendingIndicator_WhenPendingSync()
+    public void KanbanCard_HasPendingSyncClass_WhenPendingSync()
     {
         // Arrange
         var workItem = CreateTestWorkItem();
@@ -108,7 +108,6 @@ public class KanbanCardTests : BunitContext
 
         // Assert
         cut.Markup.Should().Contain("pending-sync");
-        cut.FindComponents<RadzenProgressBarCircular>().Should().HaveCount(1);
     }
 
     [Fact]
@@ -147,64 +146,6 @@ public class KanbanCardTests : BunitContext
 
         // Assert
         clickedItem.Should().Be(viewModel);
-    }
-
-    [Fact]
-    public async Task KanbanCard_InvokesOnEdit_WhenEditButtonClicked()
-    {
-        // Arrange
-        var viewModel = CreateTestViewModel();
-        WorkItemViewModel? editedItem = null;
-
-        var cut = Render<KanbanCard>(parameters => parameters
-            .Add(p => p.Item, viewModel)
-            .Add(p => p.IsConnected, true)
-            .Add(p => p.OnEdit, EventCallback.Factory.Create<WorkItemViewModel>(
-                this, item => editedItem = item)));
-
-        // Act
-        var editButton = cut.FindComponent<RadzenButton>();
-        await cut.InvokeAsync(() => editButton.Instance.Click.InvokeAsync(new MouseEventArgs()));
-
-        // Assert
-        editedItem.Should().Be(viewModel);
-    }
-
-    #endregion
-
-    #region Disabled States Tests
-
-    [Fact]
-    public void KanbanCard_DisablesEditButton_WhenDisconnected()
-    {
-        // Arrange
-        var viewModel = CreateTestViewModel();
-
-        // Act
-        var cut = Render<KanbanCard>(parameters => parameters
-            .Add(p => p.Item, viewModel)
-            .Add(p => p.IsConnected, false));
-
-        // Assert
-        var button = cut.FindComponent<RadzenButton>();
-        button.Instance.Disabled.Should().BeTrue();
-    }
-
-    [Fact]
-    public void KanbanCard_HidesEditButton_WhenPendingSync()
-    {
-        // Arrange
-        var workItem = CreateTestWorkItem();
-        var viewModel = new WorkItemViewModel(workItem, isPendingSync: true);
-
-        // Act
-        var cut = Render<KanbanCard>(parameters => parameters
-            .Add(p => p.Item, viewModel)
-            .Add(p => p.IsConnected, true));
-
-        // Assert
-        // When pending, spinner is shown instead of edit button
-        cut.FindComponents<RadzenProgressBarCircular>().Should().HaveCount(1);
     }
 
     #endregion
@@ -263,114 +204,99 @@ public class KanbanCardTests : BunitContext
     }
 
     [Fact]
-    public void KanbanCard_EditButtonHasAriaLabel()
+    public void KanbanCard_AriaLabel_IncludesStoryPoints()
     {
         // Arrange
-        var workItem = CreateTestWorkItem() with { Title = "My Task" };
+        var workItem = CreateTestWorkItem() with { StoryPoints = 8 };
         var viewModel = new WorkItemViewModel(workItem);
 
         // Act
         var cut = Render<KanbanCard>(parameters => parameters
-            .Add(p => p.Item, viewModel)
-            .Add(p => p.IsConnected, true));
+            .Add(p => p.Item, viewModel));
 
         // Assert
-        cut.Markup.Should().Contain("aria-label=\"Edit My Task\"");
+        cut.Markup.Should().Contain("8 points");
+    }
+
+    [Fact]
+    public void KanbanCard_AriaLabel_IncludesPendingSync()
+    {
+        // Arrange
+        var workItem = CreateTestWorkItem();
+        var viewModel = new WorkItemViewModel(workItem, isPendingSync: true);
+
+        // Act
+        var cut = Render<KanbanCard>(parameters => parameters
+            .Add(p => p.Item, viewModel));
+
+        // Assert
+        cut.Markup.Should().Contain("(saving)");
     }
 
     #endregion
 
-    #region Progress Bar Tests
+    #region Keyboard Navigation Tests
 
     [Fact]
-    public void KanbanCard_ShowsTaskProgress_ForStoryWithChildren()
+    public async Task KanbanCard_InvokesOnClick_OnEnterKey()
     {
         // Arrange
-        var workItem = CreateTestWorkItem() with { ItemType = WorkItemType.Story };
-        var progress = new ChildProgress
-        {
-            ByStatus = new Dictionary<string, int> { ["done"] = 2, ["todo"] = 3 },
-            Total = 5,
-            Completed = 2
-        };
-        var viewModel = new WorkItemViewModel(workItem, isPendingSync: false)
-        {
-            TaskProgress = progress
-        };
+        var viewModel = CreateTestViewModel();
+        WorkItemViewModel? clickedItem = null;
+
+        var cut = Render<KanbanCard>(parameters => parameters
+            .Add(p => p.Item, viewModel)
+            .Add(p => p.OnClick, EventCallback.Factory.Create<WorkItemViewModel>(
+                this, item => clickedItem = item)));
 
         // Act
-        var cut = Render<KanbanCard>(parameters => parameters
-            .Add(p => p.Item, viewModel));
+        var card = cut.Find(".kanban-card");
+        await cut.InvokeAsync(() => card.KeyDown(new KeyboardEventArgs { Key = "Enter" }));
 
         // Assert
-        cut.FindComponents<ChildProgressBar>().Should().HaveCount(1);
-        cut.Markup.Should().Contain("2/5");
+        clickedItem.Should().Be(viewModel);
     }
 
     [Fact]
-    public void KanbanCard_ShowsBothProgressBars_ForEpicWithStoriesAndTasks()
+    public async Task KanbanCard_InvokesOnEdit_OnCtrlE()
     {
         // Arrange
-        var workItem = CreateTestWorkItem() with { ItemType = WorkItemType.Epic };
-        var storyProgress = new ChildProgress
-        {
-            ByStatus = new Dictionary<string, int> { ["done"] = 1, ["in_progress"] = 2 },
-            Total = 3,
-            Completed = 1
-        };
-        var taskProgress = new ChildProgress
-        {
-            ByStatus = new Dictionary<string, int> { ["done"] = 5, ["todo"] = 5 },
-            Total = 10,
-            Completed = 5
-        };
-        var viewModel = new WorkItemViewModel(workItem, isPendingSync: false)
-        {
-            StoryProgress = storyProgress,
-            TaskProgress = taskProgress
-        };
+        var viewModel = CreateTestViewModel();
+        WorkItemViewModel? editedItem = null;
+
+        var cut = Render<KanbanCard>(parameters => parameters
+            .Add(p => p.Item, viewModel)
+            .Add(p => p.IsConnected, true)
+            .Add(p => p.OnEdit, EventCallback.Factory.Create<WorkItemViewModel>(
+                this, item => editedItem = item)));
 
         // Act
-        var cut = Render<KanbanCard>(parameters => parameters
-            .Add(p => p.Item, viewModel));
+        var card = cut.Find(".kanban-card");
+        await cut.InvokeAsync(() => card.KeyDown(new KeyboardEventArgs { Key = "e", CtrlKey = true }));
 
         // Assert
-        cut.FindComponents<ChildProgressBar>().Should().HaveCount(2);
-        cut.Markup.Should().Contain("Stories");
-        cut.Markup.Should().Contain("Tasks");
+        editedItem.Should().Be(viewModel);
     }
 
     [Fact]
-    public void KanbanCard_HidesProgressBar_ForTaskItems()
+    public async Task KanbanCard_IgnoresKeyboard_WhenPendingSync()
     {
         // Arrange
-        var workItem = CreateTestWorkItem() with { ItemType = WorkItemType.Task };
-        var viewModel = new WorkItemViewModel(workItem, isPendingSync: false);
+        var workItem = CreateTestWorkItem();
+        var viewModel = new WorkItemViewModel(workItem, isPendingSync: true);
+        WorkItemViewModel? clickedItem = null;
+
+        var cut = Render<KanbanCard>(parameters => parameters
+            .Add(p => p.Item, viewModel)
+            .Add(p => p.OnClick, EventCallback.Factory.Create<WorkItemViewModel>(
+                this, item => clickedItem = item)));
 
         // Act
-        var cut = Render<KanbanCard>(parameters => parameters
-            .Add(p => p.Item, viewModel));
+        var card = cut.Find(".kanban-card");
+        await cut.InvokeAsync(() => card.KeyDown(new KeyboardEventArgs { Key = "Enter" }));
 
         // Assert
-        cut.FindComponents<ChildProgressBar>().Should().BeEmpty();
-    }
-
-    [Fact]
-    public void KanbanCard_HidesProgressBar_ForStoryWithNoChildren()
-    {
-        // Arrange
-        var workItem = CreateTestWorkItem() with { ItemType = WorkItemType.Story };
-        var viewModel = new WorkItemViewModel(workItem, isPendingSync: false)
-        {
-            TaskProgress = ChildProgress.Empty
-        };
-
-        // Act
-        var cut = Render<KanbanCard>(parameters => parameters
-            .Add(p => p.Item, viewModel));
-
-        // Assert
-        cut.FindComponents<ChildProgressBar>().Should().BeEmpty();
+        clickedItem.Should().BeNull();
     }
 
     #endregion

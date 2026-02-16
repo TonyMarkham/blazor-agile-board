@@ -9,26 +9,42 @@ Use Cluade Code's Panning Mode and allow it to create and itterate on the origin
 - use the /pm skill to transfer the plan to the Agile Board.
 - Use proper Agile Techniques to organize Epics > Stories > Tasks 
 - Use the tasks to show a concrete implementation complete with production-grade code snippets
-- The tasks should also be written with well thought out explanations above each code block to give humans well structured context 
+- The tasks should also be written with well thought out explanations above each code block to give humans well structured context
+
+**CRITICAL** MUST USE /pm !!! 
 ```
 
 ### Review
 ```text
-- use /pm to find PONE-155
+- use /pm to find PONE-190
 - Review all descendant tasks.
-- Write the review as a comment on PONE-155
+- Write the review as a comment on PONE-190
+
+**CRITICAL** MUST USE /pm !!!
 ```
 
 ### Address Review
 ```text
-- use /pm to find PONE-155
+- use /pm to find PONE-190
 - Address the review in the latest comment
 - use the /pro-rust skill to align with my preferred patterns
+
+**CRITICAL** MUST USE /pm !!!
 ```
 
 ### Implement
 ```text
-- use /pm to find PONE-155
+- use /pm to find PONE-190
+- Review all descendant tasks.
+- read `CRITICAL_OPERATING_CONSTRAINTS.md`
+- Teach me by presenting bite-sized chunks for me to write/edit keeping the commentary separate from the code snippets to make the code snippets easier for me to follow
+- As each `work-item` is finished, use `./pm` to move it to `review`
+
+**CRITICAL** MUST USE /pm !!!
+```
+
+```text
+- use /pm to find PONE-190
 - Review all descendant tasks.
 - Pick up at story PONE-160 / Task PONE-177
 - read `CRITICAL_OPERATING_CONSTRAINTS.md`

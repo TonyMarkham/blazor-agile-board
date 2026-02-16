@@ -1,67 +1,8 @@
-﻿@using ProjectManagement.Core.Models
-@inject AppState AppState
-@inject NavigationManager NavigationManager
-@implements IDisposable
-
-<nav class="rz-sidebar" aria-label="Main navigation">
-    <RadzenPanelMenu>
-        <RadzenPanelMenuItem Text="Home" Icon="home" Path="" />
-
-        @if (_recentProjects.Any())
-        {
-            <RadzenPanelMenuItem Text="Recent Projects" Icon="folder" Expanded="true">
-                @foreach (var project in _recentProjects)
-                {
-                    <RadzenPanelMenuItem Text="@project.Title"
-                                         Icon="folder_open"
-                                         Path="@($"project/{project.Id}")" />
-                }
-            </RadzenPanelMenuItem>
-        }
-
-        <RadzenPanelMenuItem Text="All Projects" Icon="list" Path="" />
-    </RadzenPanelMenu>
+﻿<nav class="nav-icons" aria-label="Main navigation">
+    <NavLink href="" Match="NavLinkMatch.All" class="nav-icon" title="Home">
+        <RadzenIcon Icon="home" />
+    </NavLink>
+    <NavLink href="" class="nav-icon" title="All Projects">
+        <RadzenIcon Icon="list" />
+    </NavLink>
 </nav>
-
-@code {
-    private List<WorkItem> _recentProjects = new();
-
-    protected override void OnInitialized()
-    {
-        AppState.OnStateChanged += HandleStateChanged;
-        RefreshProjects();
-    }
-
-    private void RefreshProjects()
-    {
-        // Get projects - these are WorkItems with ItemType.Project
-        // Since projects don't have a parent ProjectId pointing to themselves,
-        // we need to query all work items and filter by type
-        try
-        {
-            // Get all loaded work items from the store and filter to projects
-            // Note: In a real scenario, we'd have a dedicated GetProjects() method
-            // For now, we'll check if any projects are loaded
-            _recentProjects = new List<WorkItem>();
-
-            // Try to get projects from the store
-            // Projects are top-level items with ItemType.Project
-            // We'd typically have them loaded when viewing a project
-        }
-        catch
-        {
-            _recentProjects = new List<WorkItem>();
-        }
-    }
-
-    private void HandleStateChanged()
-    {
-        RefreshProjects();
-        InvokeAsync(StateHasChanged);
-    }
-
-    public void Dispose()
-    {
-        AppState.OnStateChanged -= HandleStateChanged;
-    }
-}

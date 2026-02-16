@@ -6,6 +6,7 @@
 @inject NotificationService NotificationService
 @inject NavigationManager NavigationManager
 @implements IDisposable
+@inject ILogger<KanbanBoard> Logger
 
 <div class="kanban-board"
      role="application"
@@ -48,49 +49,81 @@
         </RadzenText>
     </RadzenStack>
 
-    @* Columns with Radzen Drag-Drop *@
-    <RadzenDropZoneContainer TItem="WorkItemViewModel"
-                             Data="@_filteredItems"
-                             ItemSelector="@((item, zone) => item.Status == (zone.Value as string))"
-                             Drop="@OnDrop">
-        <ChildContent>
-            <div class="kanban-columns">
-                @foreach (var column in Columns)
-                {
-                    if (_hideDone && column.Status == "done") continue;
+    @* Columns with HTML5 Drag-Drop *@
+  <div class="kanban-columns">
+      @foreach (var column in Columns)
+      {
+          if (_hideDone && column.Status == "done") continue;
 
-                    <KanbanColumn Status="@column.Status"
-                                  Title="@column.Title"
-                                  Items="@GetColumnItems(column.Status)"
-                                  IsConnected="@_isConnected"
-                                  OnCardClick="@HandleCardClick"
-                                  OnCardEdit="@HandleCardEdit" />
-                }
-            </div>
-        </ChildContent>
-        <Template Context="item">
-            <KanbanCard Item="@item"
-                        ProjectKey="@_projectKey"
-                        IsConnected="@_isConnected"
-                        OnClick="@HandleCardClick"
-                        OnEdit="@HandleCardEdit" />
-        </Template>
-    </RadzenDropZoneContainer>
+          var status = column.Status;
+          var columnItems = _columnItems.GetValueOrDefault(status) ?? new List<WorkItemViewModel>();
+
+          <div class="kanban-column @(status == _dragOverColumn ? "drag-over" : "")"
+               role="listbox"
+               aria-label="@($"{column.Title} column, {columnItems.Count} items")"
+               @ondragover:preventDefault
+               @ondragenter="@(() => _dragOverColumn = status)"
+               @ondragleave="@(() => { if (_dragOverColumn == status) _dragOverColumn = null; })"
+               @ondrop="@(() => HandleDrop(status))">
+
+              @* Column header *@
+              <div class="kanban-column-header">
+                  <RadzenText TextStyle="TextStyle.Subtitle1" class="m-0">
+                      @column.Title
+                  </RadzenText>
+                  <RadzenBadge BadgeStyle="@GetBadgeStyle(status)"
+                               Text="@columnItems.Count.ToString()"
+                               IsPill="true" />
+              </div>
+
+              @* Column body with virtualized cards *@
+              @if (columnItems.Count == 0)
+              {
+                  <div class="kanban-empty-column">
+                      <RadzenIcon Icon="inbox" Style="font-size: 1.5rem; opacity: 0.5;" />
+                      <RadzenText TextStyle="TextStyle.Caption" class="text-muted mt-2">
+                          No items
+                      </RadzenText>
+                  </div>
+              }
+              else
+              {
+                  <div class="kanban-column-body">
+                      @foreach (var item in columnItems)
+                      {
+                          <div draggable="true"
+                               @key="item.Id"
+                               @ondragstart="@((DragEventArgs e) => HandleDragStart(e, item.Id))"
+                               @ondragend="@(() => _draggedItemId = null)">
+                              <KanbanCard Item="@item"
+                                          ProjectKey="@_projectKey"
+                                          IsConnected="@_isConnected"
+                                          OnClick="@HandleCardClick"
+                                          OnEdit="@HandleCardEdit" />
+                          </div>
+                      }
+                  </div>
+              }
+          </div>
+      }
+  </div>
 </div>
 
 @code {
-    [Parameter, EditorRequired]
-    public Guid ProjectId { get; set; }
+    [Parameter, EditorRequired] public Guid ProjectId { get; set; }
 
-    [Parameter]
-    public EventCallback<WorkItemViewModel> OnWorkItemSelected { get; set; }
-
+    [Parameter] public EventCallback<WorkItemViewModel> OnWorkItemSelected { get; set; }
+    
     // State
     private List<WorkItemViewModel> _allItems = new();
     private List<WorkItemViewModel> _filteredItems = new();
+    private Dictionary<string, List<WorkItemViewModel>> _columnItems = new();
     private bool _isConnected = true;
     private string _announcement = "";
     private string? _projectKey;
+    private Guid? _draggedItemId;
+    private string? _dragOverColumn;
+    private Guid _lastProjectId;
 
     // Filters
     private WorkItemType? _typeFilter;
@@ -116,25 +149,25 @@
     protected override void OnInitialized()
     {
         _isConnected = AppState.ConnectionState == ConnectionState.Connected;
-        AppState.OnStateChanged += HandleStateChanged;
+        _lastProjectId = ProjectId;
+        AppState.WorkItems.OnChanged += HandleWorkItemsChanged;
         AppState.OnConnectionStateChanged += HandleConnectionChanged;
         RefreshData();
     }
 
     protected override void OnParametersSet()
     {
-        RefreshData();
+        if (ProjectId != _lastProjectId)
+        {
+            _lastProjectId = ProjectId;
+            RefreshData();
+        }
     }
 
     private void RefreshData()
     {
-        var project = AppState.Projects.GetById(ProjectId);
-        _projectKey = project?.Key;
-
-        var items = AppState.WorkItems.GetByProject(ProjectId)
-            .Where(w => w.DeletedAt is null);
-
-        _allItems = ViewModelFactory.CreateMany(items).ToList();
+        _allItems = ViewModelFactory.CreateMany(AppState.WorkItems.GetByProject(ProjectId)).ToList();
+        _projectKey = AppState.Projects.GetById(ProjectId)?.Key;
         ApplyFilters();
     }
 
@@ -153,50 +186,73 @@
         }
 
         _filteredItems = query.ToList();
-        StateHasChanged();
+
+        _columnItems = _filteredItems
+            .GroupBy(item => item.Status)
+            .ToDictionary(g => g.Key, g => g.OrderBy(w => w.Position).ToList());
     }
 
-    private IEnumerable<WorkItemViewModel> GetColumnItems(string status)
+    private void HandleDragStart(DragEventArgs e, Guid itemId)
     {
-        return _filteredItems
-            .Where(w => w.Status == status)
-            .OrderBy(w => w.Position);
+        _draggedItemId = itemId;
     }
 
-    private async void OnDrop(RadzenDropZoneItemEventArgs<WorkItemViewModel> args)
+    private async Task HandleDrop(string newStatus)
     {
-        if (args.Item == null || args.ToZone?.Value == null || !_isConnected)
+        _dragOverColumn = null;
+
+        if (_draggedItemId is not { } draggedId || !_isConnected)
             return;
 
-        var newStatus = (string)args.ToZone.Value;
-        if (args.Item.Status == newStatus)
+        var item = _filteredItems.FirstOrDefault(i => i.Id == draggedId);
+        _draggedItemId = null;
+
+        if (item == null || item.Status == newStatus)
             return;
 
-        var columnTitle = Columns.First(c => c.Status == newStatus).Title;
-        _announcement = $"Moving {args.Item.Title} to {columnTitle}...";
+        var column = Columns.FirstOrDefault(c => c.Status == newStatus);
+        if (column == default)
+        {
+            Logger.LogWarning("Unknown status {Status} during drop", newStatus);
+            return;
+        }
+        var columnTitle = column.Title;
+
+        _announcement = $"Moving {item.Title} to {columnTitle}...";
         StateHasChanged();
 
         try
         {
             var request = new UpdateWorkItemRequest
             {
-                WorkItemId = args.Item.Id,
-                ExpectedVersion = args.Item.Version,
+                WorkItemId = item.Id,
+                ExpectedVersion = item.Version,
                 Status = newStatus
             };
             await AppState.WorkItems.UpdateAsync(request);
 
-            _announcement = $"{args.Item.Title} moved to {columnTitle}.";
+            _announcement = $"{item.Title} moved to {columnTitle}.";
             NotificationService.Notify(NotificationSeverity.Success, "Moved", $"Moved to {columnTitle}");
         }
         catch (Exception ex)
         {
-            _announcement = $"Failed to move {args.Item.Title}: {ex.Message}";
+            Logger.LogError(ex, "Failed to move work item {ItemId} to status {Status}", item.Id, newStatus);
+            _announcement = $"Failed to move {item.Title}: {ex.Message}";
             NotificationService.Notify(NotificationSeverity.Error, "Error", ex.Message);
         }
 
-        await InvokeAsync(StateHasChanged);
+        StateHasChanged();
     }
+
+    private static BadgeStyle GetBadgeStyle(string status) => status switch
+    {
+        "backlog" => BadgeStyle.Light,
+        "todo" => BadgeStyle.Info,
+        "in_progress" => BadgeStyle.Warning,
+        "review" => BadgeStyle.Secondary,
+        "done" => BadgeStyle.Success,
+        _ => BadgeStyle.Light
+    };
 
     private async Task HandleCardClick(WorkItemViewModel item)
     {
@@ -221,10 +277,10 @@
             },
             new DialogOptions
             {
-                Width = "900px",      // Wider default
-                Height = "80vh",      // 80% of viewport height
-                Resizable = true,     // 👈 Adds resize handles
-                Draggable = true      // Keep it draggable
+                Width = "900px", // Wider default
+                Height = "80vh", // 80% of viewport height
+                Resizable = true, // 👈 Adds resize handles
+                Draggable = true // Keep it draggable
             });
 
         if (result is true)
@@ -233,10 +289,13 @@
         }
     }
 
-    private void HandleStateChanged()
+    private void HandleWorkItemsChanged()
     {
-        RefreshData();
-        InvokeAsync(StateHasChanged);
+        InvokeAsync(() =>
+        {
+            RefreshData();
+            StateHasChanged();
+        });
     }
 
     private void HandleConnectionChanged(ConnectionState state)
@@ -247,7 +306,8 @@
 
     public void Dispose()
     {
-        AppState.OnStateChanged -= HandleStateChanged;
+        AppState.WorkItems.OnChanged -= HandleWorkItemsChanged;
         AppState.OnConnectionStateChanged -= HandleConnectionChanged;
     }
+
 }

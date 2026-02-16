@@ -1,5 +1,21 @@
-.kanban-card-id {
-    font-size: 0.75rem;
+.kanban-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.kanban-card-key {
+    flex: 1;
+    font-size: 0.8rem;
     color: var(--rz-text-tertiary-color, #666);
     font-family: var(--rz-font-family-monospace, 'Courier New', Courier, monospace);
+}
+
+.kanban-card-title {
+    padding-left: 1.6rem; /* align with key text past the type icon */
+    font-size: 0.9rem;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
