@@ -539,6 +539,7 @@ _archive-impl:
     cp target/release/pm {{dist_dir}}/{{archive_name}}/bin/
     cp target/release/pm-server {{dist_dir}}/{{archive_name}}/bin/
     cp target/release/project-manager {{dist_dir}}/{{archive_name}}/bin/
+    cp pm {{dist_dir}}/{{archive_name}}/
     @if [ -d "target/release/bundle/macos/Project Manager.app" ]; then \
         cp -r "target/release/bundle/macos/Project Manager.app" {{dist_dir}}/{{archive_name}}/bin/; \
     fi
@@ -557,6 +558,7 @@ _archive-impl:
     @Copy-Item "target/release/pm.exe" "{{dist_dir}}/{{archive_name}}/bin/"
     @Copy-Item "target/release/pm-server.exe" "{{dist_dir}}/{{archive_name}}/bin/"
     @if (Test-Path "target/release/project-manager.exe") { Copy-Item "target/release/project-manager.exe" "{{dist_dir}}/{{archive_name}}/bin/" }
+    @Copy-Item "pm.bat" "{{dist_dir}}/{{archive_name}}/"
     @Compress-Archive -Path "{{dist_dir}}/{{archive_name}}" -DestinationPath "{{dist_dir}}/{{archive_name}}.zip" -Force
     @echo ""
     @echo "Archive created: {{dist_dir}}/{{archive_name}}.zip"

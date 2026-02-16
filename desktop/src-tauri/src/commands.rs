@@ -1,9 +1,12 @@
 //! Tauri IPC commands for frontend communication.
 
-use crate::identity::{
-    backup_corrupted, load, load_result::LoadResult, save, user_identity::UserIdentity,
+use crate::{
+    identity::{
+        backup_corrupted, load, load_result::LoadResult, save, user_identity::UserIdentity,
+    },
+    pm_directory::PmDir,
+    server::{HealthStatus, ServerManager, ServerState, ServerStatus},
 };
-use crate::server::{HealthStatus, ServerManager, ServerState, ServerStatus};
 
 use std::sync::Arc;
 
@@ -260,6 +263,17 @@ pub fn build_server_status(
         is_healthy,
         pid,
     }
+}
+
+/// Get the repository root directory (parent of .pm/).
+#[tauri::command]
+pub async fn get_repo_root(app: tauri::AppHandle) -> Result<String, String> {
+    let pm_dir = app.state::<PmDir>();
+    pm_dir
+        .0
+        .parent()
+        .map(|p| p.to_string_lossy().into_owned())
+        .ok_or_else(|| "Could not determine repo root".into())
 }
 
 /// Quit the application with proper server shutdown.

@@ -59,29 +59,7 @@
     max-width: 400px;
 }
 
-/* Connection status */
-.connection-status {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.875rem;
-}
-
-.connection-status.connected {
-    color: var(--rz-success);
-}
-
-.connection-status.connecting,
-.connection-status.reconnecting {
-    color: var(--rz-warning);
-}
-
-.connection-status.disconnected,
-.connection-status.closed {
-    color: var(--rz-danger);
-}
+/* Connection status - styles in ConnectionStatus.razor.css (scoped) */
 
 /* General layout adjustments */
 html, body {

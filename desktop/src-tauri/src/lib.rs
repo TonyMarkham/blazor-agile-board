@@ -323,6 +323,7 @@ pub fn run() {
             commands::restart_server,
             commands::export_diagnostics,
             commands::get_recent_logs,
+            commands::get_repo_root,
             commands::quit_app,
         ])
         .build(tauri::generate_context!())

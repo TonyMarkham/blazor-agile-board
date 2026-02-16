@@ -6,6 +6,7 @@
   @using ProjectManagement.Wasm.Layout
   @implements IDisposable
   @inject IDesktopConfigService DesktopConfig
+  @inject ITauriService TauriService
   @inject UserIdentityService UserIdentityService
   @inject AppState AppState
   @inject ILogger<App> Logger
@@ -142,6 +143,16 @@
           try
           {
               await DesktopConfig.WaitForServerAsync(ServerStartupTimeout, ct);
+
+              // Fetch repo root for display in header
+              try
+              {
+                  AppState.RepoRoot = await TauriService.GetRepoRootAsync(ct);
+              }
+              catch (Exception ex)
+              {
+                  Logger.LogWarning(ex, "Could not fetch repo root");
+              }
           }
           catch (TimeoutException)
           {

@@ -98,6 +98,14 @@ try {
     else {
         Write-Err "Archive missing expected bin\ directory"
     }
+
+    # Install wrapper script to repo root
+    $WrapperScript = Join-Path $TmpDir $ArchiveName "pm.bat"
+    if (Test-Path $WrapperScript) {
+        Write-Info "Installing wrapper script to repository root..."
+        Copy-Item $WrapperScript (Join-Path $RepoRoot "pm.bat") -Force
+        Write-Ok "Installed $(Join-Path $RepoRoot 'pm.bat')"
+    }
 }
 finally {
     # Clean up temp directory

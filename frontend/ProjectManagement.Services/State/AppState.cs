@@ -17,6 +17,7 @@ public sealed class AppState : IDisposable
     private readonly List<Action<ConnectionState>> _connectionStateCallbacks = new();
 
     public UserIdentity? CurrentUser => _currentUser;
+    public string? RepoRoot { get; set; }
 
     private bool _disposed;
 

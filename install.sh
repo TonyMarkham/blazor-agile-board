@@ -159,6 +159,14 @@ main() {
     cp "$tmp_dir/$archive_name/bin/pm-server" "$install_dir/" 2>/dev/null || true
     chmod +x "$install_dir/pm" "$install_dir/pm-server" 2>/dev/null || true
 
+    # Install wrapper script to repo root
+    if [ -f "$tmp_dir/$archive_name/pm" ]; then
+        info "Installing wrapper script to repository root..."
+        cp "$tmp_dir/$archive_name/pm" "$repo_root/pm"
+        chmod +x "$repo_root/pm"
+        ok "Installed ${repo_root}/pm"
+    fi
+
     # Install Tauri desktop app if present
     local app_installed=false
     if [ -d "$tmp_dir/$archive_name/bin/Project Manager.app" ]; then

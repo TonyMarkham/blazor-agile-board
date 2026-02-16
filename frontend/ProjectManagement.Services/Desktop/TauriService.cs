@@ -27,6 +27,7 @@
       private const string CommandWasmReady = "wasm_ready";
       private const string CommandRestartServer = "restart_server";
       private const string CommandExportDiagnostics = "export_diagnostics";
+      private const string CommandGetRepoRoot = "get_repo_root";
 
       // Event names (must match Rust event names in lib.rs)
       private const string EventServerStateChanged = "server-state-changed";
@@ -202,6 +203,17 @@
           var path = await InvokeTauriAsync<string>(CommandExportDiagnostics, ct);
           _logger.LogInformation("Diagnostics exported to: {Path}", path);
           return path;
+      }
+
+      /// <summary>
+      /// Gets the repository root directory path.
+      /// </summary>
+      public async Task<string> GetRepoRootAsync(CancellationToken ct = default)
+      {
+          ThrowIfDisposed();
+          await EnsureDesktopAsync();
+
+          return await InvokeTauriAsync<string>(CommandGetRepoRoot, ct);
       }
 
       private async Task<T> InvokeTauriAsync<T>(string command, CancellationToken ct)

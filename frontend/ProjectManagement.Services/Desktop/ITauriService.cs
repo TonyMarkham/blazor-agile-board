@@ -49,4 +49,9 @@ public interface ITauriService : IAsyncDisposable
     /// Exports diagnostics bundle and returns file path.
     /// </summary>
     Task<string> ExportDiagnosticsAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets the repository root directory path.
+    /// </summary>
+    Task<string> GetRepoRootAsync(CancellationToken ct = default);
 }

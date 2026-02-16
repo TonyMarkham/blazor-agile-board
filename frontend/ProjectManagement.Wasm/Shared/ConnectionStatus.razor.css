@@ -5,18 +5,19 @@
     padding: 0.25rem 0.5rem;
     border-radius: 4px;
     font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.85);
 }
 
-.connection-status.connected {
-    color: var(--rz-success);
+.connection-status.connected ::deep .connection-status-main {
+    color: #69f0ae;
 }
 
-.connection-status.connecting,
-.connection-status.reconnecting {
-    color: var(--rz-warning);
+.connection-status.connecting ::deep .connection-status-main,
+.connection-status.reconnecting ::deep .connection-status-main {
+    color: #ffd740;
 }
 
-.connection-status.disconnected,
-.connection-status.closed {
-    color: var(--rz-danger);
+.connection-status.disconnected ::deep .connection-status-main,
+.connection-status.closed ::deep .connection-status-main {
+    color: #ff5252;
 }  

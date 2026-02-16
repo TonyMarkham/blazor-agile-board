@@ -16,20 +16,22 @@
                      Style="height: 100%;">
             <RadzenStack Orientation="Orientation.Horizontal"
                          AlignItems="AlignItems.Center"
-                         Gap="0.75rem">
+                         Gap="0.75rem"
+                         Style="color: white;">
                 <RadzenIcon Icon="dashboard" Style="font-size: 1.5rem;" />
-                <RadzenStack Orientation="Orientation.Horizontal"
-                             AlignItems="AlignItems.Center"
-                             Gap="0.75rem">
-                    <RadzenIcon Icon="dashboard" Style="font-size: 1.5rem;" />
-                    <RadzenText TextStyle="TextStyle.H5" class="m-0">
-                        Agile Board
-                        @if (AppState.Projects.CurrentProject is { } project)
-                        {
-                            <span class="project-context text-muted"> / @project.Title</span>
-                        }
+                <RadzenText TextStyle="TextStyle.H5" class="m-0" Style="color: inherit;">
+                    Agile Board
+                    @if (AppState.Projects.CurrentProject is { } project)
+                    {
+                        <span class="project-context" style="opacity: 0.85;"> / @project.Title</span>
+                    }
+                </RadzenText>
+                @if (!string.IsNullOrEmpty(AppState.RepoRoot))
+                {
+                    <RadzenText TextStyle="TextStyle.Body2" class="m-0" Style="color: inherit; opacity: 0.7;">
+                        @AppState.RepoRoot
                     </RadzenText>
-                </RadzenStack>
+                }
             </RadzenStack>
             <ConnectionStatus />
         </RadzenStack>
