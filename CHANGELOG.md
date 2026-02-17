@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-02-16
+
 ### Added
 - Display server port in connection status widget (top-right header)
 - Display repo root directory path in header bar
@@ -51,5 +53,6 @@ Initial release with full agile board functionality and cross-platform desktop a
 - Tauri desktop shell with managed server lifecycle
 - Cargo workspace with centralized dependency management
 
-[Unreleased]: https://github.com/TonyMarkham/blazor-agile-board/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/TonyMarkham/blazor-agile-board/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/TonyMarkham/blazor-agile-board/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/TonyMarkham/blazor-agile-board/releases/tag/v0.1.0

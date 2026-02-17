@@ -1,9 +1,9 @@
 [package]
 name = "project-manager"
-version = "0.1.0"
+version.workspace = true
 description = "Agile project management desktop application"
 authors = ["Tony Markham"]
-edition = "2024"
+edition.workspace = true
 rust-version = "1.92.0"
 
 [lib]
