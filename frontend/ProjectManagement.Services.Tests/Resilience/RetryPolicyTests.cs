@@ -135,9 +135,21 @@
       [Fact]
       public async Task ExecuteAsync_DelayIncreases()
       {
+          // Use longer delays so OS scheduling overhead (~20ms) doesn't swamp the signal.
+          // With 50ms initial and 3x multiplier: delay2 ≈ 150ms vs delay1 ≈ 50ms,
+          // so even worst-case scheduling noise keeps delay2 well above delay1 * 1.5.
+          var options = Options.Create(new RetryPolicyOptions
+          {
+              MaxAttempts = 3,
+              InitialDelay = TimeSpan.FromMilliseconds(50),
+              MaxDelay = TimeSpan.FromMilliseconds(500),
+              BackoffMultiplier = 3.0
+          });
+          var policy = new RetryPolicy(options, _logger.Object);
+
           var attempts = new List<DateTime>();
 
-          var act = () => _sut.ExecuteAsync<int>(ct =>
+          var act = () => policy.ExecuteAsync<int>(ct =>
           {
               attempts.Add(DateTime.UtcNow);
               throw new ConnectionException("Failed");

@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Epic detail page now shows tasks nested under each child story, grouped with a left-border accent and subtle background for clear visual hierarchy
 - Each comment collapses to 100px by default with a fade and "Show more" toggle; page scroll handles expanded comments with no internal scrolling
+- Kanban board search box filters cards by key, title, or description
+- Kanban board sort by key (ascending or descending) in addition to position
 
 ### Fixed
 - Work item detail page now scrolls vertically; breadcrumbs and page header remain fixed

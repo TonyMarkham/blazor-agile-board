@@ -27,7 +27,12 @@
     <RadzenStack Orientation="Orientation.Horizontal"
                  Gap="1rem"
                  AlignItems="AlignItems.Center"
-                 class="mb-3">
+                 class="mb-3"
+                 Style="flex-wrap: wrap;">
+        <RadzenTextBox @bind-Value="_searchText"
+                       Placeholder="Search key, title, description…"
+                       Style="width: 260px;"
+                       @oninput="@(e => { _searchText = e.Value?.ToString() ?? ""; ApplyFilters(); })" />
         <RadzenDropDown @bind-Value="_typeFilter"
                         TValue="WorkItemType?"
                         Data="@TypeOptions"
@@ -36,6 +41,13 @@
                         Placeholder="All Types"
                         AllowClear="true"
                         Style="width: 140px;"
+                        Change="@(_ => ApplyFilters())" />
+        <RadzenDropDown @bind-Value="_sortBy"
+                        TValue="string"
+                        Data="@SortOptions"
+                        TextProperty="Text"
+                        ValueProperty="Value"
+                        Style="width: 130px;"
                         Change="@(_ => ApplyFilters())" />
         <RadzenStack Orientation="Orientation.Horizontal"
                      AlignItems="AlignItems.Center"
@@ -128,6 +140,8 @@
     // Filters
     private WorkItemType? _typeFilter;
     private bool _hideDone;
+    private string _searchText = "";
+    private string _sortBy = "position";
 
     // Column definitions
     private static readonly List<(string Status, string Title)> Columns = new()
@@ -144,6 +158,13 @@
         new { Text = "Epic", Value = WorkItemType.Epic },
         new { Text = "Story", Value = WorkItemType.Story },
         new { Text = "Task", Value = WorkItemType.Task }
+    };
+
+    private static readonly List<object> SortOptions = new()
+    {
+        new { Text = "Position", Value = "position" },
+        new { Text = "Key ↑", Value = "key_asc" },
+        new { Text = "Key ↓", Value = "key_desc" },
     };
 
     protected override void OnInitialized()
@@ -175,6 +196,15 @@
     {
         var query = _allItems.AsEnumerable();
 
+        if (!string.IsNullOrWhiteSpace(_searchText))
+        {
+            var term = _searchText.Trim();
+            query = query.Where(w =>
+                w.Title.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                (!string.IsNullOrEmpty(_projectKey) && w.GetDisplayKey(_projectKey).Contains(term, StringComparison.OrdinalIgnoreCase)) ||
+                (w.Description?.Contains(term, StringComparison.OrdinalIgnoreCase) == true));
+        }
+
         if (_typeFilter.HasValue)
         {
             query = query.Where(w => w.ItemType == _typeFilter.Value);
@@ -189,7 +219,12 @@
 
         _columnItems = _filteredItems
             .GroupBy(item => item.Status)
-            .ToDictionary(g => g.Key, g => g.OrderBy(w => w.Position).ToList());
+            .ToDictionary(g => g.Key, g => (_sortBy switch
+            {
+                "key_asc"  => g.OrderBy(w => w.ItemNumber),
+                "key_desc" => g.OrderByDescending(w => w.ItemNumber),
+                _          => g.OrderBy(w => w.Position)
+            }).ToList());
     }
 
     private void HandleDragStart(DragEventArgs e, Guid itemId)
