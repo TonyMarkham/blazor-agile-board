@@ -66,6 +66,13 @@ html, body {
     height: 100%;
     margin: 0;
     padding: 0;
+    overflow: hidden; /* Prevent browser-level scroll — layout handles scroll regions */
+}
+
+/* Radzen sets .rz-layout .rz-body { overflow: auto } in material-base.css.
+   Match that specificity to override it — nothing scrolls except our own scroll regions. */
+.rz-layout .rz-body {
+    overflow: hidden;
 }
 
 body {
