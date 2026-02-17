@@ -6,10 +6,18 @@
     margin-bottom: 0.25rem;
 }
 
-/* Scroll container for main content — breadcrumbs and page header remain fixed above.
-   64px Radzen header + 32px rz-p-4 padding + 33px breadcrumbs + 60px page header = 189px */
+/* Full-height flex column — fills the space inside rz-p-4.
+   96px = ~64px Radzen header + 32px rz-p-4 vertical padding. */
+.work-item-detail-page {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 96px);
+}
+
+/* Scroll container grows to fill whatever height remains after breadcrumbs and page header. */
 .work-item-detail-scroll {
-    height: calc(100vh - 189px);
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
     padding-bottom: 1.5rem;
 }

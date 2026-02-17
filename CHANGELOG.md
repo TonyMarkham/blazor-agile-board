@@ -11,10 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Epic detail page now shows tasks nested under each child story, grouped with a left-border accent and subtle background for clear visual hierarchy
+- Each comment collapses to 100px by default with a fade and "Show more" toggle; page scroll handles expanded comments with no internal scrolling
 
 ### Fixed
 - Work item detail page now scrolls vertically; breadcrumbs and page header remain fixed
+- Work item detail scroll region uses flexbox so variable-height titles don't break the layout
 - Sprint date range display no longer shows locale-dependent period (e.g. `Jan.` vs `Jan`) by pinning to InvariantCulture
+- Comment editor textarea now fills available horizontal space
 
 ## [0.1.1] - 2026-02-16
 

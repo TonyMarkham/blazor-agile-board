@@ -18,6 +18,7 @@
   {
       @foreach (var comment in Comments)
       {
+          var isExpanded = _expandedComments.Contains(comment.Id);
           <div class="comment @(CommentStore.IsPending(comment.Id) ? "pending" : "")">
               <div class="comment-header">
                   <RadzenText TextStyle="TextStyle.Subtitle2">
@@ -41,8 +42,17 @@
               }
               else
               {
-                  <MarkdownRenderer Content="@comment.Content" />
-                  
+                  <div class="comment-body @(isExpanded ? "expanded" : "collapsed")">
+                      <MarkdownRenderer Content="@comment.Content" />
+                  </div>
+                  @if (!isExpanded)
+                  {
+                      <div class="comment-body-fade" @onclick="() => ToggleComment(comment.Id)"></div>
+                  }
+                  <button class="comment-expand-btn" @onclick="() => ToggleComment(comment.Id)">
+                      @(isExpanded ? "Show less" : "Show more")
+                  </button>
+
                   @if (CanEditComment(comment))
                   {
                       <div class="comment-actions">
@@ -75,6 +85,13 @@
     private IReadOnlyList<Comment> Comments => CommentStore.GetComments(WorkItemId);
     private bool IsLoading { get; set; }
     private Guid? _editingCommentId;
+    private readonly HashSet<Guid> _expandedComments = new();
+
+    private void ToggleComment(Guid commentId)
+    {
+        if (!_expandedComments.Remove(commentId))
+            _expandedComments.Add(commentId);
+    }
 
     protected override async Task OnInitializedAsync()
     {

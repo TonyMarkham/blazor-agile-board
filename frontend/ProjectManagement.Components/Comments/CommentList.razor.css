@@ -52,3 +52,32 @@
     padding-top: 1rem;
     border-top: 1px solid var(--rz-border-color);
 }
+
+/* Per-comment collapse */
+.comment-body.collapsed {
+    max-height: 100px;
+    overflow: hidden;
+}
+
+.comment-body-fade {
+    height: 40px;
+    margin-top: -40px;
+    background: linear-gradient(to bottom, transparent, var(--rz-base-200));
+    cursor: pointer;
+    position: relative;
+}
+
+.comment-expand-btn {
+    display: block;
+    background: none;
+    border: none;
+    padding: 0.25rem 0;
+    font-size: 0.8rem;
+    color: var(--rz-primary);
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.comment-expand-btn:hover {
+    opacity: 0.8;
+}
