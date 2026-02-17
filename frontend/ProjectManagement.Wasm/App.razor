@@ -5,10 +5,13 @@
   @using ProjectManagement.Components.Desktop
   @using ProjectManagement.Wasm.Layout
   @implements IDisposable
+  @using Microsoft.Extensions.Options
+  @using ProjectManagement.Services.WebSocket
   @inject IDesktopConfigService DesktopConfig
   @inject ITauriService TauriService
   @inject UserIdentityService UserIdentityService
   @inject AppState AppState
+  @inject IOptions<WebSocketOptions> WsOptions
   @inject ILogger<App> Logger
 
   @switch (StartupState)
@@ -142,7 +145,11 @@
 
           try
           {
-              await DesktopConfig.WaitForServerAsync(ServerStartupTimeout, ct);
+              var wsUrl = await DesktopConfig.WaitForServerAsync(ServerStartupTimeout, ct);
+
+              // Set the actual WebSocket URL from the server
+              WsOptions.Value.ServerUrl = wsUrl;
+              Logger.LogInformation("WebSocket URL set to {Url}", wsUrl);
 
               // Fetch repo root for display in header
               try

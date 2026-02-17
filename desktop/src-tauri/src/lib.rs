@@ -69,13 +69,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
-            // Focus existing window on second instance attempt
-            if let Some(window) = app.get_webview_window("main") {
-                window.show().ok();
-                window.set_focus().ok();
-            }
-        }))
+        // Multiple instances allowed — each repo has its own .pm/ directory and server port
         .setup(|app| {
             let app_data_dir = app.path().app_data_dir()?;
 

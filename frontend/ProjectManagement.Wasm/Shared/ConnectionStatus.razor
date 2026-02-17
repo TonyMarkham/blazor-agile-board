@@ -1,4 +1,7 @@
+@using Microsoft.Extensions.Options
+@using ProjectManagement.Services.WebSocket
 @inject AppState AppState
+@inject IOptions<WebSocketOptions> WsOptions
 @implements IDisposable
 
 <div class="connection-status @GetStatusClass()" role="status" aria-live="polite">
@@ -19,6 +22,9 @@
         </span>
         <span class="metric">
             Pending: <strong>@_health.PendingRequestCount</strong>
+        </span>
+        <span class="metric">
+            Port: <strong>@GetPort()</strong>
         </span>
     </div>
 </div>
@@ -86,6 +92,19 @@
         if (_health.Latency == null) return "—";
         var ms = _health.Latency.Value.TotalMilliseconds;
         return $"{ms:0} ms";
+    }
+
+    private string GetPort()
+    {
+        try
+        {
+            var uri = new Uri(WsOptions.Value.ServerUrl);
+            return uri.Port.ToString();
+        }
+        catch
+        {
+            return "—";
+        }
     }
 
     public void Dispose()

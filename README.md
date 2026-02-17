@@ -108,6 +108,31 @@ The database is designed to be easily queryable by LLMs for project management a
 
 See [docs/llm-integration-guide.md](docs/llm-integration-guide.md) for details.
 
+## Installation
+
+Install the pre-built binaries into your repo's `.pm/bin/` directory:
+
+**Linux / macOS:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/TonyMarkham/blazor-agile-board/main/install.sh | bash
+```
+
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/TonyMarkham/blazor-agile-board/main/install.ps1 | iex
+```
+
+**Specific version:**
+```bash
+# Linux / macOS
+PM_VERSION=v0.1.0 curl -fsSL https://raw.githubusercontent.com/TonyMarkham/blazor-agile-board/main/install.sh | bash
+
+# Windows
+$env:PM_VERSION = "v0.1.0"; irm https://raw.githubusercontent.com/TonyMarkham/blazor-agile-board/main/install.ps1 | iex
+```
+
+Both scripts auto-detect your platform, download the correct archive from GitHub Releases, and install to `<repo>/.pm/bin/`.
+
 ## Development Status
 
 **Current Phase**: Implementation in progress
