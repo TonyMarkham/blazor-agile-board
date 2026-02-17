@@ -167,14 +167,13 @@ main() {
         ok "Installed ${repo_root}/pm"
     fi
 
-    # Install Tauri desktop app if present
+    # Install Tauri desktop app if present (must be adjacent to pm binary)
     local app_installed=false
     if [ -d "$tmp_dir/$archive_name/bin/Project Manager.app" ]; then
         info "Installing Tauri desktop app..."
-        local app_dir="${repo_root}/.pm"
-        cp -r "$tmp_dir/$archive_name/bin/Project Manager.app" "$app_dir/" 2>/dev/null || true
-        if [ -d "$app_dir/Project Manager.app" ]; then
-            ok "Installed desktop app to ${app_dir}/Project Manager.app"
+        cp -r "$tmp_dir/$archive_name/bin/Project Manager.app" "$install_dir/" 2>/dev/null || true
+        if [ -d "$install_dir/Project Manager.app" ]; then
+            ok "Installed desktop app to ${install_dir}/Project Manager.app"
             app_installed=true
         fi
     elif [ -f "$tmp_dir/$archive_name/bin/project-manager" ]; then
@@ -244,15 +243,15 @@ GITIGNORE
     echo ""
 
     if [ "$app_installed" = true ]; then
-        if [ -d "${repo_root}/.pm/Project Manager.app" ]; then
+        if [ -d "${install_dir}/Project Manager.app" ]; then
             echo "    Desktop App (macOS):"
-            echo "      • ${repo_root}/.pm/Project Manager.app"
+            echo "      • ${install_dir}/Project Manager.app"
             echo ""
             echo "  🚀 Launch Desktop App:"
-            echo "    open \"${repo_root}/.pm/Project Manager.app\""
+            echo "    open \"${install_dir}/Project Manager.app\""
             echo ""
             echo "    Or move to Applications folder:"
-            echo "    mv \"${repo_root}/.pm/Project Manager.app\" /Applications/"
+            echo "    mv \"${install_dir}/Project Manager.app\" /Applications/"
         elif [ -f "$install_dir/project-manager" ]; then
             echo "    Desktop App (Linux AppImage):"
             echo "      • ${install_dir}/project-manager"
