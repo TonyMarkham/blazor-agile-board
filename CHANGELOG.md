@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.2] - Unreleased
+## [0.1.2] - 2026-02-17
 
 ### Added
 - Epic detail page now shows tasks nested under each child story, grouped with a left-border accent and subtle background for clear visual hierarchy
@@ -67,6 +67,7 @@ Initial release with full agile board functionality and cross-platform desktop a
 - Tauri desktop shell with managed server lifecycle
 - Cargo workspace with centralized dependency management
 
-[Unreleased]: https://github.com/TonyMarkham/blazor-agile-board/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/TonyMarkham/blazor-agile-board/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/TonyMarkham/blazor-agile-board/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/TonyMarkham/blazor-agile-board/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/TonyMarkham/blazor-agile-board/releases/tag/v0.1.0
