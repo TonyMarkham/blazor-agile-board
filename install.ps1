@@ -71,7 +71,7 @@ Write-Info "Version: $Version"
 # Build download URL
 $VerNum = $Version -replace '^v', ''
 $ArchiveName = "pm-${VerNum}-${Target}"
-$ArchiveFile = "${ArchiveName}.tar.gz"
+$ArchiveFile = "${ArchiveName}.zip"
 $Url = "https://github.com/$Repo/releases/download/$Version/$ArchiveFile"
 
 # Create install directory
@@ -86,9 +86,9 @@ try {
     $ArchivePath = Join-Path $TmpDir $ArchiveFile
     Invoke-WebRequest -Uri $Url -OutFile $ArchivePath
 
-    # Extract archive (tar is available on Windows 10+)
+    # Extract archive
     Write-Info "Extracting to $InstallDir\..."
-    tar xzf $ArchivePath -C $TmpDir
+    Expand-Archive -Path $ArchivePath -DestinationPath $TmpDir -Force
 
     # Copy binaries
     $BinDir = Join-Path $TmpDir $ArchiveName "bin"
