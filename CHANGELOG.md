@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - Unreleased
+
+### Added
+- Epic detail page now shows tasks nested under each child story, grouped with a left-border accent and subtle background for clear visual hierarchy
+
+### Fixed
+- Work item detail page now scrolls vertically; breadcrumbs and page header remain fixed
+- Sprint date range display no longer shows locale-dependent period (e.g. `Jan.` vs `Jan`) by pinning to InvariantCulture
+
 ## [0.1.1] - 2026-02-16
 
 ### Added

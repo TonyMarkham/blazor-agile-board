@@ -1,3 +1,4 @@
+using System.Globalization;
 using ProjectManagement.Core.Models;
 
 namespace ProjectManagement.Core.ViewModels;
@@ -49,12 +50,14 @@ public sealed class SprintViewModel : IViewModel<Sprint>, IEquatable<SprintViewM
     /// <summary>
     /// Formatted date range for display (e.g., "Jan 15 - Jan 29").
     /// </summary>
-    public string DateRangeDisplay => $"{StartDate:MMM d} - {EndDate:MMM d}";
+    public string DateRangeDisplay =>
+        $"{StartDate.ToString("MMM d", CultureInfo.InvariantCulture)} - {EndDate.ToString("MMM d", CultureInfo.InvariantCulture)}";
 
     /// <summary>
     /// Full date range with year for clarity.
     /// </summary>
-    public string DateRangeDisplayFull => $"{StartDate:MMM d, yyyy} - {EndDate:MMM d, yyyy}";
+    public string DateRangeDisplayFull =>
+        $"{StartDate.ToString("MMM d, yyyy", CultureInfo.InvariantCulture)} - {EndDate.ToString("MMM d, yyyy", CultureInfo.InvariantCulture)}";
 
     /// <summary>
     /// Days remaining in the sprint (only meaningful when Active).

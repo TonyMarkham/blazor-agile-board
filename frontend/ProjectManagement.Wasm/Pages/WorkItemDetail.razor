@@ -101,7 +101,8 @@ else
         </div>
     </div>
 
-    @* Content *@
+    @* Scrollable content — breadcrumbs and page header stay fixed above *@
+    <div class="work-item-detail-scroll">
     <RadzenRow Gap="1.5rem">
         @* Main Content *@
         <RadzenColumn Size="12" SizeMD="8">
@@ -132,6 +133,20 @@ else
                                      OnSelect="@(item => NavigationManager.NavigateTo($"/workitem/{item.Id}"))"
                                      OnEdit="@HandleEditChild"
                                      OnDelete="@HandleDeleteChild" />
+                        @if (_grandchildren.TryGetValue(child.Id, out var tasks) && tasks.Count > 0)
+                        {
+                            <div class="child-task-group">
+                                @foreach (var task in tasks)
+                                {
+                                    <WorkItemRow Item="@task"
+                                                 ProjectKey="@_project?.Key"
+                                                 IsConnected="@_isConnected"
+                                                 OnSelect="@(item => NavigationManager.NavigateTo($"/workitem/{item.Id}"))"
+                                                 OnEdit="@HandleEditChild"
+                                                 OnDelete="@HandleDeleteChild" />
+                                }
+                            </div>
+                        }
                     }
                 </div>
             }
@@ -215,6 +230,7 @@ else
             </div>
         </RadzenColumn>
     </RadzenRow>
+    </div>
 }
 
 @code {
@@ -225,6 +241,7 @@ else
     private ProjectViewModel? _project;
     private SprintViewModel? _sprint;
     private List<WorkItemViewModel> _children = new();
+    private Dictionary<Guid, List<WorkItemViewModel>> _grandchildren = new();
     private bool _loading = true;
     private bool _initialLoadComplete = false;
     private bool _isConnected = true;
@@ -287,6 +304,13 @@ else
             // Load children
             var children = AppState.WorkItems.GetChildren(WorkItemId);
             _children = ViewModelFactory.CreateMany(children).ToList();
+
+            // Load grandchildren (tasks under stories)
+            _grandchildren = _children
+                .Where(c => c.ItemType == WorkItemType.Story)
+                .ToDictionary(
+                    c => c.Id,
+                    c => ViewModelFactory.CreateMany(AppState.WorkItems.GetChildren(c.Id) ?? []).ToList());
 
             // Build parent chain for breadcrumbs (Epic → Story → Task order)
             _parentChain = BuildParentChain(_workItem);
