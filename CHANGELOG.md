@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-02-17
+
+### Added
+- Installer copies Claude Code skill file (SKILL.md) to `.claude/skills/pm/` for auto-discovery
+- Release archive now includes `skills/pm/SKILL.md`
+
+### Fixed
+- macOS archive no longer includes bare `project-manager` binary (only the `.app` bundle); Linux binary is still included when no `.app` exists
+
 ## [0.1.2] - 2026-02-17
 
 ### Added
