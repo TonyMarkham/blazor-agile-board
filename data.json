@@ -338,7 +338,7 @@
       "id": "82a95ff2-4bad-4048-834f-58c29a1c4176"
     }
   ],
-  "exported_at": "2026-02-12T21:44:04.581318+00:00",
+  "exported_at": "2026-02-18T03:41:06.323774900+00:00",
   "exported_by": "pm-server",
   "projects": [
     {
@@ -347,7 +347,7 @@
       "description": "",
       "id": "8d96310e-1e69-4dc5-9529-5c173674ab90",
       "key": "PONE",
-      "next_work_item_number": 126,
+      "next_work_item_number": 99,
       "status": "active",
       "title": "P1",
       "updated_at": 1770651588,
@@ -629,9 +629,9 @@
       "status": "done",
       "story_points": null,
       "title": "Foundation: Markdown libraries and renderer component",
-      "updated_at": 1770676098,
-      "updated_by": "00000000-0000-0000-0000-000000000001",
-      "version": 6
+      "updated_at": 1771360450,
+      "updated_by": "83573002-5eaf-4ae1-af46-792a1a3bf9f5",
+      "version": 10
     },
     {
       "assignee_id": null,
@@ -734,9 +734,9 @@
       "status": "done",
       "story_points": null,
       "title": "Handle work items with no parents",
-      "updated_at": 1770663298,
-      "updated_by": "00000000-0000-0000-0000-000000000001",
-      "version": 6
+      "updated_at": 1771360448,
+      "updated_by": "83573002-5eaf-4ae1-af46-792a1a3bf9f5",
+      "version": 10
     },
     {
       "assignee_id": null,
@@ -839,9 +839,9 @@
       "status": "done",
       "story_points": null,
       "title": "Add ValidationConfig field to HandlerContext",
-      "updated_at": 1770932580,
-      "updated_by": "00000000-0000-0000-0000-000000000001",
-      "version": 5
+      "updated_at": 1771360451,
+      "updated_by": "83573002-5eaf-4ae1-af46-792a1a3bf9f5",
+      "version": 9
     },
     {
       "assignee_id": null,

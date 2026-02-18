@@ -60,7 +60,9 @@ impl AuthConfig {
             (None, Some(path)) => {
                 // Validate path is relative and within config dir (prevent path traversal)
                 let key_path = std::path::Path::new(path);
-                if key_path.is_absolute() {
+                // is_absolute() returns false on Windows for Unix-style paths (/etc/passwd),
+                // so also reject anything starting with '/' to be cross-platform.
+                if key_path.is_absolute() || path.starts_with('/') {
                     return Err(ConfigError::auth(
                         "auth.jwt_public_key_path must be relative to config directory",
                     ));

@@ -156,7 +156,12 @@ impl Config {
 
         // Validate database path doesn't escape config dir
         let db_path = std::path::Path::new(&self.database.path);
-        if db_path.is_absolute() || self.database.path.contains("..") {
+        // is_absolute() returns false on Windows for Unix-style paths (/tmp/data.db),
+        // so also reject anything starting with '/' to be cross-platform.
+        if db_path.is_absolute()
+            || self.database.path.starts_with('/')
+            || self.database.path.contains("..")
+        {
             return Err(ConfigError::database(
                 "database.path must be relative and cannot contain '..'",
             ));

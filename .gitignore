@@ -3,6 +3,10 @@ target/
 **/*.rs.bk
 *.pdb
 
+# Claude Code
+.claude/*
+!.claude/settings.local.json
+
 # Blazor / .NET
 bin/
 obj/
