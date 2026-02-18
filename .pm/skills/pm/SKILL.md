@@ -17,6 +17,78 @@ Examples use `./pm` (bash). On Windows use `pm.bat` instead.
 
 **IMPORTANT:** The `pm` and `pm.bat` scripts are in the **repository root**, not in the skill directory. The skill directory only contains this documentation.
 
+## STOP — Read This Before Running Commands
+
+**`work-item create --parent-id` does NOT resolve display keys.** It requires a UUID. The recommended pattern for creating hierarchies is to capture UUIDs from previous commands:
+
+```bash
+EPIC=$(./pm work-item create --project-id "$PROJECT_ID" --type epic --title "My Epic" --pretty)
+EPIC_ID=$(echo "$EPIC" | jq -r '.work_item.id')
+
+./pm work-item create --project-id "$PROJECT_ID" --type task \
+  --parent-id "$EPIC_ID" --title "My Task" --pretty
+```
+
+**If you get `Invalid UUID format` errors**, you are passing a display key (like `PONE-123`) or project key (like `PONE`) where a UUID is required. Check the "What accepts display keys" table below — if your command/flag is not listed, use a UUID.
+
+## Display Key Resolution
+
+**You can use human-readable keys instead of UUIDs in read/update/delete commands.**
+
+The CLI automatically resolves:
+- **Display keys** (like `PONE-123`) for work items
+- **Project keys** (like `PONE`) for projects
+
+**This does NOT work everywhere.** Check the tables below for exactly which commands and flags support key resolution.
+
+### Examples
+
+```bash
+# Get a work item by display key instead of UUID
+./pm work-item get PONE-123 --pretty
+
+# List work items using project key
+./pm work-item list PONE --pretty
+
+# Update work item status using display key
+./pm work-item update PONE-123 \
+  --version 1 \
+  --status in_progress --pretty
+
+# Create dependency between work items using display keys
+./pm dependency create \
+  --blocking PONE-123 \
+  --blocked PONE-124 \
+  --type blocks --pretty
+
+# Export a work item using display key
+./pm sync export work-item PONE-123 \
+  --descendant-levels 2 --comments --pretty
+```
+
+**What accepts display keys (work item keys like `PONE-123`):**
+- Work item: `get`, `update`, `delete` — positional ID argument
+- Work item `list`: `--parent-id`, `--descendants-of` flags
+- Comment: `list`, `create` — `--work-item-id` flag
+- Dependency: `list`, `create` — `--blocking`, `--blocked` flags
+- Time entry: `list`, `create` — `--work-item-id` flag
+- Sync: `export work-item` — positional ID argument
+
+**What accepts project keys (like `PONE`):**
+- Project: `get`, `update`, `delete` — positional ID argument
+- Work item: `list` — positional project-id argument
+- Sprint: `list` — positional project-id argument
+- Swim lane: `list` — positional project-id argument
+
+**What does NOT accept display keys or project keys (UUID ONLY):**
+- **`work-item create --parent-id`** — requires UUID
+- **`work-item create --project-id`** — requires UUID
+- **`sprint create --project-id`** — requires UUID
+- **`work-item update --parent-id`** — requires UUID
+- Any `--assignee-id`, `--sprint-id` flag — requires UUID
+
+**UUIDs always work:** All commands that accept keys also accept UUIDs.
+
 ## When to Use This Skill
 
 Use the pm-cli when you need to:

@@ -106,6 +106,16 @@ try {
         Copy-Item $WrapperScript (Join-Path $RepoRoot "pm.bat") -Force
         Write-Ok "Installed $(Join-Path $RepoRoot 'pm.bat')"
     }
+
+    # Install Claude Code skill file
+    $SkillFile = Join-Path $TmpDir $ArchiveName "skills" "pm" "SKILL.md"
+    if (Test-Path $SkillFile) {
+        Write-Info "Installing Claude Code skill..."
+        $SkillDir = Join-Path $RepoRoot ".claude" "skills" "pm"
+        New-Item -ItemType Directory -Path $SkillDir -Force | Out-Null
+        Copy-Item $SkillFile (Join-Path $SkillDir "SKILL.md") -Force
+        Write-Ok "Installed .claude\skills\pm\SKILL.md"
+    }
 }
 finally {
     # Clean up temp directory

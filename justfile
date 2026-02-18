@@ -534,14 +534,16 @@ _archive-impl:
     @echo "Creating archive: {{dist_dir}}/{{archive_name}}.tar.gz"
     @test -f target/release/pm || (echo "ERROR: pm binary not found in target/release/"; exit 1)
     @test -f target/release/pm-server || (echo "ERROR: pm-server binary not found in target/release/"; exit 1)
-    @test -f target/release/project-manager || (echo "ERROR: project-manager binary not found in target/release/"; exit 1)
     mkdir -p {{dist_dir}}/{{archive_name}}/bin
     cp target/release/pm {{dist_dir}}/{{archive_name}}/bin/
     cp target/release/pm-server {{dist_dir}}/{{archive_name}}/bin/
-    cp target/release/project-manager {{dist_dir}}/{{archive_name}}/bin/
     cp pm {{dist_dir}}/{{archive_name}}/
+    mkdir -p {{dist_dir}}/{{archive_name}}/skills/pm
+    cp .pm/skills/pm/SKILL.md {{dist_dir}}/{{archive_name}}/skills/pm/
     @if [ -d "target/release/bundle/macos/Project Manager.app" ]; then \
         cp -r "target/release/bundle/macos/Project Manager.app" {{dist_dir}}/{{archive_name}}/bin/; \
+    elif [ -f target/release/project-manager ]; then \
+        cp target/release/project-manager {{dist_dir}}/{{archive_name}}/bin/; \
     fi
     cd {{dist_dir}} && tar czf {{archive_name}}.tar.gz {{archive_name}}/
     @echo ""
@@ -559,6 +561,8 @@ _archive-impl:
     @Copy-Item "target/release/pm-server.exe" "{{dist_dir}}/{{archive_name}}/bin/"
     @if (Test-Path "target/release/project-manager.exe") { Copy-Item "target/release/project-manager.exe" "{{dist_dir}}/{{archive_name}}/bin/" }
     @Copy-Item "pm.bat" "{{dist_dir}}/{{archive_name}}/"
+    @New-Item -ItemType Directory -Force -Path "{{dist_dir}}/{{archive_name}}/skills/pm" | Out-Null
+    @Copy-Item ".pm/skills/pm/SKILL.md" "{{dist_dir}}/{{archive_name}}/skills/pm/"
     @Compress-Archive -Path "{{dist_dir}}/{{archive_name}}" -DestinationPath "{{dist_dir}}/{{archive_name}}.zip" -Force
     @echo ""
     @echo "Archive created: {{dist_dir}}/{{archive_name}}.zip"

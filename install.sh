@@ -167,6 +167,14 @@ main() {
         ok "Installed ${repo_root}/pm"
     fi
 
+    # Install Claude Code skill file
+    if [ -f "$tmp_dir/$archive_name/skills/pm/SKILL.md" ]; then
+        info "Installing Claude Code skill..."
+        mkdir -p "$repo_root/.claude/skills/pm"
+        cp "$tmp_dir/$archive_name/skills/pm/SKILL.md" "$repo_root/.claude/skills/pm/SKILL.md"
+        ok "Installed .claude/skills/pm/SKILL.md"
+    fi
+
     # Install Tauri desktop app if present (must be adjacent to pm binary)
     local app_installed=false
     if [ -d "$tmp_dir/$archive_name/bin/Project Manager.app" ]; then
