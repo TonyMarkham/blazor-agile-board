@@ -5,7 +5,8 @@
         <Tabs>
             <RadzenTabsItem Text="Write">
                 <RadzenTextArea
-                    @bind-Value="@Value"
+                    Value="@Value"
+                    ValueChanged="@HandleValueChanged"
                     Rows="10"
                     Class="markdown-textarea"
                     Placeholder="Write markdown here..." />
@@ -22,4 +23,10 @@
 @code {
     [Parameter] public string? Value { get; set; }
     [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+
+    private async Task HandleValueChanged(string? newValue)
+    {
+        Value = newValue;
+        await ValueChanged.InvokeAsync(newValue);
+    }
 }

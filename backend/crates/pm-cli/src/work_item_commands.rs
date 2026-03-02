@@ -4,23 +4,23 @@ use clap::Subcommand;
 pub enum WorkItemCommands {
     /// Create a new work item
     Create {
-        /// Project ID (UUID or project key like "PONE")
+        /// Project ID (UUID). Required unless provided in --from-toml file.
         #[arg(long)]
-        project_id: String,
+        project_id: Option<String>,
 
-        /// Item type: epic, story, or task
+        /// Item type: epic, story, or task. Required unless in --from-toml file.
         #[arg(long, value_parser = ["epic", "story", "task"])]
-        r#type: String,
+        r#type: Option<String>,
 
-        /// Work item title
+        /// Work item title. Required unless provided in --from-toml file.
         #[arg(long)]
-        title: String,
+        title: Option<String>,
 
-        /// Work item description
+        /// Work item description (prefer --from-toml for multi-line markdown)
         #[arg(long)]
         description: Option<String>,
 
-        /// Parent work item ID (UUID or display key like "PONE-123")
+        /// Parent work item ID (UUID — display keys not supported here)
         #[arg(long)]
         parent_id: Option<String>,
 
@@ -31,6 +31,11 @@ pub enum WorkItemCommands {
         /// Priority: low, medium, high, critical (default: medium)
         #[arg(long)]
         priority: Option<String>,
+
+        /// Load fields from a TOML file. CLI flags override file values.
+        /// Required fields (project_id, type, title) can be in the file instead of CLI.
+        #[arg(long, value_name = "PATH")]
+        from_toml: Option<String>,
     },
 
     /// Get a work item by ID
@@ -118,7 +123,12 @@ pub enum WorkItemCommands {
         #[arg(long)]
         position: Option<i32>,
 
-        /// Expected version (required for optimistic locking)
+        /// Load fields from a TOML file. CLI flags override file values.
+        /// Note: --version cannot come from the TOML file (must be on CLI).
+        #[arg(long, value_name = "PATH")]
+        from_toml: Option<String>,
+
+        /// Expected version for optimistic locking (required)
         #[arg(long)]
         version: i32,
     },

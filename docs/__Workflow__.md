@@ -2,11 +2,11 @@
 
 ### Plan
 
-Use Cluade Code's Panning Mode and allow it to create and itterate on the original plan
+Use Claude Code's Panning Mode and allow it to create and itterate on the original plan
 
 ### Plan > PM
 ```text
-- use the /pm skill to transfer the plan to the Agile Board.
+- use the /pm skill to transfer the `docs/TENANT_ONBOARDING_PLAN.md`plan to the PONE project on the Agile Board.
 - Use proper Agile Techniques to organize Epics > Stories > Tasks 
 - Use the tasks to show a concrete implementation complete with production-grade code snippets
 - The tasks should also be written with well thought out explanations above each code block to give humans well structured context
@@ -16,25 +16,27 @@ Use Cluade Code's Panning Mode and allow it to create and itterate on the origin
 
 ### Review
 ```text
-- use /pm to find PONE-190
+- use /pm to find PONE-16
 - Review all descendant tasks.
-- Write the review as a comment on PONE-190
+- Write the review as a comment on PONE-16
 
-**CRITICAL** MUST USE /pm !!!
+PONE-14 and 15 epics have already been implemented, so there is production code in the repo to reference if needed
 ```
 
 ### Address Review
 ```text
-- use /pm to find PONE-190
+- use /pm to find PONE-16
 - Address the review in the latest comment
 - use the /pro-rust skill to align with my preferred patterns
+
+Make sure everything complies with /pro-rust
 
 **CRITICAL** MUST USE /pm !!!
 ```
 
 ### Implement
 ```text
-- use /pm to find PONE-190
+- use /pm to find PONE-16
 - Review all descendant tasks.
 - read `CRITICAL_OPERATING_CONSTRAINTS.md`
 - Teach me by presenting bite-sized chunks for me to write/edit keeping the commentary separate from the code snippets to make the code snippets easier for me to follow
@@ -43,13 +45,12 @@ Use Cluade Code's Panning Mode and allow it to create and itterate on the origin
 **CRITICAL** MUST USE /pm !!!
 ```
 
+### Validate
 ```text
-- use /pm to find PONE-190
-- Review all descendant tasks.
-- Pick up at story PONE-160 / Task PONE-177
+- use /pm to find PONE-16
 - read `CRITICAL_OPERATING_CONSTRAINTS.md`
-- Teach me by presenting bite-sized chunks for me to write/edit keeping the commentary separate from the code snippets to make the code snippets easier for me to follow
-- As each `work-item` is finished, use `./pm` to move it to `review`
+- Review all descendant tasks.
+- Identify any gaps that might have been skipped when implementing all of the work items in this repo.
 
 **CRITICAL** MUST USE /pm !!!
 ```
@@ -58,7 +59,122 @@ Use Cluade Code's Panning Mode and allow it to create and itterate on the origin
 ```text
 I have staged all files, please commit without a byline.
 ```
+---
 
+---
+
+---
+
+---
+
+### Super-Audit
+```markdown
+Use /pm to audit PONE-16 and all its descendants.
+
+## RULES — READ THESE BEFORE DOING ANYTHING ELSE
+
+1. **DO NOT USE SUB-AGENTS** Fetch each item yourself. Sub-Agents summarize and that breaks your task.
+
+2. **ONE TASK AT A TIME.** Fetch each work item individually with `$PM work-item get`. Do NOT bulk-export. Do NOT process multiple tasks
+in one step.
+
+3. Use the `--output-toml` flag when getting each work item.
+
+4. **YOU ARE AN AUDITOR, NOT A PLANNER.** Your only job is to find bugs in the implementation code inside each task's description. Not
+praise. Not planning feedback. BUGS.
+
+5. **WRITE FINDINGS TO A FILE.** Create `/tmp/pone16_audit.md`. After auditing each task, APPEND that task's bugs to the file. Do not post
+anything to the PM system until ALL tasks are done.
+
+6. **POST ONE COMMENT ON THE EPIC ONLY.** When every task has been audited, post the entire `/tmp/pone16_audit.md` content as a single
+comment on PONE-16 using `$PM comment create`.
+
+## HOW TO AUDIT EACH TASK
+
+For every task with code in the description:
+- Read EVERY line of code. Not a summary — every line.
+- Check for: compile errors, missing imports, wrong API signatures, incorrect types, race conditions, silent failures, wrong table/field names, inconsistencies with peer tasks
+- Cross-reference signatures against other tasks (e.g. if Task A calls a function defined in Task B, verify the call matches the definition)
+- For Rust: check `.len()` vs `.chars().count()`, missing `#[derive]`, blocking in async, `query_scalar!` macro on runtime DBs, missing PRAGMAs, `unwrap_or_default()` swallowing errors
+- For tests: check that assertions actually test what they claim, that setup inserts into the correct tables, that RAII guards use the correct APIs
+- Audit the entire task, do not only criticize the low-hanging fruit. Remember you are THE Gordon Ramsay!
+- Do not invent gap(s)/bug(s), be honest.
+
+## FOR EACH BUG FOUND
+
+Document with: Task ID, severity (Critical/Serious/Minor), exact code quote, explanation of why it's wrong, fix.
+
+## SEVERITY GUIDE
+- **Critical (-15)**: Won't compile, data corruption, assertion always passes/fails regardless of behaviour
+- **Serious (-10)**: Race condition, wrong table/field, silent failure, API mismatch
+- **Minor (-3)**: Style, redundant code, missing index
+
+## SCORING
+Start at 100. Add +5 good structure, +10 if code exists in tasks. Subtract all bug deductions. Show the maths.
+
+## START
+1. List all descendants: `$PM work-item list PONE --descendants-of PONE-16 --include-done`
+2. Record the full list of IDs
+3. Fetch and audit EACH ONE individually, appending findings to `/tmp/pone16_audit.md`
+4. When ALL tasks are done, post the file contents as a comment on PONE-16
+```
+
+
+### Address Super-Audit
+```markdown
+- Use /pm to read the last comment on PONE-16.
+- The review is of the implementation outlined in each Task's Description.
+- Audit the review and build a todo list of Agile Board Task Descriptions that need to address the identified bug(s)/gap(s)
+
+## RULES — READ THESE BEFORE DOING ANYTHING ELSE
+
+1. **DO NOT USE SUB-AGENTS** Fetch each item yourself. Sub-Agents summarize and that breaks your task.
+
+2. **ONE TASK AT A TIME.** Fetch each work item individually with `$PM work-item get`. Do NOT bulk-export. Do NOT process multiple tasks in one step.
+
+3. Use the `--output-toml` flag when getting each work item.
+
+4. Modify the work item description in the toml.
+
+5. Update each work item using the modified toml and the `--from-toml` flag.
+
+6. Identify if **THIS** Task was flagged as having any issue(s) in the review.
+
+7. While addressing the issue(s) ensure that everything complies with /pro-rust
+
+8. **POST ONE COMMENT ON THE TASK ONLY IF IT WAS MODIFIED** If you chose to modify **THIS** Task, add a comment to it identifying what you changed and why.
+
+9. **DO NOT REMOVE CODE BLOCKS WITH EXPLICITLY GETTING HUMAN INVOLVED**
+```
+
+### Address Super-Audit
+```markdown
+- Use /pm to read the last comment on PONE-16.
+- **DO NOT USE SUB-AGENTS** Fetch each item yourself. Sub-Agents summarize and that breaks your task.
+- From the comment, identify the Tasks that have issues.
+- Create a todo that identified the work that you need to perform in this session.
+
+## RESOLUTION RULES — READ THESE BEFORE DOING ANYTHING ELSE
+
+1. Make sure everything complies with /pro-rust
+
+2. **POST ONE COMMENT ON THE TASK ONLY IF IT WAS MODIFIED** If you chose to modify **THIS** Task, add a comment to it identifying what you changed and why.
+
+3. **DO NOT REMOVE CODE BLOCKS WITH EXPLICITLY GETTING HUMAN INVOLVED**
+
+## START
+1. List all descendants: `$PM work-item list PONE --descendants-of PONE-16`
+2. Record the full list of IDs
+3. Fetch and audit EACH ONE individually
+```
+
+### Individual
+```text
+- Use /pm to audit PONE-126 (Story) and PONE-127 (Task)
+- Do **NOT** use a sub-agent
+- Strip out any commentary about fixing issues.
+- Leave in commentary about what this task is for and what and code blocks are doing.
+```
 ---
 
 ---

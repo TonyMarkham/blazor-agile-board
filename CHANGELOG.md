@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.4] - Unreleased
 
+### Fixed
+- `--output-toml` → edit → `--from-toml` round-trip now works: the `[work_item]` wrapper and server-only fields (`id`, `created_at`, `version`, etc.) are automatically handled on import
+- Work item descriptions typed in the GUI were silently discarded on save due to `MarkdownEditor` never firing `ValueChanged`; both create and update are now fixed
+
+### Changed
+- `WorkItemToml` no longer uses `deny_unknown_fields`, allowing full API responses to be used directly as `--from-toml` input
+
+### Documentation
+- SKILL.md: added round-trip edit workflow (get → edit → update with the same TOML file, no jq needed)
+
 ## [0.1.3] - 2026-02-17
 
 ### Added

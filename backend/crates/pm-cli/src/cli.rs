@@ -22,4 +22,8 @@ pub struct Cli {
     /// Pretty-print JSON output
     #[arg(long, global = true)]
     pub(crate) pretty: bool,
+
+    /// Write response to a TOML file (handles markdown safely; stdout still receives JSON)
+    #[arg(long, global = true, value_name = "PATH")]
+    pub(crate) output_toml: Option<String>,
 }

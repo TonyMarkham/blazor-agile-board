@@ -26,6 +26,7 @@ mod swim_lane_commands;
 mod sync_commands;
 mod time_entry_commands;
 mod work_item_commands;
+mod work_item_toml;
 
 use crate::{
     cli::Cli,
@@ -39,6 +40,7 @@ use crate::{
     sync_commands::SyncCommands,
     time_entry_commands::TimeEntryCommands,
     work_item_commands::WorkItemCommands,
+    work_item_toml::WorkItemToml,
 };
 
 use pm_cli::Client;
@@ -148,11 +150,69 @@ async fn main() -> ExitCode {
                 parent_id,
                 status,
                 priority,
+                from_toml,
             } => {
+                // Load TOML base if --from-toml is provided
+                let base = if let Some(ref path) = from_toml {
+                    match load_work_item_toml(path).await {
+                        Ok(t) => t,
+                        Err(e) => {
+                            eprintln!("Error: {}", e);
+                            return ExitCode::FAILURE;
+                        }
+                    }
+                } else {
+                    WorkItemToml::default()
+                };
+
+                // CLI flags take precedence over TOML values
+                let project_id = project_id.or(base.project_id);
+                let item_type = r#type.or(base.item_type);
+                let title = title.or(base.title);
+                let description = description.or(base.description);
+                let parent_id = parent_id.or(base.parent_id);
+                let status = status.or(base.status);
+                let priority = priority.or(base.priority);
+
+                // Validate item_type when present — TOML bypasses clap's value_parser.
+                // Runs before required-field check so item_type is still Option here.
+                if let Some(ref t) = item_type {
+                    if !["epic", "story", "task"].contains(&t.as_str()) {
+                        eprintln!(
+                            "Error: --type must be 'epic', 'story', or 'task'. Got: '{}'",
+                            t
+                        );
+                        return ExitCode::FAILURE;
+                    }
+                }
+
+                // Validate required fields — report only what's actually missing
+                let mut missing = vec![];
+                if project_id.is_none() {
+                    missing.push("--project-id");
+                }
+                if item_type.is_none() {
+                    missing.push("--type");
+                }
+                if title.is_none() {
+                    missing.push("--title");
+                }
+                if !missing.is_empty() {
+                    eprintln!(
+                        "Error: {} required. Provide via CLI flags or include in the --from-toml file.",
+                        missing.join(", ")
+                    );
+                    return ExitCode::FAILURE;
+                }
+
+                // Safe: all three guaranteed Some by the required-fields check above
+                let (project_id, item_type, title) =
+                    (project_id.unwrap(), item_type.unwrap(), title.unwrap());
+
                 client
                     .create_work_item(
                         &project_id,
-                        &r#type,
+                        &item_type,
                         &title,
                         description.as_deref(),
                         parent_id.as_deref(),
@@ -197,8 +257,56 @@ async fn main() -> ExitCode {
                 parent_id,
                 update_parent,
                 position,
+                from_toml,
                 version,
             } => {
+                // Load TOML base if --from-toml is provided
+                let base = if let Some(ref path) = from_toml {
+                    match load_work_item_toml(path).await {
+                        Ok(t) => t,
+                        Err(e) => {
+                            eprintln!("Error: {}", e);
+                            return ExitCode::FAILURE;
+                        }
+                    }
+                } else {
+                    WorkItemToml::default()
+                };
+
+                // CLI flags take precedence over TOML values for all optional fields.
+                // Capture cli_had_parent BEFORE the merge so the warning below is accurate.
+                let cli_had_parent = parent_id.is_some();
+                let toml_parent_id = base.parent_id;
+
+                let title = title.or(base.title);
+                let description = description.or(base.description);
+                let status = status.or(base.status);
+                let priority = priority.or(base.priority);
+                let assignee_id = assignee_id.or(base.assignee_id);
+                let sprint_id = sprint_id.or(base.sprint_id);
+                let story_points = story_points.or(base.story_points);
+                let position = position.or(base.position);
+                let parent_id = parent_id.or(toml_parent_id.clone());
+
+                // Validate story_points range — TOML bypasses any CLI-level validator.
+                if let Some(sp) = story_points {
+                    if !(0..=100).contains(&sp) {
+                        eprintln!("Error: story_points must be between 0 and 100, got {}", sp);
+                        return ExitCode::FAILURE;
+                    }
+                }
+
+                // Warn when parent_id came from TOML but --update-parent is not set.
+                // Without --update-parent the server ignores parent_id entirely —
+                // the reparent silently won't happen.
+                if !cli_had_parent && toml_parent_id.is_some() && !update_parent {
+                    eprintln!(
+                        "Warning: parent_id was loaded from the TOML file but \
+                           --update-parent is not set. Parent will NOT be changed. \
+                           Add --update-parent to the CLI command to reparent."
+                    );
+                }
+
                 client
                     .update_work_item(
                         &id,
@@ -310,26 +418,43 @@ async fn main() -> ExitCode {
         },
     };
 
-    // Handle result
-    match result {
-        Ok(value) => {
-            let output = if cli.pretty {
-                serde_json::to_string_pretty(&value)
-            } else {
-                serde_json::to_string(&value)
-            };
-
-            match output {
-                Ok(json) => {
-                    println!("{}", json);
-                    ExitCode::SUCCESS
-                }
-                Err(e) => {
-                    eprintln!("Error serializing response: {}", e);
-                    ExitCode::FAILURE
-                }
-            }
+    // Handle command errors (pm_cli::ClientError — no From conversion needed)
+    let value = match result {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            return ExitCode::FAILURE;
         }
+    };
+
+    // Handle output phase — JSON always printed first, TOML file write is advisory.
+    // All errors here are crate::client::error::ClientError, so ? works cleanly.
+    let output_result: CliClientResult<()> = async {
+        // Always emit JSON to stdout first — jq pipelines remain unaffected
+        // even if the subsequent TOML file write fails.
+        let json = if cli.pretty {
+            serde_json::to_string_pretty(&value).map_err(ClientError::from_json)?
+        } else {
+            serde_json::to_string(&value).map_err(ClientError::from_json)?
+        };
+        println!("{}", json);
+
+        // Then attempt the optional TOML file write. Failure sets a non-zero exit
+        // but does not suppress the JSON already written to stdout.
+        if let Some(toml_path) = &cli.output_toml {
+            let cleaned = homogenize_arrays(strip_nulls(value));
+            let content = toml::to_string_pretty(&cleaned).map_err(ClientError::from_toml_ser)?;
+            tokio::fs::write(toml_path, content)
+                .await
+                .map_err(ClientError::from_io)?;
+        }
+
+        Ok(())
+    }
+    .await;
+
+    match output_result {
+        Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             eprintln!("Error: {}", e);
             ExitCode::FAILURE
@@ -516,4 +641,111 @@ fn find_tauri_binary(pm_dir: &std::path::Path) -> Option<PathBuf> {
     }
 
     None
+}
+
+/// Recursively remove null values from a JSON structure.
+///
+/// TOML has no null type — the toml serializer errors on nulls.
+/// Null object values are filtered by key; null array elements are filtered by position.
+fn strip_nulls(value: serde_json::Value) -> serde_json::Value {
+    match value {
+        serde_json::Value::Object(map) => serde_json::Value::Object(
+            map.into_iter()
+                .filter(|(_, v)| !v.is_null())
+                .map(|(k, v)| (k, strip_nulls(v)))
+                .collect(),
+        ),
+        serde_json::Value::Array(arr) => serde_json::Value::Array(
+            arr.into_iter()
+                .filter(|v| !v.is_null())
+                .map(strip_nulls)
+                .collect(),
+        ),
+        other => other,
+    }
+}
+
+/// Returns true if two JSON values map to the same TOML type.
+///
+/// `std::mem::discriminant` is insufficient for `Value::Number` because
+/// both integer and float share the `Number` variant. TOML distinguishes
+/// integers from floats, so we use `is_f64()` to tell them apart.
+fn same_toml_type(a: &serde_json::Value, b: &serde_json::Value) -> bool {
+    use serde_json::Value;
+    match (a, b) {
+        (Value::Number(x), Value::Number(y)) => x.is_f64() == y.is_f64(),
+        _ => std::mem::discriminant(a) == std::mem::discriminant(b),
+    }
+}
+
+/// Recursively ensure all JSON arrays are homogeneous (required by TOML spec).
+///
+/// TOML requires every element in an array to share the same type. Mixed-type
+/// arrays (e.g. `["tag", 42]`) are normalised to `Vec<String>` by JSON-encoding
+/// each element, producing a homogeneous array the toml crate can encode without error.
+fn homogenize_arrays(value: serde_json::Value) -> serde_json::Value {
+    match value {
+        serde_json::Value::Object(map) => serde_json::Value::Object(
+            map.into_iter()
+                .map(|(k, v)| (k, homogenize_arrays(v)))
+                .collect(),
+        ),
+        serde_json::Value::Array(arr) => {
+            let processed: Vec<serde_json::Value> =
+                arr.into_iter().map(homogenize_arrays).collect();
+            let is_homogeneous = processed.windows(2).all(|w| same_toml_type(&w[0], &w[1]));
+            if is_homogeneous {
+                serde_json::Value::Array(processed)
+            } else {
+                // Heterogeneous array: stringify each element as compact JSON.
+                // unwrap_or_else preserves the debug form rather than silently
+                // losing data if serialization ever fails.
+                serde_json::Value::Array(
+                    processed
+                        .iter()
+                        .map(|v| {
+                            serde_json::Value::String(
+                                serde_json::to_string(v).unwrap_or_else(|_| v.to_string()),
+                            )
+                        })
+                        .collect(),
+                )
+            }
+        }
+        other => other,
+    }
+}
+
+/// Load a WorkItemToml from a TOML file at the given path.
+///
+/// Returns a populated struct with all Option fields. Fields absent from the file
+/// remain None; the caller merges them with CLI flag values (CLI always wins).
+/// Uses tokio::fs to avoid blocking a Tokio worker thread.
+///
+/// Supports two file formats:
+///
+/// * **Flat** (hand-written): editable fields at the top level.
+/// * **Wrapped** (`--output-toml` output): fields nested under a `[work_item]` section.
+///   Server-only fields (`id`, `created_at`, `version`, …) are silently ignored because
+///   `WorkItemToml` no longer uses `deny_unknown_fields`.
+async fn load_work_item_toml(path: &str) -> CliClientResult<WorkItemToml> {
+    let content = tokio::fs::read_to_string(path)
+        .await
+        .map_err(ClientError::from_io)?;
+
+    // Parse as a generic TOML value so we can detect and unwrap the `[work_item]`
+    // section that `--output-toml` produces from a `work-item get` response.
+    // Hand-written flat TOML (no `work_item` key) passes through unchanged.
+    let mut value: toml::Value = toml::from_str(&content).map_err(ClientError::from_toml)?;
+
+    if let toml::Value::Table(ref mut outer) = value {
+        if let Some(inner @ toml::Value::Table(_)) = outer.remove("work_item") {
+            value = inner;
+        }
+    }
+
+    // Re-serialise to string then parse into WorkItemToml.
+    // Unknown server-only fields (id, created_at, version, …) are silently ignored.
+    let adjusted = toml::to_string(&value).map_err(ClientError::from_toml_ser)?;
+    toml::from_str(&adjusted).map_err(ClientError::from_toml)
 }
